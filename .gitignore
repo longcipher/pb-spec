@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 dist/
 .venv/
+.rumdl_cache/
+.ruff_cache/
