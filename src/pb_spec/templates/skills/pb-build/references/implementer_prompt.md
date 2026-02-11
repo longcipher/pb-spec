@@ -33,18 +33,21 @@ Execute the following steps in strict order. Do not skip or reorder any step.
 
 ### 2. TDD Cycle
 
-Follow the Red → Green → Refactor cycle strictly:
+Follow the Red → Green → Refactor cycle strictly. **Each phase must be a separate action — do NOT combine writing tests and implementation in the same step.**
 
-#### 2a. RED — Write Failing Test
+#### 2a. RED — Write Failing Test (STOP AFTER THIS)
 
 - Write a test (or tests) that capture the task's requirements.
 - The test should assert the expected behavior described in the task.
 - Place tests in the project's test directory, following existing conventions.
+- **⚠️ STOP HERE.** Do not write any implementation code yet.
 
 #### 2b. Confirm RED
 
 - Run the test suite.
 - **The new test(s) MUST fail.** If they pass without implementation, your test is not testing the right thing — fix the test.
+- **Verify the failure output.** Confirm the test fails for the right reason (e.g., `ImportError`, `AttributeError`, or assertion failure — not a syntax error in the test itself).
+- **Only proceed to GREEN after seeing the failure output.**
 
 #### 2c. GREEN — Write Minimum Implementation
 
@@ -63,6 +66,13 @@ Follow the Red → Green → Refactor cycle strictly:
 - Clean up code if there's obvious duplication or poor naming.
 - Do NOT add architecture or abstractions beyond what the task requires.
 - Run the full test suite again after any refactoring.
+
+#### Design Infeasibility
+
+If during implementation you discover the design is **infeasible** (API doesn't exist, data structure won't work, dependency conflict, etc.):
+1. **Stop implementation immediately.**
+2. Report a Design Change Request (see orchestrator instructions).
+3. Do NOT attempt to work around a broken design.
 
 ### 3. Self-Review
 
@@ -114,3 +124,5 @@ Report your work in this format:
 - **Do not modify `design.md` or `tasks.md`.** Those are managed by the orchestrator.
 - **Do not modify unrelated code.** Your changes should be scoped to this task only.
 - **Tests are mandatory.** Never submit implementation without tests.
+- **TDD phases are separate actions.** Never write test and implementation in the same step. Write tests first, see them fail, then write implementation.
+- **File a Design Change Request** if the design is infeasible rather than forcing a broken approach.

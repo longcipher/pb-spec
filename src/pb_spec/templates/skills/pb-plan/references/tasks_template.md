@@ -23,11 +23,11 @@
 
 ### Task 1.1: [Task Name]
 
-> **Context:** Why this task exists and what it enables.
+> **Context:** Why this task exists and what it enables. Reference existing components to reuse if applicable.
 > **Verification:** How to prove this task is done.
 
 - **Priority:** P0 / P1 / P2
-- **Est. Time:** Xh
+- **Scope:** [Logical Unit of Work — e.g., "Model layer", "API endpoint", "Service integration"]
 - **Status:** 🔴 TODO
 
 - [ ] **Step 1:** ...
@@ -40,7 +40,7 @@
 > **Verification:** ...
 
 - **Priority:** P0
-- **Est. Time:** Xh
+- **Scope:** [Logical Unit of Work]
 - **Status:** 🔴 TODO
 
 - [ ] **Step 1:** ...
@@ -57,7 +57,7 @@
 > **Verification:** ...
 
 - **Priority:** P0
-- **Est. Time:** Xh
+- **Scope:** [Logical Unit of Work]
 - **Status:** 🔴 TODO
 
 - [ ] **Step 1:** ...
@@ -71,7 +71,7 @@
 > **Verification:** ...
 
 - **Priority:** P1
-- **Est. Time:** Xh
+- **Scope:** [Logical Unit of Work]
 - **Status:** 🔴 TODO
 
 - [ ] **Step 1:** ...
@@ -88,7 +88,7 @@
 > **Verification:** ...
 
 - **Priority:** P1
-- **Est. Time:** Xh
+- **Scope:** [Logical Unit of Work]
 - **Status:** 🔴 TODO
 
 - [ ] **Step 1:** ...
@@ -105,7 +105,7 @@
 > **Verification:** ...
 
 - **Priority:** P2
-- **Est. Time:** Xh
+- **Scope:** [Logical Unit of Work]
 - **Status:** 🔴 TODO
 
 - [ ] **Step 1:** ...
@@ -116,13 +116,13 @@
 
 ## Summary & Timeline
 
-| Phase | Tasks | Est. Hours | Target Date |
-| :--- | :---: | :---: | :--- |
-| **1. Foundation** | N | Xh | MM-DD |
-| **2. Core Logic** | N | Xh | MM-DD |
-| **3. Integration** | N | Xh | MM-DD |
-| **4. Polish** | N | Xh | MM-DD |
-| **Total** | **N** | **~Xh** | |
+| Phase | Tasks | Target Date |
+| :--- | :---: | :--- |
+| **1. Foundation** | N | MM-DD |
+| **2. Core Logic** | N | MM-DD |
+| **3. Integration** | N | MM-DD |
+| **4. Polish** | N | MM-DD |
+| **Total** | **N** | |
 
 ## Definition of Done
 

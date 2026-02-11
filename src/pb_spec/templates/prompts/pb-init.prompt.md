@@ -34,7 +34,14 @@ Scan the project root for config files and infer the tech stack:
 
 ## Step 2: Generate Directory Tree
 
-Traverse the project directory tree to **depth 3**. Exclude:
+Use an **adaptive traversal strategy** instead of a fixed depth:
+
+1. **Preferred:** Run `git ls-files --others --cached --exclude-standard | head -200` to get a file listing that respects `.gitignore`. Summarize into a tree structure.
+2. **Fallback (no git):** Traverse the project directory tree to **depth 5**, but apply smart pruning:
+   - Stop expanding a directory if it contains more than 20 children (list first 10 + `... and N more`).
+   - Always expand directories named `src/`, `lib/`, `app/`, `apps/`, `packages/`, `cmd/`, `internal/`.
+
+Exclude:
 - `.git/`, `node_modules/`, `__pycache__/`, `target/`, `.venv/`, `venv/`, `dist/`, `build/`
 - Hidden directories (starting with `.`) except `.github/`
 
@@ -59,7 +66,14 @@ Check if a `specs/` directory exists. If so, list each subdirectory as an active
 
 ## Step 5: Write AGENTS.md
 
-Write the following content to `AGENTS.md` at the project root. **Completely overwrite** the file if it already exists. Do not append.
+Write the following content to `AGENTS.md` at the project root.
+
+**Preserving User Content:** Before writing, check if `AGENTS.md` already exists. If it does:
+1. Read the existing file and look for a `## User Context` section.
+2. If found, extract everything from `## User Context` to the next `##` heading (or end of file).
+3. Append the preserved `## User Context` section at the end of the newly generated file.
+
+This ensures user-added context (database schemas, external API notes, team conventions, etc.) survives re-initialization.
 
 ```markdown
 # AGENTS.md
@@ -88,6 +102,9 @@ Write the following content to `AGENTS.md` at the project root. **Completely ove
 
 ## Active Specs
 <list of specs/<feature> directories with status, or "No active specs found.">
+
+## User Context
+<!-- Add your project-specific notes below. This section is preserved across pb-init runs. -->
 ```
 
 Replace `YYYY-MM-DD` with today's date.
@@ -98,7 +115,7 @@ Replace `YYYY-MM-DD` with today's date.
 
 - **Read-only analysis.** Do NOT modify any project source code, config files, or tests.
 - **Only write `AGENTS.md`.** That is the sole file you create or modify.
-- **Idempotent.** Every run completely overwrites `AGENTS.md`. Never append to an existing file.
+- **Idempotent with preservation.** Each run regenerates the auto-generated sections of `AGENTS.md`, but preserves the `## User Context` section if it exists.
 - **No interactive questions.** Analyze and produce output in a single pass.
 
 ## Edge Cases

@@ -7,6 +7,7 @@ from pathlib import Path
 SKILL_METADATA: dict[str, str] = {
     "pb-init": "Project State Initialization",
     "pb-plan": "Design & Task Planning",
+    "pb-refine": "Design & Plan Refinement",
     "pb-build": "Subagent-Driven Implementation",
 }
 

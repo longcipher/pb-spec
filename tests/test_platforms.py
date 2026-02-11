@@ -12,9 +12,9 @@ from pb_spec.platforms.opencode import OpenCodePlatform
 # --- skill_names ---
 
 
-def test_skill_names_returns_three_skills():
+def test_skill_names_returns_four_skills():
     platform = ClaudePlatform()
-    assert platform.skill_names == ["pb-init", "pb-plan", "pb-build"]
+    assert platform.skill_names == ["pb-init", "pb-plan", "pb-refine", "pb-build"]
 
 
 # --- get_skill_path ---

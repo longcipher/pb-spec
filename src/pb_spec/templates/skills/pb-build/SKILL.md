@@ -23,6 +23,12 @@ Read `specs/<feature-name>/tasks.md`. If the file does not exist, stop and repor
 
 Scan `tasks.md` for all unchecked task items (`- [ ]`). Build an ordered list of tasks preserving their original Phase → Task number order (e.g., Task 1.1, Task 1.2, Task 2.1, …).
 
+**Use Task IDs for state tracking.** Each task has a unique ID in the format `Task X.Y` (e.g., `Task 1.1`, `Task 2.3`). When locating tasks, match on the `### Task X.Y:` heading pattern, not just bare checkboxes.
+
+**Error handling:**
+- If `tasks.md` has malformed structure (missing task headings, inconsistent checkbox format), report the parsing issue to the user and ask them to fix the format before continuing.
+- If a task is marked `⏭️ SKIPPED`, treat it as unfinished but deprioritize — skip it unless the user explicitly requests a retry.
+
 If all tasks are already checked (`- [x]`), report:
 
 ```
@@ -55,21 +61,26 @@ Create a **fresh subagent** for this task. Pass it the implementer prompt templa
 
 #### 3d. Subagent Executes (TDD Cycle)
 
-The subagent follows this strict process:
+The subagent follows this strict process. **Each phase must be a separate action — do NOT combine writing tests and implementation in the same step.**
 
-1. **RED** — Write a failing test that captures the task's requirements.
-2. **Confirm RED** — Run the test suite. The new test must fail.
-3. **GREEN** — Write the minimum implementation to make the test pass.
+1. **RED** — Write a failing test that captures the task's requirements. **STOP after this step.**
+2. **Confirm RED** — Run the test suite. The new test must fail. Verify it fails for the right reason.
+3. **GREEN** — Write the minimum implementation to make the test pass. **Only proceed after confirming RED.**
 4. **Confirm GREEN** — Run the test suite. All tests must pass.
 5. **REFACTOR** — Clean up if needed. Run tests again to confirm no regressions.
 6. **Self-Review** — Check completeness, conventions, over-engineering, test coverage.
 7. **Report** — Summarize what was implemented, tests added, files changed.
+
+**Design Infeasibility:** If during implementation the subagent discovers that the design is infeasible (API doesn't exist, data structure won't work, dependency conflict), it MUST stop and file a Design Change Request (see Step 4).
 
 #### 3e. Mark Task Completed
 
 After the subagent succeeds, update `tasks.md`:
 - Change `- [ ]` to `- [x]` for every step in the completed task.
 - Update the task's Status from `🔴 TODO` to `🟢 DONE`.
+- **Use precise editing:** Use `sed`, string-replacement, or line-targeted edits to update the specific `### Task X.Y` block. Do NOT rewrite the entire `tasks.md` file — this risks truncation and content loss in large files.
+
+> **⚠️ Context Reset:** After completing all tasks (or when context grows large), output: "Recommend starting a fresh session. Run `/pb-build <feature-name>` again to continue from where you left off."
 
 ### Step 4: Handle Failures
 
@@ -80,6 +91,24 @@ If a subagent fails (tests don't pass, implementation blocked, etc.):
    - **Retry** — Spawn a new subagent for the same task with fresh context.
    - **Skip** — Mark the task as skipped (`⏭️ SKIPPED`) and continue to the next task.
    - **Abort** — Stop the entire build. Report progress so far.
+
+#### Design Change Requests (DCR)
+
+If during implementation a subagent discovers that the design is **infeasible or incorrect**, the subagent MUST:
+
+1. **Stop implementation** — do not force a broken approach.
+2. **File a Design Change Request:**
+   ```
+   🔄 Design Change Request — Task X.Y: [Task Name]
+
+   Problem: [What is infeasible and why]
+   Suggested Change: [What should change in design.md]
+   Impact: [Which other tasks are affected]
+   ```
+3. The orchestrator pauses the build, reports the DCR to the user, and awaits a decision:
+   - **Accept** — user updates `design.md` (or approves the suggested change), then retries.
+   - **Override** — user provides an alternative approach.
+   - **Abort** — stop the build.
 
 ### Step 5: Output Completion Summary
 
@@ -127,8 +156,9 @@ Tasks in `tasks.md` use checkbox state for progress:
 | Pending | `- [ ]` | Not yet started |
 | Done | `- [x]` | Completed and verified |
 | Skipped | `⏭️ SKIPPED` | Skipped due to failure |
+| Design Block | `🔄 DCR` | Blocked — awaiting design change |
 
-Update `tasks.md` in-place after each task completes. This is the single source of truth for build progress.
+Update `tasks.md` in-place after each task completes using **precise edits** (target the specific `### Task X.Y` block). Do not rewrite the entire file. This is the single source of truth for build progress.
 
 ---
 
@@ -148,9 +178,11 @@ While executing, display progress after each task:
 ### NEVER
 - **NEVER** implement tasks out of order.
 - **NEVER** skip TDD steps (Red → Green → Refactor).
+- **NEVER** combine test writing and implementation in the same step.
 - **NEVER** let a subagent implement more than its assigned task.
 - **NEVER** carry in-memory state between subagents.
-- **NEVER** modify `design.md` — it is read-only during build.
+- **NEVER** modify `design.md` — file a Design Change Request instead.
+- **NEVER** rewrite the entire `tasks.md` file — use targeted edits only.
 
 ### ALWAYS
 - **ALWAYS** mark completed tasks in `tasks.md` immediately after success.
@@ -159,6 +191,7 @@ While executing, display progress after each task:
 - **ALWAYS** report failures clearly with actionable options (retry/skip/abort).
 - **ALWAYS** follow YAGNI — implement only what the task requires.
 - **ALWAYS** use existing project patterns and conventions.
+- **ALWAYS** file a Design Change Request if the design is infeasible.
 
 ---
 

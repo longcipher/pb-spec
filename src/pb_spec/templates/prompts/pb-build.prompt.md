@@ -19,6 +19,12 @@ Read `specs/<feature-name>/tasks.md`. If not found, stop and report:
 
 Scan for all unchecked items (`- [ ]`). Build an ordered list preserving Phase → Task number order.
 
+**Use Task IDs for state tracking.** Each task has a unique ID in the format `Task X.Y` (e.g., `Task 1.1`, `Task 2.3`). When locating tasks, match on the `### Task X.Y:` heading pattern, not just bare checkboxes.
+
+**Error handling:**
+- If `tasks.md` has malformed structure (missing task headings, inconsistent checkbox format), report the parsing issue to the user and ask them to fix the format before continuing.
+- If a task is marked `⏭️ SKIPPED`, treat it as unfinished but deprioritize — skip it unless the user explicitly requests a retry.
+
 If all tasks are checked (`- [x]`), report:
 
 ```
@@ -34,8 +40,11 @@ For each unfinished task, in order:
 3. **Spawn a fresh subagent** with the Implementer Prompt (below), filled in with the task content and project context.
 4. **Subagent executes** the TDD cycle (see Implementer Prompt section).
 5. **Mark completed** — update `- [ ]` to `- [x]` and Status to `🟢 DONE` in `tasks.md`.
+   - **Use precise editing:** Use `sed`, string-replacement, or line-targeted edits to update the specific Task ID heading and its checkboxes. Do NOT rewrite the entire `tasks.md` file — this risks truncation and content loss in large files.
 
 **Each subagent gets a clean context.** Do not carry over in-memory state between tasks — only files on disk persist.
+
+> **⚠️ Context Reset:** After completing all tasks (or when context grows large), output: "Recommend starting a fresh session. Run `/pb-build <feature-name>` again to continue from where you left off."
 
 ## Step 4: Handle Failures
 
@@ -46,6 +55,24 @@ If a subagent fails:
    - **Retry** — new subagent, fresh context, same task.
    - **Skip** — mark as `⏭️ SKIPPED`, move to next task.
    - **Abort** — stop the build, report progress so far.
+
+### Design Change Requests
+
+If during implementation a subagent discovers that the design is **infeasible or incorrect** (e.g., an API doesn't exist, a data structure won't work, dependencies conflict), the subagent MUST:
+
+1. **Stop implementation** — do not force a broken approach.
+2. **File a Design Change Request (DCR):** Report to the orchestrator:
+   ```
+   🔄 Design Change Request — Task X.Y: [Task Name]
+
+   Problem: [What is infeasible and why]
+   Suggested Change: [What should change in design.md]
+   Impact: [Which other tasks are affected]
+   ```
+3. The orchestrator pauses the build, reports the DCR to the user, and awaits a decision:
+   - **Accept** — user updates `design.md` (or approves the suggested change), then retries the task.
+   - **Override** — user provides an alternative approach.
+   - **Abort** — stop the build.
 
 ## Step 5: Output Summary
 
@@ -87,8 +114,9 @@ Next steps:
 | Pending | `- [ ]` | Not started |
 | Done | `- [x]` | Completed and verified |
 | Skipped | `⏭️ SKIPPED` | Skipped due to failure |
+| Design Block | `🔄 DCR` | Blocked — awaiting design change |
 
-Update `tasks.md` in-place after each task. Single source of truth.
+Update `tasks.md` in-place after each task using **precise edits** (target the specific `### Task X.Y` block). Do not rewrite the entire file. Single source of truth.
 
 ---
 
@@ -108,7 +136,8 @@ Update `tasks.md` in-place after each task. Single source of truth.
 - Skip TDD steps (Red → Green → Refactor).
 - Let a subagent implement more than its assigned task.
 - Carry in-memory state between subagents.
-- Modify `design.md`.
+- Modify `design.md` (file a Design Change Request instead).
+- Rewrite the entire `tasks.md` file — use targeted edits only.
 
 ### ALWAYS
 - Mark completed tasks in `tasks.md` immediately.
@@ -117,6 +146,7 @@ Update `tasks.md` in-place after each task. Single source of truth.
 - Report failures with retry/skip/abort options.
 - Follow YAGNI — only implement what the task requires.
 - Use existing project patterns and conventions.
+- File a Design Change Request if the design is infeasible.
 
 ---
 

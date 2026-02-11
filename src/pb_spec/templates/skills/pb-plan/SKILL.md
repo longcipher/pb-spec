@@ -27,6 +27,13 @@ Gather context to inform the design:
 1. **Read `AGENTS.md`** (if it exists at project root) — understand language, framework, build tool, project structure, and conventions.
 2. **Scan related source code** — look at modules, directories, and files most likely affected by the requirement.
 3. **Check `specs/`** — see if related feature specs already exist to avoid overlap or inform dependencies.
+4. **Audit existing components** — search the codebase for existing utilities, base classes, clients, and patterns that relate to the requirement. Specifically look for:
+   - Helper/utility modules that overlap with the requirement
+   - Existing abstractions (base classes, interfaces, protocols) to extend
+   - Shared infrastructure (database connections, HTTP clients, cache layers)
+   - Similar prior implementations that establish patterns to follow
+   
+   **This audit is mandatory.** List reusable components in `design.md` Section 3.3 and reference them in `tasks.md` task context.
 
 If `AGENTS.md` does not exist, scan the project root directly (config files, directory structure) to infer project context.
 
@@ -55,9 +62,11 @@ Read `references/tasks_template.md` and use it to break down the implementation 
 **Requirements for tasks.md:**
 - Tasks are grouped into Phases (Foundation → Core → Integration → Polish).
 - Each task includes: **Context**, **Steps** (as checkboxes), and **Verification**.
-- Each task should take **2–6 hours**. If a task exceeds 1 day, split it.
+- Each task represents a **Logical Unit of Work** — a self-contained, meaningful change (e.g., "Implement Model layer", "Add API endpoint", "Wire up service integration"). Do NOT split by time estimates.
+- **Task ID format:** Each task MUST have a unique ID: `Task X.Y` (e.g., `Task 1.1`, `Task 2.3`). This is used for state tracking during `pb-build`.
 - Tasks are ordered by dependency — no task references work from a later task.
 - Every task has a concrete **Verification** criterion (not just "implement X" but "implement X and verify by running Y").
+- **Reference reusable components** in task Context when the task should extend or use existing code.
 - Include a Summary & Timeline table and a Definition of Done section.
 
 ### Step 6: Prompt Developer Review
@@ -82,10 +91,10 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 1. **One-shot output.** Produce the complete design + tasks in a single pass. Do not ask for confirmation or clarification mid-way.
 2. **Optimal solution first.** Output the best design you can determine. The developer will request changes after reviewing if needed.
-3. **Task granularity: 2–6 hours.** Tasks smaller than 2 hours should be merged; tasks larger than 6 hours should be split.
+3. **Task granularity: Logical Unit of Work.** Each task is a self-contained, meaningful change. Do not split based on arbitrary time estimates.
 4. **Verification per task.** Every task must define how to prove it is done.
 5. **Dependency order.** Phases and tasks flow from foundational to dependent. A developer can execute them top-to-bottom.
-6. **Project-aware.** Use the project's existing conventions, patterns, and tech stack. Don't introduce unnecessary new dependencies or paradigms.
+6. **Project-aware.** Use the project's existing conventions, patterns, and tech stack. Reuse existing components — do not reinvent.
 
 ---
 

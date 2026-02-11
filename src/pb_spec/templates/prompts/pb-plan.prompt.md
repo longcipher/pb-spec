@@ -21,6 +21,13 @@ Extract core requirements from the user's input. Derive a **feature-name** for t
 1. **Read `AGENTS.md`** (if it exists) — understand language, framework, build tool, project structure, conventions.
 2. **Scan related source code** — modules, directories, and files most likely affected by the requirement.
 3. **Check `specs/`** — see if related feature specs already exist.
+4. **Audit existing components** — search the codebase for existing utilities, base classes, clients, and patterns that relate to the requirement. Specifically look for:
+   - Helper/utility modules that overlap with the requirement
+   - Existing abstractions (base classes, interfaces, protocols) to extend
+   - Shared infrastructure (database connections, HTTP clients, cache layers)
+   - Similar prior implementations that establish patterns to follow
+   
+   **This audit is mandatory.** List reusable components in `design.md` Section 3.3 and reference them in `tasks.md` task context.
 
 If `AGENTS.md` does not exist, scan the project root to infer context. Recommend the developer run `/pb-init` first in your summary.
 
@@ -39,9 +46,11 @@ Fill the **Tasks Template** below and write to `specs/<feature-name>/tasks.md`. 
 **Task requirements:**
 - Grouped into Phases (Foundation → Core → Integration → Polish).
 - Each task: **Context**, **Steps** (checkboxes), and **Verification**.
-- Each task takes **2–6 hours**. Split larger tasks; merge trivial ones.
+- Each task represents a **Logical Unit of Work** — a self-contained, meaningful change (e.g., "Implement Model layer", "Add API endpoint", "Wire up service integration"). Do NOT split by time estimates.
+- **Task ID format:** Each task MUST have a unique ID: `Task X.Y` (e.g., `Task 1.1`, `Task 2.3`). This is used for state tracking during `pb-build`.
 - Ordered by dependency — no task references work from a later task.
 - Every task has a concrete **Verification** criterion.
+- **Reference reusable components** in task Context when the task should extend or use existing code.
 
 ## Step 6: Prompt Developer Review
 
@@ -65,10 +74,10 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 1. **One-shot output.** Complete design + tasks in a single pass. No mid-way confirmation.
 2. **Optimal solution first.** Output the best design. Developer requests changes after review if needed.
-3. **Task granularity: 2–6 hours.** Merge small tasks; split large ones.
+3. **Task granularity: Logical Unit of Work.** Each task is a self-contained, meaningful change. Do not split based on arbitrary time estimates.
 4. **Verification per task.** Every task defines how to prove it is done.
 5. **Dependency order.** Phases and tasks flow foundational → dependent.
-6. **Project-aware.** Use existing conventions, patterns, and tech stack.
+6. **Project-aware.** Use existing conventions, patterns, and tech stack. Reuse existing components — do not reinvent.
 
 ---
 
@@ -160,6 +169,17 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 ### 3.2 Key Design Principles
 
 > Core ideas guiding this design.
+
+### 3.3 Existing Components to Reuse
+
+> **Mandatory:** Before designing new modules, search the existing codebase for reusable components. List any existing utilities, clients, base classes, or patterns that this feature MUST reuse instead of reimplementing.
+
+| Component | Location | How to Reuse |
+| :--- | :--- | :--- |
+| [e.g., RedisClient] | [src/utils/redis.py] | [Use for all cache operations] |
+| [e.g., BaseModel] | [src/models/base.py] | [Extend for new data models] |
+
+> If no reusable components exist, state "No existing components identified for reuse" and explain why.
 
 ---
 
@@ -259,11 +279,11 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 ### Task 1.1: [Task Name]
 
-> **Context:** Why this task exists and what it enables.
+> **Context:** Why this task exists and what it enables. Reference existing components to reuse if applicable.
 > **Verification:** How to prove this task is done.
 
 - **Priority:** P0 / P1 / P2
-- **Est. Time:** Xh
+- **Scope:** [Logical Unit of Work — e.g., "Model layer", "API endpoint", "Service integration"]
 - **Status:** 🔴 TODO
 
 - [ ] **Step 1:** ...
@@ -280,7 +300,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 > **Verification:** ...
 
 - **Priority:** P0
-- **Est. Time:** Xh
+- **Scope:** [Logical Unit of Work]
 - **Status:** 🔴 TODO
 
 - [ ] **Step 1:** ...
@@ -297,7 +317,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 > **Verification:** ...
 
 - **Priority:** P1
-- **Est. Time:** Xh
+- **Scope:** [Logical Unit of Work]
 - **Status:** 🔴 TODO
 
 - [ ] **Step 1:** ...
@@ -314,7 +334,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 > **Verification:** ...
 
 - **Priority:** P2
-- **Est. Time:** Xh
+- **Scope:** [Logical Unit of Work]
 - **Status:** 🔴 TODO
 
 - [ ] **Step 1:** ...
@@ -325,13 +345,13 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 ## Summary & Timeline
 
-| Phase | Tasks | Est. Hours | Target Date |
-| :--- | :---: | :---: | :--- |
-| **1. Foundation** | N | Xh | MM-DD |
-| **2. Core Logic** | N | Xh | MM-DD |
-| **3. Integration** | N | Xh | MM-DD |
-| **4. Polish** | N | Xh | MM-DD |
-| **Total** | **N** | **~Xh** | |
+| Phase | Tasks | Target Date |
+| :--- | :---: | :--- |
+| **1. Foundation** | N | MM-DD |
+| **2. Core Logic** | N | MM-DD |
+| **3. Integration** | N | MM-DD |
+| **4. Polish** | N | MM-DD |
+| **Total** | **N** | |
 
 ## Definition of Done
 

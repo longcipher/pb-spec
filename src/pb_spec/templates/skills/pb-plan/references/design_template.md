@@ -58,6 +58,17 @@
 
 > Core ideas guiding this design. Examples: "Separation of concerns", "Fail-fast", "Backward-compatible API".
 
+### 3.3 Existing Components to Reuse
+
+> **Mandatory:** Before designing new modules, search the existing codebase for reusable components. List any existing utilities, clients, base classes, or patterns that this feature MUST reuse instead of reimplementing.
+
+| Component | Location | How to Reuse |
+| :--- | :--- | :--- |
+| [e.g., RedisClient] | [src/utils/redis.py] | [Use for all cache operations] |
+| [e.g., BaseModel] | [src/models/base.py] | [Extend for new data models] |
+
+> If no reusable components exist, state "No existing components identified for reuse" and explain why.
+
 ---
 
 ## 4. Detailed Design
