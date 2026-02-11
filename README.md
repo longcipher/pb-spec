@@ -12,7 +12,7 @@
 
 ## Features
 
-- **3 agent skills**: `pb-init`, `pb-plan`, `pb-build` — covering project analysis, design planning, and TDD implementation
+- **4 agent skills**: `pb-init`, `pb-plan`, `pb-refine`, `pb-build` — covering project analysis, design planning, iterative refinement, and TDD implementation
 - **3 platforms**: Claude Code, VS Code Copilot, OpenCode
 - **Zero config**: run `pb-spec init` and start using AI prompts immediately
 - **Idempotent**: safe to re-run; use `--force` to overwrite existing files
@@ -38,6 +38,7 @@ pb-spec init --ai claude       # or: copilot, opencode, all
 # 2. Open the project in your AI coding assistant and use the skills:
 #    /pb-init                          → Generate AGENTS.md project context
 #    /pb-plan Add WebSocket auth       → Generate design.md + tasks.md
+#    /pb-refine add-websocket-auth     → (Optional) Refine design based on feedback
 #    /pb-build add-websocket-auth      → Implement tasks via TDD subagents
 ```
 
@@ -73,16 +74,15 @@ pb-spec update
 Update pb-spec to the latest version (requires `uv`).
 
 ## Workflow
-
-pb-spec provides three agent skills that chain together:
+four agent skills that chain together:
 
 ```text
-/pb-init → /pb-plan → /pb-build
+/pb-init → /pb-plan → [/pb-refine] → /pb-build
 ```
 
 ### 1. `/pb-init` — Project Initialization
 
-Analyzes your project and generates an `AGENTS.md` file at the project root. This file captures the tech stack, directory structure, conventions, and testing patterns so that subsequent agents have full project context.
+Analyzes your project and generates an `AGENTS.md` file at the project root. This file captures the tech stack, directory structure, conventions, and testing patterns. **Preserves user-added context** so manual notes aren't lost on re-runs.
 
 ### 2. `/pb-plan <requirement>` — Design & Task Planning
 
@@ -91,16 +91,22 @@ Takes a natural-language requirement and produces a complete feature spec:
 ```text
 specs/<feature-name>/
 ├── design.md    # Architecture, API contracts, data models
-└── tasks.md     # Ordered implementation tasks with acceptance criteria
+└── tasks.md     # Ordered implementation tasks (logical units of work)
 ```
 
-### 3. `/pb-build <feature-name>` — Subagent-Driven Implementation
+### 3. `/pb-refine <feature-name>` — Design Iteration (Optional)
 
+Reads user feedback or Design Change Requests (from failed builds) and intelligently updates `design.md` and `tasks.md`. It maintains a revision history and cascades design changes to the task list without overwriting completed work.
+
+### 4. `/pb-build <feature-name>` — Subagent-Driven Implementation
+
+Reads `specs/<feature-name>/tasks.md` and implements each task sequentially. Every task is executed by a fresh subagent following strict TDD (Red → Green → Refactor). Supports **Design Change Requests** if the planned design proves infeasible during implementa
 Reads `specs/<feature-name>/tasks.md` and implements each task sequentially. Every task is executed by a fresh subagent following strict TDD (Red → Green → Refactor) with self-review before completion.
 
 ## Skills Overview
 
-| Skill | Trigger | Output | Description |
+| Skilrefine` | `/pb-refine <feature>` | Revised spec files | Apply feedback or Design Change Requests |
+| `pb-l | Trigger | Output | Description |
 |---|---|---|---|
 | `pb-init` | `/pb-init` | `AGENTS.md` | Detect stack, scan structure, generate project context |
 | `pb-plan` | `/pb-plan <requirement>` | `specs/<name>/design.md` + `tasks.md` | Design proposal + ordered task breakdown |
