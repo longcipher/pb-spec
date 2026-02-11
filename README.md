@@ -100,16 +100,15 @@ Reads user feedback or Design Change Requests (from failed builds) and intellige
 
 ### 4. `/pb-build <feature-name>` — Subagent-Driven Implementation
 
-Reads `specs/<feature-name>/tasks.md` and implements each task sequentially. Every task is executed by a fresh subagent following strict TDD (Red → Green → Refactor). Supports **Design Change Requests** if the planned design proves infeasible during implementa
-Reads `specs/<feature-name>/tasks.md` and implements each task sequentially. Every task is executed by a fresh subagent following strict TDD (Red → Green → Refactor) with self-review before completion.
+Reads `specs/<feature-name>/tasks.md` and implements each task sequentially. Every task is executed by a fresh subagent following strict TDD (Red → Green → Refactor). Supports **Design Change Requests** if the planned design proves infeasible during implementation.
 
 ## Skills Overview
 
-| Skilrefine` | `/pb-refine <feature>` | Revised spec files | Apply feedback or Design Change Requests |
-| `pb-l | Trigger | Output | Description |
+| Skill | Trigger | Output | Description |
 |---|---|---|---|
 | `pb-init` | `/pb-init` | `AGENTS.md` | Detect stack, scan structure, generate project context |
 | `pb-plan` | `/pb-plan <requirement>` | `specs/<name>/design.md` + `tasks.md` | Design proposal + ordered task breakdown |
+| `pb-refine` | `/pb-refine <feature>` | Revised spec files | Apply feedback or Design Change Requests |
 | `pb-build` | `/pb-build <feature-name>` | Code + tests | TDD implementation via subagents |
 
 ## Development
