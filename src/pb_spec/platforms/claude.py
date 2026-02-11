@@ -1,17 +1,17 @@
-"""OpenCode platform adapter."""
+"""Claude platform adapter."""
 
 from pathlib import Path
 
-from pb.platforms.base import SKILL_METADATA, Platform
+from pb_spec.platforms.base import SKILL_METADATA, Platform
 
 
-class OpenCodePlatform(Platform):
-    """OpenCode — skills as .opencode/skills/<name>/SKILL.md."""
+class ClaudePlatform(Platform):
+    """Claude Code — skills as .claude/skills/<name>/SKILL.md."""
 
-    name = "opencode"
+    name = "claude"
 
     def get_skill_path(self, cwd: Path, skill_name: str) -> Path:
-        return cwd / ".opencode" / "skills" / skill_name / "SKILL.md"
+        return cwd / ".claude" / "skills" / skill_name / "SKILL.md"
 
     def render_skill(self, skill_name: str, template_content: str) -> str:
         description = SKILL_METADATA.get(skill_name, "")

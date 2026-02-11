@@ -1,6 +1,6 @@
 """Tests for the template loading system."""
 
-from pb.templates import load_template, load_skill_content, load_references, load_prompt
+from pb_spec.templates import load_prompt, load_references, load_skill_content, load_template
 
 
 def test_load_template_returns_string():

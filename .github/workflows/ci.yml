@@ -17,5 +17,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
+      - uses: extractions/setup-just@v2
       - run: uv sync
-      - run: uv run pytest -v
+      - run: just ci

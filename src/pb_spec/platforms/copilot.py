@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pb.platforms.base import Platform
+from pb_spec.platforms.base import Platform
 
 if TYPE_CHECKING:
     pass
@@ -22,7 +22,7 @@ class CopilotPlatform(Platform):
 
     def _load_and_render(self, skill_name: str) -> str:
         """Copilot uses prompt files, not SKILL.md."""
-        from pb.templates import load_prompt
+        from pb_spec.templates import load_prompt
 
         return load_prompt(skill_name)
 

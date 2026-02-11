@@ -1,15 +1,19 @@
-# pb — Plan-Build CLI
+# pb-spec — Plan-Build Spec
 
+[![DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/longcipher/pb-spec)
+[![Context7](https://img.shields.io/badge/Website-context7.com-blue)](https://context7.com/longcipher/pb-spec)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-**pb** is a CLI tool that installs AI coding assistant skills into your project. It provides a structured workflow — **init → plan → build** — that turns natural-language requirements into implemented, tested code through AI agent prompts.
+![pb-spec](https://socialify.git.ci/longcipher/pb-spec/image?font=Source+Code+Pro&language=1&name=1&owner=1&pattern=Circuit+Board&theme=Auto)
+
+**pb-spec** is a CLI tool that installs AI coding assistant skills into your project. It provides a structured workflow — **init → plan → build** — that turns natural-language requirements into implemented, tested code through AI agent prompts.
 
 ## Features
 
 - **3 agent skills**: `pb-init`, `pb-plan`, `pb-build` — covering project analysis, design planning, and TDD implementation
 - **3 platforms**: Claude Code, VS Code Copilot, OpenCode
-- **Zero config**: run `pb init` and start using AI prompts immediately
+- **Zero config**: run `pb-spec init` and start using AI prompts immediately
 - **Idempotent**: safe to re-run; use `--force` to overwrite existing files
 - **Built with**: Python 3.12+, [click](https://click.palletsprojects.com/), [uv](https://docs.astral.sh/uv/)
 
@@ -17,10 +21,10 @@
 
 ```bash
 # Recommended
-uv tool install pb
+uv tool install pb-spec
 
 # Alternative
-pipx install pb
+pipx install pb-spec
 ```
 
 ## Quick Start
@@ -28,7 +32,7 @@ pipx install pb
 ```bash
 # 1. Install skills for your AI tool
 cd my-project
-pb init --ai claude       # or: copilot, opencode, all
+pb-spec init --ai claude       # or: copilot, opencode, all
 
 # 2. Open the project in your AI coding assistant and use the skills:
 #    /pb-init                          → Generate AGENTS.md project context
@@ -47,7 +51,7 @@ pb init --ai claude       # or: copilot, opencode, all
 ## CLI Reference
 
 ```text
-pb init --ai <platform> [--force]
+pb-spec init --ai <platform> [--force]
 ```
 
 Install skill files into the current project.
@@ -56,20 +60,20 @@ Install skill files into the current project.
 - `--force` — Overwrite existing files
 
 ```text
-pb version
+pb-spec version
 ```
 
-Print the installed pb version.
+Print the installed pb-spec version.
 
 ```text
-pb update
+pb-spec update
 ```
 
-Update pb to the latest version (requires `uv`).
+Update pb-spec to the latest version (requires `uv`).
 
 ## Workflow
 
-pb provides three agent skills that chain together:
+pb-spec provides three agent skills that chain together:
 
 ```text
 /pb-init → /pb-plan → /pb-build

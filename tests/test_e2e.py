@@ -1,11 +1,9 @@
-"""End-to-end tests for pb init workflow."""
-
-from pathlib import Path
+"""End-to-end tests for pb-spec init workflow."""
 
 import pytest
 from click.testing import CliRunner
 
-from pb.cli import main
+from pb_spec.cli import main
 
 
 @pytest.fixture()
@@ -14,7 +12,7 @@ def runner():
 
 
 def test_e2e_init_all_creates_complete_structure(tmp_path, monkeypatch, runner):
-    """Verify pb init --ai all creates all files for all 3 platforms."""
+    """Verify pb-spec init --ai all creates all files for all 3 platforms."""
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(main, ["init", "--ai", "all"])
     assert result.exit_code == 0, result.output
@@ -22,10 +20,16 @@ def test_e2e_init_all_creates_complete_structure(tmp_path, monkeypatch, runner):
     # Claude files
     assert (tmp_path / ".claude" / "skills" / "pb-init" / "SKILL.md").exists()
     assert (tmp_path / ".claude" / "skills" / "pb-plan" / "SKILL.md").exists()
-    assert (tmp_path / ".claude" / "skills" / "pb-plan" / "references" / "design_template.md").exists()
-    assert (tmp_path / ".claude" / "skills" / "pb-plan" / "references" / "tasks_template.md").exists()
+    assert (
+        tmp_path / ".claude" / "skills" / "pb-plan" / "references" / "design_template.md"
+    ).exists()
+    assert (
+        tmp_path / ".claude" / "skills" / "pb-plan" / "references" / "tasks_template.md"
+    ).exists()
     assert (tmp_path / ".claude" / "skills" / "pb-build" / "SKILL.md").exists()
-    assert (tmp_path / ".claude" / "skills" / "pb-build" / "references" / "implementer_prompt.md").exists()
+    assert (
+        tmp_path / ".claude" / "skills" / "pb-build" / "references" / "implementer_prompt.md"
+    ).exists()
 
     # Copilot files
     assert (tmp_path / ".github" / "prompts" / "pb-init.prompt.md").exists()
@@ -35,10 +39,16 @@ def test_e2e_init_all_creates_complete_structure(tmp_path, monkeypatch, runner):
     # OpenCode files
     assert (tmp_path / ".opencode" / "skills" / "pb-init" / "SKILL.md").exists()
     assert (tmp_path / ".opencode" / "skills" / "pb-plan" / "SKILL.md").exists()
-    assert (tmp_path / ".opencode" / "skills" / "pb-plan" / "references" / "design_template.md").exists()
-    assert (tmp_path / ".opencode" / "skills" / "pb-plan" / "references" / "tasks_template.md").exists()
+    assert (
+        tmp_path / ".opencode" / "skills" / "pb-plan" / "references" / "design_template.md"
+    ).exists()
+    assert (
+        tmp_path / ".opencode" / "skills" / "pb-plan" / "references" / "tasks_template.md"
+    ).exists()
     assert (tmp_path / ".opencode" / "skills" / "pb-build" / "SKILL.md").exists()
-    assert (tmp_path / ".opencode" / "skills" / "pb-build" / "references" / "implementer_prompt.md").exists()
+    assert (
+        tmp_path / ".opencode" / "skills" / "pb-build" / "references" / "implementer_prompt.md"
+    ).exists()
 
 
 def test_e2e_claude_frontmatter(tmp_path, monkeypatch, runner):

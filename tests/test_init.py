@@ -1,11 +1,9 @@
-"""Tests for `pb init` command — skill installation across platforms."""
-
-from pathlib import Path
+"""Tests for `pb-spec init` command — skill installation across platforms."""
 
 import pytest
 from click.testing import CliRunner
 
-from pb.cli import main
+from pb_spec.cli import main
 
 
 @pytest.fixture()
@@ -17,7 +15,7 @@ def runner():
 
 
 def test_init_claude(tmp_path, monkeypatch, runner):
-    """pb init --ai claude creates SKILL.md files + references for all skills."""
+    """pb-spec init --ai claude creates SKILL.md files + references for all skills."""
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(main, ["init", "--ai", "claude"])
 
@@ -29,18 +27,24 @@ def test_init_claude(tmp_path, monkeypatch, runner):
     assert (tmp_path / ".claude" / "skills" / "pb-build" / "SKILL.md").exists()
 
     # Reference files for pb-plan
-    assert (tmp_path / ".claude" / "skills" / "pb-plan" / "references" / "design_template.md").exists()
-    assert (tmp_path / ".claude" / "skills" / "pb-plan" / "references" / "tasks_template.md").exists()
+    assert (
+        tmp_path / ".claude" / "skills" / "pb-plan" / "references" / "design_template.md"
+    ).exists()
+    assert (
+        tmp_path / ".claude" / "skills" / "pb-plan" / "references" / "tasks_template.md"
+    ).exists()
 
     # Reference files for pb-build
-    assert (tmp_path / ".claude" / "skills" / "pb-build" / "references" / "implementer_prompt.md").exists()
+    assert (
+        tmp_path / ".claude" / "skills" / "pb-build" / "references" / "implementer_prompt.md"
+    ).exists()
 
 
 # --- pb init --ai copilot ---
 
 
 def test_init_copilot(tmp_path, monkeypatch, runner):
-    """pb init --ai copilot creates .prompt.md files (no references)."""
+    """pb-spec init --ai copilot creates .prompt.md files (no references)."""
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(main, ["init", "--ai", "copilot"])
 
@@ -55,7 +59,7 @@ def test_init_copilot(tmp_path, monkeypatch, runner):
 
 
 def test_init_opencode(tmp_path, monkeypatch, runner):
-    """pb init --ai opencode creates .opencode/skills/ structure with references."""
+    """pb-spec init --ai opencode creates .opencode/skills/ structure with references."""
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(main, ["init", "--ai", "opencode"])
 
@@ -66,18 +70,24 @@ def test_init_opencode(tmp_path, monkeypatch, runner):
     assert (tmp_path / ".opencode" / "skills" / "pb-build" / "SKILL.md").exists()
 
     # Reference files for pb-plan
-    assert (tmp_path / ".opencode" / "skills" / "pb-plan" / "references" / "design_template.md").exists()
-    assert (tmp_path / ".opencode" / "skills" / "pb-plan" / "references" / "tasks_template.md").exists()
+    assert (
+        tmp_path / ".opencode" / "skills" / "pb-plan" / "references" / "design_template.md"
+    ).exists()
+    assert (
+        tmp_path / ".opencode" / "skills" / "pb-plan" / "references" / "tasks_template.md"
+    ).exists()
 
     # Reference files for pb-build
-    assert (tmp_path / ".opencode" / "skills" / "pb-build" / "references" / "implementer_prompt.md").exists()
+    assert (
+        tmp_path / ".opencode" / "skills" / "pb-build" / "references" / "implementer_prompt.md"
+    ).exists()
 
 
 # --- pb init --ai all ---
 
 
 def test_init_all(tmp_path, monkeypatch, runner):
-    """pb init --ai all generates files for all 3 platforms."""
+    """pb-spec init --ai all generates files for all 3 platforms."""
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(main, ["init", "--ai", "all"])
 

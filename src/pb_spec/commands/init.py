@@ -1,10 +1,10 @@
-"""Init command — install pb skill files into the current project."""
+"""Init command — install pb-spec skill files into the current project."""
 
 from pathlib import Path
 
 import click
 
-from pb.platforms import get_platform, resolve_targets
+from pb_spec.platforms import get_platform, resolve_targets
 
 
 @click.command("init")
@@ -16,7 +16,7 @@ from pb.platforms import get_platform, resolve_targets
 )
 @click.option("--force", is_flag=True, default=False, help="Overwrite existing files")
 def init_cmd(ai: str, force: bool) -> None:
-    """Install pb skill files into the current project."""
+    """Install pb-spec skill files into the current project."""
     cwd = Path.cwd()
     targets = resolve_targets(ai)
 
@@ -27,4 +27,4 @@ def init_cmd(ai: str, force: bool) -> None:
         for path in installed:
             click.echo(f"  + {path}")
 
-    click.echo("pb skills installed successfully!")
+    click.echo("pb-spec skills installed successfully!")

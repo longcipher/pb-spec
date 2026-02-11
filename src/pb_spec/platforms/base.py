@@ -61,7 +61,7 @@ class Platform(ABC):
         installed: list[str],
     ) -> None:
         """Install reference files next to the skill file. Override to skip."""
-        from pb.templates import load_references
+        from pb_spec.templates import load_references
 
         refs = load_references(skill_name)
         if not refs:
@@ -78,6 +78,7 @@ class Platform(ABC):
 
     def _load_and_render(self, skill_name: str) -> str:
         """Load template and render for this platform."""
-        from pb.templates import load_skill_content
+        from pb_spec.templates import load_skill_content
+
         template_content = load_skill_content(skill_name)
         return self.render_skill(skill_name, template_content)

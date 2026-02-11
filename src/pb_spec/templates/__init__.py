@@ -12,7 +12,7 @@ def load_template(skill_name: str, filename: str) -> str:
     Returns:
         File content as string
     """
-    ref = importlib.resources.files("pb.templates") / "skills" / skill_name / filename
+    ref = importlib.resources.files("pb_spec.templates") / "skills" / skill_name / filename
     return ref.read_text(encoding="utf-8")
 
 
@@ -27,7 +27,7 @@ def load_references(skill_name: str) -> dict[str, str]:
     Returns:
         Dict mapping filename to content. Empty dict if no references/ directory.
     """
-    refs_dir = importlib.resources.files("pb.templates") / "skills" / skill_name / "references"
+    refs_dir = importlib.resources.files("pb_spec.templates") / "skills" / skill_name / "references"
     result = {}
     try:
         for item in refs_dir.iterdir():
@@ -46,5 +46,5 @@ def load_prompt(skill_name: str) -> str:
     Returns:
         Prompt file content as string
     """
-    ref = importlib.resources.files("pb.templates") / "prompts" / f"{skill_name}.prompt.md"
+    ref = importlib.resources.files("pb_spec.templates") / "prompts" / f"{skill_name}.prompt.md"
     return ref.read_text(encoding="utf-8")

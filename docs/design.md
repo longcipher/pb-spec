@@ -1,4 +1,4 @@
-# Design Document: pb (Plan-Build)
+# Design Document: pb-spec (Plan-Build Spec)
 
 | Metadata | Details |
 | :--- | :--- |
@@ -10,11 +10,13 @@
 ## 1. Executive Summary
 
 **Problem:** Current AI coding assistants (Claude Code, VS Code Copilot, OpenCode) face several pain points when handling complex requirements:
+
 1. Frequent conversational round-trips to confirm designs, leading to low efficiency and context loss.
 2. Lack of a structured "Design → Task Breakdown → Task Implementation" workflow.
 3. Scattered skill/prompt configurations across different AI tools, lacking unified management.
 
-**Solution:** `pb` (Plan-Build) is a Python uv-based CLI tool + AI Skill system that offers:
+**Solution:** `pb-spec` (Plan-Build Spec) is a Python uv-based CLI tool + AI Skill system that offers:
+
 - A unified CLI to install/manage skill files into the configuration directories of specific AI tools.
 - Three core agent prompts: `/pb-init` (Project Initialization), `/pb-plan` (Design + Task Breakdown), and `/pb-build` (Subagent-Driven Implementation).
 - Utilization of a build/agent mode only, outputting specific full solution documentation for developer review in one go, avoiding tentative multi-turn conversations.
@@ -29,8 +31,8 @@ The skill ecosystem for existing AI programming tools is fragmented. Claude Code
 
 ### 2.2 Functional Goals
 
-1. **CLI Tool `pb`**: Developed based on Python uv, supporting `init`, `version`, and `update` subcommands.
-2. **Skill File Generation**: `pb init --ai <claude/copilot/opencode/all>` installs pb skills into the corresponding AI tool's configuration directory.
+1. **CLI Tool `pb-spec`**: Developed based on Python uv, supporting `init`, `version`, and `update` subcommands.
+2. **Skill File Generation**: `pb-spec init --ai <claude/copilot/opencode/all>` installs pb-spec skills into the corresponding AI tool's configuration directory.
 3. **Three Core Agent Prompts**:
    - `/pb-init`: Analyzes project structure and generates/updates the `AGENTS.md` project status file.
    - `/pb-plan`: Receives requirement descriptions and outputs a complete design proposal (`specs/<feature>/design.md`) + task list (`specs/<feature>/tasks.md`).
@@ -56,7 +58,7 @@ The skill ecosystem for existing AI programming tools is fragmented. Claude Code
 
 ### 3.1 System Architecture
 
-```
+```text
 pb-spec/                           # This repo - Spec definition and source code
 ├── src/pb/                        # Python CLI source
 │   ├── __init__.py
@@ -121,29 +123,30 @@ pb-spec/                           # This repo - Spec definition and source code
 
 ## 4. Detailed Design
 
-### 4.1 CLI (`pb`)
+### 4.1 CLI (`pb-spec`)
 
 #### Tech Stack
+
 - Python 3.12+, managed by `uv`.
 - CLI Framework: `click` (lightweight, mature).
 - Version Management: `importlib.metadata` reads version from `pyproject.toml`.
 - Packaging: `uv build` generates wheel, `uv tool install` supports global installation.
 
-#### `pb init --ai <target>`
+#### `pb-spec init --ai <target>`
 
 ```python
 # Pseudo-code
 def init(ai: str, force: bool = False):
-    """Install pb skill files into the current project"""
+    """Install pb-spec skill files into the current project"""
     cwd = Path.cwd()
     targets = resolve_targets(ai)  # claude/copilot/opencode/all
-    
+
     for target in targets:
         platform = get_platform(target)  # Returns Platform instance
         installed = platform.install(cwd, force=force)
         print(f"  + {installed}")
-    
-    print("pb skills installed successfully!")
+
+        print("pb-spec skills installed successfully!")
 ```
 
 **Platform Abstraction:**
@@ -154,27 +157,27 @@ from pathlib import Path
 
 class Platform(ABC):
     """AI Platform Adapter Base Class"""
-    
+
     @property
     @abstractmethod
     def name(self) -> str: ...
-    
+
     @property
     @abstractmethod
     def skill_names(self) -> list[str]:
         """Return list of skill names to install"""
         return ["pb-init", "pb-plan", "pb-build"]
-    
+
     @abstractmethod
     def get_skill_path(self, cwd: Path, skill_name: str) -> Path:
         """Return path for skill file in target project"""
         ...
-    
+
     @abstractmethod
     def render_skill(self, skill_name: str, template_content: str) -> str:
         """Render template content into platform-specific format"""
         ...
-    
+
     def install(self, cwd: Path, force: bool = False) -> list[str]:
         """Install all skills to target directory"""
         installed = []
@@ -195,10 +198,10 @@ class Platform(ABC):
 ```python
 class ClaudePlatform(Platform):
     name = "claude"
-    
+
     def get_skill_path(self, cwd: Path, skill_name: str) -> Path:
         return cwd / ".claude" / "skills" / skill_name / "SKILL.md"
-    
+
     def render_skill(self, skill_name: str, template_content: str) -> str:
         # Claude uses YAML frontmatter + markdown body
         meta = SKILL_METADATA[skill_name]
@@ -211,31 +214,31 @@ class ClaudePlatform(Platform):
 ```python
 class CopilotPlatform(Platform):
     name = "copilot"
-    
+
     def get_skill_path(self, cwd: Path, skill_name: str) -> Path:
         return cwd / ".github" / "prompts" / f"{skill_name}.prompt.md"
-    
+
     def render_skill(self, skill_name: str, template_content: str) -> str:
         # Copilot doesn't need frontmatter, output markdown directly
         return template_content
 ```
 
-#### `pb version`
+#### `pb-spec version`
 
 ```python
 def version():
-    """Display pb version"""
+    """Display pb-spec version"""
     from importlib.metadata import version as get_version
-    print(f"pb {get_version('pb')}")
+    print(f"pb-spec {get_version('pb-spec')}")
 ```
 
-#### `pb update`
+#### `pb-spec update`
 
 ```python
 def update():
-    """Update pb to the latest version"""
+    """Update pb-spec to the latest version"""
     import subprocess
-    subprocess.run(["uv", "tool", "upgrade", "pb"], check=True)
+    subprocess.run(["uv", "tool", "upgrade", "pb-spec"], check=True)
 ```
 
 ### 4.2 Skill: `/pb-init`
@@ -243,34 +246,41 @@ def update():
 **Function:** Analyzes the current project structure, generates or updates `AGENTS.md` to provide project context for subsequent plan/build steps.
 
 **AGENTS.md Content:**
+
 ```markdown
 # AGENTS.md
 
-> Auto-generated by pb-init. Last updated: YYYY-MM-DD
+> Auto-generated by pb-spec-init. Last updated: YYYY-MM-DD
 
 ## Project Overview
+
 - **Language**: Python/Rust/TypeScript/...
 - **Framework**: FastAPI/Actix/Next.js/...
 - **Build Tool**: uv/cargo/npm/...
 - **Test Command**: pytest/cargo test/vitest/...
 
 ## Project Structure
+
 <auto-detected directory tree, depth=3>
 
 ## Key Files
+
 - Entry point: src/main.py
 - Config: pyproject.toml
 - Tests: tests/
 
 ## Conventions
+
 - Commit style: conventional commits
 - Branch strategy: feature branches
 
 ## Active Specs
+
 <list of specs/<feature> directories with status>
 ```
 
 **Agent Behavior:**
+
 1. Scans project root, detects language/framework/build tools.
 2. Traverses directory tree (depth 3), generates structure overview.
 3. Checks active feature specs under `specs/`.
@@ -294,6 +304,7 @@ graph TD
 ```
 
 **feature-name Generation Rules:**
+
 - Extract core keywords from requirement description.
 - Max 4 words, connected with `-`.
 - All lowercase, no special characters.
@@ -325,7 +336,8 @@ graph TD
 ```
 
 **specs Directory Structure:**
-```
+
+```text
 specs/
 └── add-websocket-auth/
     ├── design.md          # Complete Design Document
@@ -337,6 +349,7 @@ specs/
 **Function:** Reads `specs/<feature>/tasks.md` and implements task by task using Subagent-Driven Development mode.
 
 **Core Principles:** Inspired by lightspec-loop + subagent-driven-development:
+
 - **One Subagent Per Task**: Each task spawns an independent implementation subagent.
 - **TDD Driven**: Each subagent writes tests before implementation.
 - **Self-Review**: Subagent reviews itself after implementation.
@@ -364,12 +377,15 @@ graph TD
 You are implementing Task N: [task name]
 
 ## Task Description
+
 [Full task content extracted from tasks.md]
 
 ## Project Context
+
 [Project context extracted from AGENTS.md and design.md]
 
 ## Your Job
+
 1. Read design.md to understand the overall design.
 2. Follow TDD methodology:
    a. Write a failing test.
@@ -383,6 +399,7 @@ You are implementing Task N: [task name]
 4. Submit code.
 
 ## Constraints
+
 - Only implement what is described in the current task, do not do more.
 - Follow YAGNI principle.
 - Use existing patterns and conventions of the project.
@@ -391,6 +408,7 @@ You are implementing Task N: [task name]
 **Task State Tracking:**
 
 Use Markdown checkboxes in tasks.md to track state:
+
 - `- [ ]` → Unfinished
 - `- [x]` → Completed
 
@@ -401,6 +419,7 @@ After `/pb-build` completes a task, it automatically updates the corresponding c
 All skill content is stored as Markdown templates in `src/pb/templates/`. The CLI's `init` command performs simple variable substitution and format adaptation based on the target platform.
 
 **Template Variables:**
+
 - No complex template engine, use Python `str.replace()` for simple substitution.
 - Variables: `{{SKILL_NAME}}`, `{{DESCRIPTION}}`, etc. (Used only where necessary).
 
@@ -414,6 +433,7 @@ All skill content is stored as Markdown templates in `src/pb/templates/`. The CL
 | Reference File | `references/` subdirectory | inline or `#file` reference | `references/` subdirectory |
 
 **Special Handling for Copilot:**
+
 - Copilot does not support skill directory structure; all content is packaged into a single `.prompt.md` file.
 - Content in `references/` is inlined directly into the prompt file.
 - Use `#file:` reference instead of directory path reference.
@@ -470,9 +490,11 @@ Analyzes current project structure, generates or updates AGENTS.md project statu
 4. Write AGENTS.md (Idempotent update)
 
 ## Output Format
+
 [AGENTS.md Template]
 
 ## Constraints
+
 - Do not modify any project source code
 - Read-only analysis + write AGENTS.md
 - Completely overwrite AGENTS.md on every run (no append)
@@ -495,12 +517,14 @@ Receives requirement description, outputs complete design proposal and task brea
 6. No confirmation required, output optimal solution directly
 
 ## Key Principles
+
 - Output complete solution in one go, no multi-turn probing
 - Each task granularity: 2-6 hours
 - Each task must have Verification
 - Tasks arranged in dependency order
 
 ## Template
+
 Read references/design_template.md and references/tasks_template.md
 ```
 
@@ -524,9 +548,11 @@ Reads tasks.md, assigns subagents task by task, TDD driven implementation.
 4. Output summary
 
 ## Subagent Template
+
 Read references/implementer_prompt.md
 
 ## Constraints
+
 - Sequential execution, no parallel
 - Each subagent does only one task
 - TDD: Test before implementation
@@ -542,13 +568,13 @@ Read references/implementer_prompt.md
 
 - Use `version` field in `pyproject.toml`.
 - Publish to PyPI: `uv build && uv publish`.
-- User installation: `uv tool install pb` or `pipx install pb`.
+- User installation: `uv tool install pb-spec` or `pipx install pb-spec`.
 
 ### 7.2 Backward Compatibility
 
 - Template updates do not affect installed skill files.
-- `pb update` updates CLI itself, does not automatically overwrite installed skills.
-- Users need to run `pb init --force` to update installed skill files.
+- `pb-spec update` updates CLI itself, does not automatically overwrite installed skills.
+- Users need to run `pb-spec init --force` to update installed skill files.
 
 ### 7.3 Error Handling
 
@@ -564,7 +590,7 @@ Read references/implementer_prompt.md
 
 | Aspect | ui-ux-pro-max | pb |
 |-----|--------------|-----|
-| Positioning | UI/UX Design Intelligence | Plan-Build Development Workflow |
+| Positioning | UI/UX Design Intelligence | Plan-Build Spec Development Workflow |
 | CLI Language | TypeScript (npm) | Python (uv) |
 | Platform Count | 15+ | 3 (claude/copilot/opencode) |
 | Core Features | CSV Search Engine + Design System Gen | Design Generation + Subagent Implementation |
@@ -583,23 +609,23 @@ Read references/implementer_prompt.md
 
 ## 9. Appendix
 
-### 9.1 pb CLI Commands
+### 9.1 pb-spec CLI Commands
 
-```
-pb init --ai <claude|copilot|opencode|all> [--force]   # Install skill files
-pb version                                              # Show version
-pb update                                               # Update to latest version
+```text
+pb-spec init --ai <claude|copilot|opencode|all> [--force]   # Install skill files
+pb-spec version                                              # Show version
+pb-spec update                                               # Update to latest version
 ```
 
 ### 9.2 User Workflow Example
 
 ```bash
-# 1. Install pb
-uv tool install pb
+# 1. Install pb-spec
+uv tool install pb-spec
 
 # 2. Initialize skills in project
 cd my-project
-pb init --ai claude
+pb-spec init --ai claude
 
 # 3. Use in Claude Code
 # /pb-init                              → Generate AGENTS.md

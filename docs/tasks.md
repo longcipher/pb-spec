@@ -1,4 +1,4 @@
-# pb (Plan-Build) - Implementation Tasks
+# pb-spec (Plan-Build Spec) - Implementation Tasks
 
 | Metadata | Details |
 | :--- | :--- |
@@ -12,7 +12,7 @@
 - **Phase 1: Project Scaffolding** — uv project initialization, CLI skeleton, basic commands.
 - **Phase 2: Platform Abstraction** — Platform configuration system, template rendering engine.
 - **Phase 3: Skill Templates** — Markdown template writing for three core skills.
-- **Phase 4: Init Command** — Complete implementation and testing of `pb init`.
+- **Phase 4: Init Command** — Complete implementation and testing of `pb-spec init`.
 - **Phase 5: Polish & Release** — Documentation, CI, PyPI release.
 
 ---
@@ -20,21 +20,23 @@
 ## Phase 1: Project Scaffolding
 
 ### Task 1.1: uv Project Initialization
-> **Context:** Use uv to create Python project structure, configure pyproject.toml.
-> **Verification:** `uv run pb --help` outputs help information.
 
-* **Priority:** P0
-* **Est. Time:** 1h
-* **Status:** � DONE
+> **Context:** Use uv to create Python project structure, configure pyproject.toml.
+> **Verification:** `uv run pb-spec --help` outputs help information.
+
+- **Priority:** P0
+- **Est. Time:** 1h
+- **Status:** � DONE
 
 - [ ] **Step 1:** Run `uv init --lib` to initialize project.
 - [ ] **Step 2:** Edit `pyproject.toml`:
-  - Set `name = "pb"`, minimum Python version `>=3.12`.
+  - Set `name = "pb-spec"`, minimum Python version `>=3.12`.
   - Add `click>=8.1` dependency.
-  - Configure `[project.scripts]` entry: `pb = "pb.cli:main"`.
+  - Configure `[project.scripts]` entry: `pb-spec = "pb.cli:main"`.
   - Configure `[tool.uv]` dev dependencies: `pytest>=8.0`.
 - [ ] **Step 3:** Create directory structure:
-  ```
+
+  ```text
   src/pb/__init__.py
   src/pb/cli.py
   src/pb/commands/__init__.py
@@ -42,24 +44,26 @@
   src/pb/templates/  (Empty directory, populated later)
   tests/__init__.py
   ```
+
 - [ ] **Step 4:** Set `__version__` in `src/pb/__init__.py`.
-- [ ] **Verification:** Run `uv sync && uv run pb --help`, confirm CLI is executable.
+- [ ] **Verification:** Run `uv sync && uv run pb-spec --help`, confirm CLI is executable.
 
 ### Task 1.2: CLI Entry & Basic Commands
-> **Context:** Use click to build CLI framework, implement `version` and `update` commands.
-> **Verification:** `pb version` outputs version number, `pb update` calls uv upgrade.
 
-* **Priority:** P0
-* **Est. Time:** 2h
-* **Status:** � DONE
+> **Context:** Use click to build CLI framework, implement `version` and `update` commands.
+> **Verification:** `pb-spec version` outputs version number, `pb-spec update` calls uv upgrade.
+
+- **Priority:** P0
+- **Est. Time:** 2h
+- **Status:** � DONE
 
 - [x] **Step 1:** Write `src/pb/cli.py`:
   - Create `click.Group` main command `pb`.
   - Register `init`, `version`, `update` subcommands.
 - [ ] **Step 2:** Implement `src/pb/commands/version.py`:
-  - Read `importlib.metadata.version("pb")` and output version.
+  - Read `importlib.metadata.version("pb-spec")` and output version.
 - [ ] **Step 3:** Implement `src/pb/commands/update.py`:
-  - Call `subprocess.run(["uv", "tool", "upgrade", "pb"])`.
+  - Call `subprocess.run(["uv", "tool", "upgrade", "pb-spec"])`.
   - Handle error case where uv is missing.
 - [ ] **Step 4:** Write tests `tests/test_cli.py`:
   - Test `pb --help` output contains `init`, `version`, `update`.
@@ -71,12 +75,13 @@
 ## Phase 2: Platform Abstraction
 
 ### Task 2.1: Platform Base Class & Configuration
+
 > **Context:** Define platform abstract base class, providing unified interface for Claude/Copilot/OpenCode.
 > **Verification:** Unit tests verify correct path generation for each platform.
 
-* **Priority:** P0
-* **Est. Time:** 3h
-* **Status:** � DONE
+- **Priority:** P0
+- **Est. Time:** 3h
+- **Status:** � DONE
 
 - [ ] **Step 1:** Implement `src/pb/platforms/base.py`:
   - Define `Platform` ABC: `name`, `get_skill_path()`, `render_skill()`, `install()`.
@@ -101,12 +106,13 @@
 - [ ] **Verification:** `uv run pytest tests/test_platforms.py -v` passes all tests.
 
 ### Task 2.2: Template Loading System
+
 > **Context:** Implement mechanism to read template files from `src/pb/templates/`, supporting access after `importlib.resources` packaging.
 > **Verification:** Unit tests verify template loading and variable substitution.
 
-* **Priority:** P0
-* **Est. Time:** 2h
-* **Status:** � DONE
+- **Priority:** P0
+- **Est. Time:** 2h
+- **Status:** � DONE
 
 - [ ] **Step 1:** Implement `src/pb/templates/__init__.py`:
   - `load_template(skill_name: str, filename: str) -> str` — Load template file content.
@@ -114,7 +120,8 @@
   - `load_references(skill_name: str) -> dict[str, str]` — Load all files in `references/` subdirectory.
   - Use `importlib.resources` to ensure templates are accessible after packaging.
 - [ ] **Step 2:** Create `src/pb/templates/skills/` directory structure (placeholders first):
-  ```
+
+  ```text
   skills/pb-init/SKILL.md
   skills/pb-plan/SKILL.md
   skills/pb-plan/references/design_template.md
@@ -122,12 +129,15 @@
   skills/pb-build/SKILL.md
   skills/pb-build/references/implementer_prompt.md
   ```
+
 - [ ] **Step 3:** Create `src/pb/templates/prompts/` directory (for Copilot):
-  ```
+
+  ```text
   prompts/pb-init.prompt.md
   prompts/pb-plan.prompt.md
   prompts/pb-build.prompt.md
   ```
+
 - [ ] **Step 4:** Ensure `pyproject.toml` configures `[tool.setuptools.package-data]` (or equivalent) to include template files.
 - [ ] **Step 5:** Write tests `tests/test_templates.py`:
   - Test `load_template()` can load files.
@@ -139,12 +149,13 @@
 ## Phase 3: Skill Templates
 
 ### Task 3.1: pb-init Skill Template
+
 > **Context:** Write SKILL.md template for pb-init, defining project initialization agent behavior.
 > **Verification:** Correct template syntax, correct format for each platform after rendering.
 
-* **Priority:** P0
-* **Est. Time:** 3h
-* **Status:** � DONE
+- **Priority:** P0
+- **Est. Time:** 3h
+- **Status:** � DONE
 
 - [ ] **Step 1:** Write `src/pb/templates/skills/pb-init/SKILL.md`:
   - Define agent behavior: Scan project → Detect language/framework → Generate AGENTS.md.
@@ -161,12 +172,13 @@
 - [ ] **Verification:** Manually check rendered output complies with platform specs.
 
 ### Task 3.2: pb-plan Skill Template
+
 > **Context:** Write SKILL.md and references templates for pb-plan, defining design generation agent behavior.
 > **Verification:** Template covers complete agent behavior spec and output format definition.
 
-* **Priority:** P0
-* **Est. Time:** 4h
-* **Status:** � DONE
+- **Priority:** P0
+- **Est. Time:** 4h
+- **Status:** � DONE
 
 - [ ] **Step 1:** Write `src/pb/templates/skills/pb-plan/SKILL.md`:
   - Define agent behavior: Requirement analysis → Context collection → Generate design.md + tasks.md.
@@ -187,12 +199,13 @@
 - [ ] **Verification:** Template content fully covers all agent behaviors defined in design.md.
 
 ### Task 3.3: pb-build Skill Template
+
 > **Context:** Write SKILL.md and implementer_prompt template for pb-build, defining subagent-driven implementation flow.
 > **Verification:** Template contains complete subagent workflow definition.
 
-* **Priority:** P0
-* **Est. Time:** 4h
-* **Status:** � DONE
+- **Priority:** P0
+- **Est. Time:** 4h
+- **Status:** � DONE
 
 - [ ] **Step 1:** Write `src/pb/templates/skills/pb-build/SKILL.md`:
   - Define workflow: Read tasks.md → Assign subagent per task → TDD implementation → Mark completed.
@@ -213,12 +226,13 @@
 ## Phase 4: Init Command
 
 ### Task 4.1: `pb init` Command Implementation
-> **Context:** Implement core CLI command to install skill templates into target project.
-> **Verification:** `pb init --ai claude` generates correct files in `.claude/skills/`.
 
-* **Priority:** P0
-* **Est. Time:** 3h
-* **Status:** � DONE
+> **Context:** Implement core CLI command to install skill templates into target project.
+> **Verification:** `pb-spec init --ai claude` generates correct files in `.claude/skills/`.
+
+- **Priority:** P0
+- **Est. Time:** 3h
+- **Status:** � DONE
 
 - [ ] **Step 1:** Implement `src/pb/commands/init.py`:
   - Accept `--ai` argument (claude/copilot/opencode/all).
@@ -243,24 +257,26 @@
 - [ ] **Verification:** `uv run pytest tests/test_init.py -v` passes all tests.
 
 ### Task 4.2: End-to-End Verification
+
 > **Context:** Verify complete workflow in a real project scenario.
 > **Verification:** Execute pb init in a temporary project, confirm AI tools correctly identify skills.
 
-* **Priority:** P1
-* **Est. Time:** 2h
-* **Status:** � DONE
+- **Priority:** P1
+- **Est. Time:** 2h
+- **Status:** � DONE
 
 - [ ] **Step 1:** Create E2E test script `tests/e2e_test.sh`:
+
   ```bash
   # 1. Create temp project
   tmpdir=$(mktemp -d)
   cd "$tmpdir"
   git init
   echo '{"name": "test"}' > package.json
-  
+
   # 2. Install pb skills
   pb init --ai all
-  
+
   # 3. Verify file structure
   test -f .claude/skills/pb-init/SKILL.md
   test -f .claude/skills/pb-plan/SKILL.md
@@ -271,15 +287,16 @@
   test -f .opencode/skills/pb-init/SKILL.md
   test -f .opencode/skills/pb-plan/SKILL.md
   test -f .opencode/skills/pb-build/SKILL.md
-  
+
   # 4. Verify frontmatter
   head -1 .claude/skills/pb-init/SKILL.md | grep -q "^---"
   head -1 .github/prompts/pb-init.prompt.md | grep -qv "^---"
-  
+
   # 5. Cleanup
   rm -rf "$tmpdir"
   echo "✅ E2E test passed"
   ```
+
 - [ ] **Step 2:** Run E2E test and fix discovered issues.
 - [ ] **Step 3:** Test in an actual Claude Code project if pb-init skill is correctly loaded.
 - [ ] **Verification:** E2E test script runs successfully, skill visible in AI tools.
@@ -289,16 +306,17 @@
 ## Phase 5: Polish & Release
 
 ### Task 5.1: Documentation & README
+
 > **Context:** Write user documentation so project can be used by other developers.
 > **Verification:** README contains installation and usage instructions.
 
-* **Priority:** P1
-* **Est. Time:** 2h
-* **Status:** � DONE
+- **Priority:** P1
+- **Est. Time:** 2h
+- **Status:** � DONE
 
 - [ ] **Step 1:** Update `README.md`:
   - Project introduction and feature overview.
-  - Installation methods (`uv tool install pb` / `pipx install pb`).
+  - Installation methods (`uv tool install pb-spec` / `pipx install pb-spec`).
   - Quick Start Guide (3 steps: install → init → use).
   - List of supported AI tools.
   - CLI command reference.
@@ -308,12 +326,13 @@
 - [ ] **Verification:** README is readable and contains all necessary info.
 
 ### Task 5.2: CI Configuration
+
 > **Context:** Setup GitHub Actions CI for automated testing.
 > **Verification:** CI pipeline runs tests automatically on push.
 
-* **Priority:** P2
-* **Est. Time:** 1h
-* **Status:** � DONE
+- **Priority:** P2
+- **Est. Time:** 1h
+- **Status:** � DONE
 
 - [ ] **Step 1:** Create `.github/workflows/ci.yml`:
   - Trigger: push to main, pull_request.
@@ -324,12 +343,13 @@
 - [ ] **Verification:** CI config syntax is correct (validate with `act` locally).
 
 ### Task 5.3: PyPI Release Configuration
+
 > **Context:** Configure project for PyPI publication.
 > **Verification:** `uv build` successfully generates wheel containing all template files.
 
-* **Priority:** P2
-* **Est. Time:** 1h
-* **Status:** � DONE
+- **Priority:** P2
+- **Est. Time:** 1h
+- **Status:** � DONE
 
 - [ ] **Step 1:** Confirm `pyproject.toml` contains:
   - `[project]` full metadata (name, version, description, authors, license, urls).
@@ -337,15 +357,27 @@
   - Template files included in wheel (`[tool.hatch.build.targets.wheel]`).
 - [ ] **Step 2:** Run `uv build` to generate wheel.
 - [ ] **Step 3:** Check wheel content for templates:
+
   ```bash
-  unzip -l dist/pb-*.whl | grep templates
+  unzip -l dist/pb_spec-*.whl | grep templates
   ```
+
 - [ ] **Step 4:** Publication test:
+
+  ```bash
+  uv publish --repository testpypi
+  uv tool install --index-url https://test.pypi.org/simple/ pb-spec
+  pb-spec version
+  ```
+
+- [ ] **Step 4:** Publication test:
+
   ```bash
   uv publish --repository testpypi
   uv tool install --index-url https://test.pypi.org/simple/ pb
   pb version
   ```
+
 - [ ] **Verification:** Wheel build successful and contains all template files.
 
 ---

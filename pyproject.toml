@@ -3,9 +3,9 @@ requires = ["uv_build>=0.10.2,<0.11.0"]
 build-backend = "uv_build"
 
 [project]
-name = "pb"
+name = "pb-spec"
 version = "0.1.0"
-description = "Plan-Build: A CLI tool for managing AI coding assistant skills"
+description = "Plan-Build Spec (pb-spec): A CLI tool for managing AI coding assistant skills"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.12"
@@ -33,7 +33,7 @@ Repository = "https://github.com/longcipher/pb-spec"
 Issues = "https://github.com/longcipher/pb-spec/issues"
 
 [project.scripts]
-pb = "pb.cli:main"
+pb-spec = "pb_spec.cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -41,4 +41,36 @@ testpaths = ["tests"]
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
+    "ruff>=0.15.0",
+    "ty>=0.0.16",
 ]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # Pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "W",   # pycodestyle warnings
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+]
+ignore = ["E501"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ty.environment]
+python-version = "3.12"

@@ -4,12 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from pb.platforms import get_platform, resolve_targets
-from pb.platforms.base import Platform
-from pb.platforms.claude import ClaudePlatform
-from pb.platforms.copilot import CopilotPlatform
-from pb.platforms.opencode import OpenCodePlatform
-
+from pb_spec.platforms import get_platform, resolve_targets
+from pb_spec.platforms.claude import ClaudePlatform
+from pb_spec.platforms.copilot import CopilotPlatform
+from pb_spec.platforms.opencode import OpenCodePlatform
 
 # --- skill_names ---
 
