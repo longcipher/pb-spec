@@ -1,0 +1,44 @@
+[build-system]
+requires = ["uv_build>=0.10.2,<0.11.0"]
+build-backend = "uv_build"
+
+[project]
+name = "pb"
+version = "0.1.0"
+description = "Plan-Build: A CLI tool for managing AI coding assistant skills"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+authors = [
+    { name = "Bob Liu", email = "akagi201@gmail.com" },
+]
+keywords = ["cli", "ai", "coding-assistant", "skills", "plan-build", "tdd"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "click>=8.3.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/longcipher/pb-spec"
+Repository = "https://github.com/longcipher/pb-spec"
+Issues = "https://github.com/longcipher/pb-spec/issues"
+
+[project.scripts]
+pb = "pb.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
