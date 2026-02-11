@@ -1,5 +1,7 @@
 """Tests for pb-spec CLI entry point and basic commands."""
 
+import tomllib
+from pathlib import Path
 from unittest.mock import patch
 
 from click.testing import CliRunner
@@ -7,6 +9,14 @@ from click.testing import CliRunner
 from pb_spec.cli import main
 
 runner = CliRunner()
+
+
+def get_project_version() -> str:
+    """Read version from pyproject.toml."""
+    root_dir = Path(__file__).parents[1]
+    with open(root_dir / "pyproject.toml", "rb") as f:
+        data = tomllib.load(f)
+    return data["project"]["version"]
 
 
 def test_help_contains_subcommands():
@@ -20,16 +30,18 @@ def test_help_contains_subcommands():
 
 def test_version_shows_version_number():
     """pb-spec version should print the version number."""
+    expected_version = get_project_version()
     result = runner.invoke(main, ["version"])
     assert result.exit_code == 0
-    assert "0.1.0" in result.output
+    assert expected_version in result.output
 
 
 def test_version_option():
     """pb-spec --version should print the version number."""
+    expected_version = get_project_version()
     result = runner.invoke(main, ["--version"])
     assert result.exit_code == 0
-    assert "0.1.0" in result.output
+    assert expected_version in result.output
 
 
 def test_update_calls_uv():
