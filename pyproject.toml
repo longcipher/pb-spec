@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "pb-spec"
-version = "0.2.1"
+version = "0.2.2"
 description = "Plan-Build Spec (pb-spec): A CLI tool for managing AI coding assistant skills"
 readme = "README.md"
 license = "Apache-2.0"

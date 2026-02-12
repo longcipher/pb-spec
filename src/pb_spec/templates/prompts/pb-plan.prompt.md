@@ -6,9 +6,9 @@ Run this when the user invokes `/pb-plan <requirement description>`. Do not ask 
 
 ---
 
-## Step 1: Parse Requirements & Generate feature-name
+## Step 1: Parse Requirements & Determine Scope
 
-Extract core requirements from the user's input. Derive a **feature-name** for the spec directory.
+Extract core requirements from the user's input. Derive a **feature-name** and determine the **scope mode**.
 
 **feature-name rules:**
 - Maximum 4 words, joined with `-` (kebab-case).
@@ -16,10 +16,20 @@ Extract core requirements from the user's input. Derive a **feature-name** for t
 - Capture the essence of the feature.
 - Examples: `add-websocket-auth`, `refactor-api-client`, `user-profile-page`, `csv-export`.
 
+**Scope mode detection:**
+Count the words in the requirement description (excluding the `/pb-plan` trigger).
+- **Lightweight mode** (< 50 words): Simple change — produce a compact spec (see Step 4a/5a).
+- **Full mode** (≥ 50 words): Complex feature — produce the complete spec (see Step 4b/5b).
+
 ## Step 2: Collect Project Context
 
-1. **Read `AGENTS.md`** (if it exists) — understand language, framework, build tool, project structure, conventions.
-2. **Scan related source code** — modules, directories, and files most likely affected by the requirement.
+Gather context to inform the design. **Do not rely solely on `AGENTS.md`** — always perform live codebase analysis.
+
+1. **Read `AGENTS.md`** (if it exists) — use as a starting reference. **Treat as supplementary, not authoritative** — verify against actual project state.
+2. **Search the live codebase directly** — this is **mandatory** regardless of whether `AGENTS.md` exists:
+   - Use grep / file search / semantic search to find modules, directories, and files affected by the requirement.
+   - Search for keywords from the requirement across the codebase.
+   - Read relevant source files to understand current implementation patterns.
 3. **Check `specs/`** — see if related feature specs already exist.
 4. **Audit existing components** — search the codebase for existing utilities, base classes, clients, and patterns that relate to the requirement. Specifically look for:
    - Helper/utility modules that overlap with the requirement
@@ -29,25 +39,78 @@ Extract core requirements from the user's input. Derive a **feature-name** for t
    
    **This audit is mandatory.** List reusable components in `design.md` Section 3.3 and reference them in `tasks.md` task context.
 
-If `AGENTS.md` does not exist, scan the project root to infer context. Recommend the developer run `/pb-init` first in your summary.
+If `AGENTS.md` does not exist, search the codebase directly for project context. Recommend running `/pb-init` first in your summary.
 
 ## Step 3: Create Spec Directory
 
 Create `specs/<feature-name>/` if it does not already exist.
 
-## Step 4: Output design.md
+## Step 4a: Output design.md — Lightweight Mode (< 50 words)
+
+Write a **compact** design doc to `specs/<feature-name>/design.md`:
+
+```markdown
+# Design: [Feature Name]
+
+| Metadata | Details |
+| :--- | :--- |
+| **Status** | Draft |
+| **Created** | YYYY-MM-DD |
+| **Scope** | Lightweight |
+
+## Summary
+> 2-3 sentences: problem + solution.
+
+## Approach
+> How to implement. Reference existing code/patterns to reuse.
+
+## Existing Components to Reuse
+> List components found during codebase audit, or "None identified".
+
+## Verification
+> How to verify the change works. Test commands, expected behavior.
+```
+
+**Skip** these sections in lightweight mode: Architecture Overview, Detailed Design, Non-Functional Goals, Out of Scope, Cross-Functional Concerns.
+
+## Step 4b: Output design.md — Full Mode (≥ 50 words)
 
 Fill the **Design Template** below fully and write to `specs/<feature-name>/design.md`. Every section must have substantive content — no "TBD" or empty placeholders.
 
-## Step 5: Output tasks.md
+## Step 5a: Output tasks.md — Lightweight Mode (< 50 words)
+
+Write a **flat task list** to `specs/<feature-name>/tasks.md`:
+
+```markdown
+# [Feature Name] — Tasks
+
+| Metadata | Details |
+| :--- | :--- |
+| **Design Doc** | specs/<feature-name>/design.md |
+| **Status** | Planning |
+
+## Tasks
+
+### Task 1: [Task Name]
+> **Context:** ...
+> **Verification:** ...
+
+- [ ] Step 1: ...
+- [ ] Step 2: ...
+- [ ] Verification: ...
+```
+
+**Skip** phases, Summary & Timeline table, and Definition of Done boilerplate for lightweight specs.
+
+## Step 5b: Output tasks.md — Full Mode (≥ 50 words)
 
 Fill the **Tasks Template** below and write to `specs/<feature-name>/tasks.md`. Break down the implementation plan from `design.md` into concrete, actionable tasks.
 
 **Task requirements:**
 - Grouped into Phases (Foundation → Core → Integration → Polish).
 - Each task: **Context**, **Steps** (checkboxes), and **Verification**.
-- Each task represents a **Logical Unit of Work** — a self-contained, meaningful change (e.g., "Implement Model layer", "Add API endpoint", "Wire up service integration"). Do NOT split by time estimates.
-- **Task ID format:** Each task MUST have a unique ID: `Task X.Y` (e.g., `Task 1.1`, `Task 2.3`). This is used for state tracking during `pb-build`.
+- Each task represents a **Logical Unit of Work** — a self-contained, meaningful change. Do NOT split by time estimates.
+- **Task ID format:** Each task MUST have a unique ID: `Task X.Y` (e.g., `Task 1.1`, `Task 2.3`).
 - Ordered by dependency — no task references work from a later task.
 - Every task has a concrete **Verification** criterion.
 - **Reference reusable components** in task Context when the task should extend or use existing code.
@@ -58,6 +121,7 @@ After writing both files, output:
 
 ```
 ✅ Spec created: specs/<feature-name>/
+Mode: <Lightweight | Full>
 
 Files:
   - specs/<feature-name>/design.md
@@ -74,10 +138,12 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 1. **One-shot output.** Complete design + tasks in a single pass. No mid-way confirmation.
 2. **Optimal solution first.** Output the best design. Developer requests changes after review if needed.
-3. **Task granularity: Logical Unit of Work.** Each task is a self-contained, meaningful change. Do not split based on arbitrary time estimates.
-4. **Verification per task.** Every task defines how to prove it is done.
-5. **Dependency order.** Phases and tasks flow foundational → dependent.
-6. **Project-aware.** Use existing conventions, patterns, and tech stack. Reuse existing components — do not reinvent.
+3. **Right-sized output (YAGNI).** Match output detail to requirement complexity. Simple changes get compact specs; complex features get full specs.
+4. **Live codebase analysis.** Always search the actual codebase — never rely solely on `AGENTS.md` which may be stale.
+5. **Task granularity: Logical Unit of Work.** Each task is a self-contained, meaningful change. Do not split based on arbitrary time estimates.
+6. **Verification per task.** Every task defines how to prove it is done.
+7. **Dependency order.** Phases and tasks flow foundational → dependent.
+8. **Project-aware.** Use existing conventions, patterns, and tech stack. Reuse existing components — do not reinvent.
 
 ---
 
@@ -86,7 +152,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 - **No confirmation questions.** Analyze and output directly.
 - **No multi-turn probing.** Work with what is given.
 - **No code implementation.** Design docs and task lists only.
-- **Complete templates.** Every section filled with real content.
+- **Scope-appropriate templates.** In lightweight mode, only fill the compact template. In full mode, fill the complete template. Every included section must have substantive content.
 - **Write only to `specs/<feature-name>/`.** Do not modify project source code.
 
 ---
@@ -96,9 +162,11 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 - **Ambiguous requirements:** Make reasonable assumptions. State them in the design's Assumptions section.
 - **Large scope (>40h of tasks):** Split into phases. First phase = viable MVP. Note in summary.
 - **Same feature-name exists:** Overwrite existing spec. Note in summary.
-- **No `AGENTS.md`:** Proceed anyway. Recommend running `/pb-init` first.
+- **No `AGENTS.md`:** Proceed anyway — search codebase directly. Recommend running `/pb-init` first.
 - **Bug fix, not feature:** Use same process. Design focuses on root cause + fix approach.
 - **External systems/APIs:** Document assumptions about external interfaces in design.
+- **Borderline word count (~50 words):** Use lightweight mode. Developer can run `/pb-refine` to expand.
+- **Short requirement but complex domain:** If <50 words but clearly complex (e.g., "refactor the entire auth system"), use full mode. Word count is a heuristic, not a hard rule.
 
 ---
 ---

@@ -41,9 +41,11 @@ Scan the project root for config files and infer the tech stack:
 Use an **adaptive traversal strategy** instead of a fixed depth:
 
 1. **Preferred:** Run `git ls-files --others --cached --exclude-standard | head -200` to get a file listing that respects `.gitignore`. Summarize into a tree structure.
-2. **Fallback (no git):** Traverse the project directory tree to **depth 5**, but apply smart pruning:
+2. **Fallback (no git):** Traverse the project directory tree with **smart adaptive depth**:
+   - Start at depth 3 for the root.
+   - **Auto-expand** directories named `src/`, `lib/`, `app/`, `apps/`, `packages/`, `cmd/`, `internal/`, `pkg/` up to depth 6.
    - Stop expanding a directory if it contains more than 20 children (list first 10 + `... and N more`).
-   - Always expand directories named `src/`, `lib/`, `app/`, `apps/`, `packages/`, `cmd/`, `internal/`.
+   - For monorepos, expand each workspace member's root to depth 3.
 
 Exclude:
 - `.git/`, `node_modules/`, `__pycache__/`, `target/`, `.venv/`, `venv/`, `dist/`, `build/`
@@ -62,22 +64,36 @@ Locate and list:
 
 ### Step 4: Detect Active Specs
 
-Check if a `specs/` directory exists. If so, list each subdirectory as an active feature spec. For each, check if `tasks.md` exists and count completed (`- [x]`) vs total tasks to determine status:
-- All done → `✅ Complete`
-- Some done → `🔧 In Progress (N/M tasks done)`
-- None done → `📋 Planned`
-- No `tasks.md` → `📝 Design Only`
+Check if a `specs/` directory exists. If so, list each subdirectory as an active feature spec. For each spec, perform **dynamic status detection**:
 
-### Step 5: Write AGENTS.md
+1. **Check `tasks.md`** — count completed (`- [x]`) vs total (`- [ ]` and `- [x]`) task checkboxes:
+   - All done → `✅ Complete`
+   - Some done → `🔧 In Progress (N/M tasks done)`
+   - None done → `📋 Planned`
+   - No `tasks.md` → `📝 Design Only`
+2. **Check `design.md`** — read the `Status` field from the metadata table if present (e.g., `Draft`, `Approved`, `Implemented`).
+3. **Check last modified** — report the most recent modification date of files in the spec directory.
+
+Output format per spec:
+```
+- `specs/<name>/` — <status emoji> <status text> | Design: <design status> | Last modified: YYYY-MM-DD
+```
+
+### Step 5: Write AGENTS.md (Incremental Merge)
 
 Write the following content to `AGENTS.md` at the project root.
 
-**Preserving User Content:** Before writing, check if `AGENTS.md` already exists. If it does:
-1. Read the existing file and look for a `## User Context` section.
-2. If found, extract everything from `## User Context` to the next `##` heading (or end of file).
-3. Append the preserved `## User Context` section at the end of the newly generated file.
+**Preserving User Content — Merge Strategy:** Before writing, check if `AGENTS.md` already exists. If it does:
+1. Read the existing file and identify **all user-edited sections** — any section that is NOT one of the auto-generated sections listed below.
+2. **Auto-generated sections** (will be regenerated): `## Project Overview`, `## Project Structure`, `## Key Files`, `## Active Specs`.
+3. **Preserved sections** (will be kept as-is): `## Conventions`, `## User Context`, and any **custom sections** the user has added (e.g., `## Database Schema`, `## API Notes`, `## Team Conventions`).
+4. **Merge procedure:**
+   a. Regenerate auto-generated sections with fresh data.
+   b. For `## Conventions`: if it exists in the old file, keep the user's version. If not, generate the default.
+   c. Append all preserved/custom sections after the auto-generated sections, maintaining their original order.
+   d. Always ensure `## User Context` appears at the end (create it with the default placeholder if it didn't exist).
 
-This ensures user-added context (database schemas, external API notes, team conventions, etc.) survives re-initialization.
+This ensures ALL user-added content survives re-initialization — not just `## User Context`.
 
 ```markdown
 # AGENTS.md
@@ -92,7 +108,7 @@ This ensures user-added context (database schemas, external API notes, team conv
 
 ## Project Structure
 ```
-<directory tree, depth=3>
+<directory tree from adaptive traversal>
 ```
 
 ## Key Files
@@ -105,7 +121,7 @@ This ensures user-added context (database schemas, external API notes, team conv
 - Branch strategy: feature branches
 
 ## Active Specs
-<list of specs/<feature> directories with status, or "No active specs found.">
+<list of specs/<feature> directories with dynamic status, or "No active specs found.">
 
 ## User Context
 <!-- Add your project-specific notes below. This section is preserved across pb-init runs. -->
@@ -119,7 +135,7 @@ Replace `YYYY-MM-DD` with today's date.
 
 - **Read-only analysis.** Do NOT modify any project source code, config files, or tests.
 - **Only write `AGENTS.md`.** That is the sole file you create or modify.
-- **Idempotent with preservation.** Each run regenerates the auto-generated sections of `AGENTS.md`, but preserves the `## User Context` section if it exists.
+- **Incremental merge.** Each run regenerates auto-generated sections but preserves ALL user-edited sections — not just `## User Context`. Custom sections added by the user are kept intact.
 - **No interactive questions.** Analyze and produce output in a single pass.
 
 ## Edge Cases
