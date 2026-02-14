@@ -35,7 +35,7 @@ The skill ecosystem for existing AI programming tools is fragmented. Claude Code
 2. **Skill File Generation**: `pb-spec init --ai <claude/copilot/opencode/all>` installs pb-spec skills into the corresponding AI tool's configuration directory.
 3. **Three Core Agent Prompts**:
    - `/pb-init`: Analyzes project structure and generates/updates the `AGENTS.md` project status file.
-   - `/pb-plan`: Receives requirement descriptions and outputs a complete design proposal (`specs/<feature>/design.md`) + task list (`specs/<feature>/tasks.md`).
+   - `/pb-plan`: Receives requirement descriptions and outputs a complete design proposal (`specs/<YYYY-MM-DD-NO-feature-name>/design.md`) + task list (`specs/<YYYY-MM-DD-NO-feature-name>/tasks.md`).
    - `/pb-build`: Reads `tasks.md`, creates subagents for each task, and implements them via TDD.
 
 ### 2.3 Non-Functional Goals
@@ -276,7 +276,7 @@ def update():
 
 ## Active Specs
 
-<list of specs/<feature> directories with status>
+<list of specs/<YYYY-MM-DD-NO-feature-name> directories with status>
 ```
 
 **Agent Behavior:**
@@ -339,14 +339,14 @@ graph TD
 
 ```text
 specs/
-└── add-websocket-auth/
+└── 2026-02-15-01-add-websocket-auth/
     ├── design.md          # Complete Design Document
     └── tasks.md           # Task List (with checkboxes)
 ```
 
 ### 4.4 Skill: `/pb-build`
 
-**Function:** Reads `specs/<feature>/tasks.md` and implements task by task using Subagent-Driven Development mode.
+**Function:** Reads `specs/<YYYY-MM-DD-NO-feature-name>/tasks.md` and implements task by task using Subagent-Driven Development mode.
 
 **Core Principles:** Inspired by lightspec-loop + subagent-driven-development:
 
@@ -511,7 +511,7 @@ Receives requirement description, outputs complete design proposal and task brea
 
 1. Parse requirements, generate feature-name (≤4 words, kebab-case)
 2. Collect project context (AGENTS.md, related source code)
-3. Create specs/<feature-name>/ directory
+3. Create specs/<YYYY-MM-DD-NO-feature-name>/ directory (ensure feature-name uniqueness across existing specs)
 4. Output design.md — use design_template.md to fill fully
 5. Output tasks.md — use tasks_template.md to break down tasks
 6. No confirmation required, output optimal solution directly
@@ -537,7 +537,7 @@ Reads tasks.md, assigns subagents task by task, TDD driven implementation.
 
 ## Behavior Specification
 
-1. Read specs/<feature>/tasks.md
+1. Read specs/<YYYY-MM-DD-NO-feature-name>/tasks.md
 2. Parse all unfinished tasks (- [ ])
 3. For each task:
    a. Extract complete task content
@@ -600,7 +600,7 @@ Read references/implementer_prompt.md
 
 | Aspect | lightspec-loop | pb-build |
 |-----|--------------|---------|
-| Spec Source | Managed by LightSpec CLI | specs/<feature>/tasks.md file |
+| Spec Source | Managed by LightSpec CLI | specs/<YYYY-MM-DD-NO-feature-name>/tasks.md file |
 | Execution Trigger | `lightspec view` discovery | Directly read tasks.md |
 | Task Granularity | Each spec is a change proposal | Each task is an implementation step in design |
 | Archiving Mechanism | `lightspec:archive` command | Markdown checkbox marking |
@@ -629,7 +629,7 @@ pb-spec init --ai claude
 
 # 3. Use in Claude Code
 # /pb-init                              → Generate AGENTS.md
-# /pb-plan Add WebSocket Auth Support   → Generate specs/add-websocket-auth/
+# /pb-plan Add WebSocket Auth Support   → Generate specs/2026-02-15-01-add-websocket-auth/
 # (review design.md and tasks.md)
 # /pb-build add-websocket-auth           → Implement task by task
 ```

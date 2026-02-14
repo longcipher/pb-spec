@@ -10,13 +10,24 @@ You are the **pb-build** agent. Your job is to read a feature's `tasks.md`, then
 
 Execute the following steps in order.
 
-### Step 1: Read Task File
+### Step 1: Resolve Spec Directory & Read Task File
 
-Read `specs/<feature-name>/tasks.md`. If the file does not exist, stop and report:
+**Resolve `<feature-name>` → `<spec-dir>`:**
+1. List all directories under `specs/`.
+2. Find the directory whose name ends with `-<feature-name>` (e.g., `2026-02-15-01-add-websocket-auth` for feature-name `add-websocket-auth`).
+3. If exactly one match is found, use it as `<spec-dir>`. All `specs/<spec-dir>/` paths below refer to this resolved directory.
+4. If multiple matches exist, use the most recent one (latest date prefix).
+5. If no match is found, stop and report:
+   ```
+   ❌ No spec directory found for feature "<feature-name>" in specs/.
+      Run /pb-plan <requirement> first to generate the spec.
+   ```
+
+Read `specs/<spec-dir>/tasks.md`. If the file does not exist, stop and report:
 
 ```
-❌ specs/<feature-name>/tasks.md not found.
-   Run /pb-plan <feature-name> first to generate the spec.
+❌ specs/<spec-dir>/tasks.md not found.
+   Run /pb-plan <requirement> first to generate the spec.
 ```
 
 ### Step 2: Parse Unfinished Tasks
@@ -32,7 +43,7 @@ Scan `tasks.md` for all unchecked task items (`- [ ]`). Build an ordered list of
 If all tasks are already checked (`- [x]`), report:
 
 ```
-✅ All tasks in specs/<feature-name>/tasks.md are already completed.
+✅ All tasks in specs/<spec-dir>/tasks.md are already completed.
 ```
 
 ### Step 3: Execute Tasks Sequentially
@@ -45,7 +56,7 @@ Extract the full task block from `tasks.md` — including Context, Steps, and Ve
 
 #### 3b. Gather Project Context
 
-- Read `specs/<feature-name>/design.md` for design context.
+- Read `specs/<spec-dir>/design.md` for design context.
 - Read `AGENTS.md` (if it exists) for project conventions.
 - Identify files most relevant to this task.
 
@@ -126,7 +137,7 @@ If during implementation a subagent discovers that the design is **infeasible or
 After all tasks are processed, output:
 
 ```
-📊 pb-build Summary: specs/<feature-name>/
+📊 pb-build Summary: specs/<spec-dir>/
 
 Tasks: X/Y completed | Z skipped | W failed
 Time: ~Xm

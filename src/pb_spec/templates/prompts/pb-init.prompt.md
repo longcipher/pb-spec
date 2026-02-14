@@ -72,7 +72,7 @@ Check if a `specs/` directory exists. If so, list each subdirectory as an active
 
 Output format per spec:
 ```
-- `specs/<name>/` — <status emoji> <status text> | Design: <design status> | Last modified: YYYY-MM-DD
+- `specs/<YYYY-MM-DD-NO-feature-name>/` — <status emoji> <status text> | Design: <design status> | Last modified: YYYY-MM-DD
 ```
 
 ## Step 5: Write AGENTS.md (Incremental Merge)
@@ -123,7 +123,7 @@ This ensures ALL user-added content survives re-initialization — not just `## 
   5. **Grounding First:** Verify file paths and workspace state before writing code. Use `ls` / `find` / file search.
 
 ## Active Specs
-<list of specs/<feature> directories with dynamic status, or "No active specs found.">
+<list of specs/<YYYY-MM-DD-NO-feature-name> directories with dynamic status, or "No active specs found.">
 
 ## User Context
 <!-- Add your project-specific notes below. This section is preserved across pb-init runs. -->

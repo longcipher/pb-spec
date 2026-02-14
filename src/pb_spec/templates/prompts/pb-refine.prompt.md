@@ -7,20 +7,24 @@ Run this when the user invokes `/pb-refine <feature-name>` with feedback or chan
 
 ---
 
-## Step 1: Load Existing Spec
+## Step 1: Resolve Spec Directory & Load Existing Spec
 
-Read the following files:
+**Resolve `<feature-name>` → `<spec-dir>`:**
+1. List all directories under `specs/`.
+2. Find the directory whose name ends with `-<feature-name>` (e.g., `2026-02-15-01-add-websocket-auth` for feature-name `add-websocket-auth`).
+3. If exactly one match is found, use it as `<spec-dir>`. All `specs/<spec-dir>/` paths below refer to this resolved directory.
+4. If multiple matches exist, use the most recent one (latest date prefix).
+5. If no match is found, stop and report:
+   ```
+   ❌ No spec directory found for feature "<feature-name>" in specs/.
+      Run /pb-plan <requirement> first to generate the spec.
+   ```
 
-1. `specs/<feature-name>/design.md` — the current design.
-2. `specs/<feature-name>/tasks.md` — the current task breakdown.
+**Load files:**
+
+1. `specs/<spec-dir>/design.md` — the current design.
+2. `specs/<spec-dir>/tasks.md` — the current task breakdown.
 3. `AGENTS.md` (if it exists) — project context.
-
-If `specs/<feature-name>/` does not exist, stop and report:
-
-```
-❌ specs/<feature-name>/ not found.
-   Run /pb-plan <feature-name> first to generate the spec.
-```
 
 ## Step 2: Parse User Feedback
 
@@ -39,7 +43,7 @@ Categorize the feedback into:
 
 ## Step 3: Update design.md
 
-Apply design changes to `specs/<feature-name>/design.md`:
+Apply design changes to `specs/<spec-dir>/design.md`:
 
 - **Use precise edits.** Modify only the affected sections. Do not rewrite the entire file.
 - **Update the metadata table:** Change `Status` to `Revised` and update the date.
@@ -58,7 +62,7 @@ Apply design changes to `specs/<feature-name>/design.md`:
 
 ## Step 4: Cascade to tasks.md
 
-If design changes affect the task breakdown, update `specs/<feature-name>/tasks.md`:
+If design changes affect the task breakdown, update `specs/<spec-dir>/tasks.md`:
 
 - **Add new tasks** where needed. Assign them the next available Task ID in sequence (e.g., if Task 2.3 exists, new task becomes Task 2.4).
 - **Remove or mark tasks as obsolete** if they're no longer needed: change Status to `⛔ OBSOLETE`.
@@ -79,7 +83,7 @@ After making changes, verify:
 ## Step 6: Output Summary
 
 ```
-🔄 Spec refined: specs/<feature-name>/
+🔄 Spec refined: specs/<spec-dir>/
 
 Changes to design.md:
   - [Section X]: [What changed]
@@ -113,7 +117,7 @@ Next steps:
 
 ## Constraints
 
-- **Only modify `specs/<feature-name>/design.md` and `specs/<feature-name>/tasks.md`.**
+- **Only modify `specs/<spec-dir>/design.md` and `specs/<spec-dir>/tasks.md`.**
 - **Do not modify project source code.** Refinement is planning only.
 - **Do not re-run the entire planning process.** This is an incremental update, not a fresh plan.
 - **Preserve formatting and structure** of both files.

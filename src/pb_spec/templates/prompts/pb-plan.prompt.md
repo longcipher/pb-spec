@@ -16,6 +16,14 @@ Extract core requirements from the user's input. Derive a **feature-name** and d
 - Capture the essence of the feature.
 - Examples: `add-websocket-auth`, `refactor-api-client`, `user-profile-page`, `csv-export`.
 
+**spec-dir naming convention:**
+The spec directory name (referred to as `<spec-dir>` in all paths below) follows the format:
+`YYYY-MM-DD-NO-feature-name`
+- `YYYY-MM-DD` = today's date.
+- `NO` = 2-digit sequence number (`01`, `02`, ...).
+- `feature-name` = the derived feature name above.
+- Example: `2026-02-15-01-add-websocket-support`.
+
 **Scope mode detection:**
 Count the words in the requirement description (excluding the `/pb-plan` trigger).
 - **Lightweight mode** (< 50 words): Simple change — produce a compact spec (see Step 4a/5a).
@@ -43,11 +51,26 @@ If `AGENTS.md` does not exist, search the codebase directly for project context.
 
 ## Step 3: Create Spec Directory
 
-Create `specs/<feature-name>/` if it does not already exist.
+**Uniqueness check (mandatory):**
+1. Scan all existing directories under `specs/`.
+2. Extract the `feature-name` suffix from each directory name (the part after the `YYYY-MM-DD-NO-` prefix).
+3. If the derived `feature-name` already exists in any spec directory, **stop and report**:
+   ```
+   ❌ Feature name "<feature-name>" already exists in specs/.
+      Existing spec: specs/<existing-spec-dir>/
+      Choose a different feature name or run /pb-refine <feature-name> to update the existing spec.
+   ```
+
+**Sequence number generation:**
+1. Find all existing directories under `specs/` that start with today's date (`YYYY-MM-DD-`).
+2. Extract the highest sequence number among them.
+3. Set `NO` = highest + 1 (or `01` if none exist for today). Zero-pad to 2 digits.
+
+Create `specs/<spec-dir>/` (e.g., `specs/2026-02-15-01-add-websocket-auth/`).
 
 ## Step 4a: Output design.md — Lightweight Mode (< 50 words)
 
-Write a **compact** design doc to `specs/<feature-name>/design.md`:
+Write a **compact** design doc to `specs/<spec-dir>/design.md`:
 
 ```markdown
 # Design: [Feature Name]
@@ -75,18 +98,18 @@ Write a **compact** design doc to `specs/<feature-name>/design.md`:
 
 ## Step 4b: Output design.md — Full Mode (≥ 50 words)
 
-Fill the **Design Template** below fully and write to `specs/<feature-name>/design.md`. Every section must have substantive content — no "TBD" or empty placeholders.
+Fill the **Design Template** below fully and write to `specs/<spec-dir>/design.md`. Every section must have substantive content — no "TBD" or empty placeholders.
 
 ## Step 5a: Output tasks.md — Lightweight Mode (< 50 words)
 
-Write a **flat task list** to `specs/<feature-name>/tasks.md`:
+Write a **flat task list** to `specs/<spec-dir>/tasks.md`:
 
 ```markdown
 # [Feature Name] — Tasks
 
 | Metadata | Details |
 | :--- | :--- |
-| **Design Doc** | specs/<feature-name>/design.md |
+| **Design Doc** | specs/<spec-dir>/design.md |
 | **Status** | Planning |
 
 ## Tasks
@@ -104,7 +127,7 @@ Write a **flat task list** to `specs/<feature-name>/tasks.md`:
 
 ## Step 5b: Output tasks.md — Full Mode (≥ 50 words)
 
-Fill the **Tasks Template** below and write to `specs/<feature-name>/tasks.md`. Break down the implementation plan from `design.md` into concrete, actionable tasks.
+Fill the **Tasks Template** below and write to `specs/<spec-dir>/tasks.md`. Break down the implementation plan from `design.md` into concrete, actionable tasks.
 
 **Task requirements:**
 - Grouped into Phases (Foundation → Core → Integration → Polish).
@@ -120,12 +143,12 @@ Fill the **Tasks Template** below and write to `specs/<feature-name>/tasks.md`. 
 After writing both files, output:
 
 ```
-✅ Spec created: specs/<feature-name>/
+✅ Spec created: specs/<spec-dir>/
 Mode: <Lightweight | Full>
 
 Files:
-  - specs/<feature-name>/design.md
-  - specs/<feature-name>/tasks.md
+  - specs/<spec-dir>/design.md
+  - specs/<spec-dir>/tasks.md
 
 Summary: <1-2 sentence description>
 
@@ -153,7 +176,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 - **No multi-turn probing.** Work with what is given.
 - **No code implementation.** Design docs and task lists only.
 - **Scope-appropriate templates.** In lightweight mode, only fill the compact template. In full mode, fill the complete template. Every included section must have substantive content.
-- **Write only to `specs/<feature-name>/`.** Do not modify project source code.
+- **Write only to `specs/<spec-dir>/`.** Do not modify project source code.
 
 ---
 
@@ -161,7 +184,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 - **Ambiguous requirements:** Make reasonable assumptions. State them in the design's Assumptions section.
 - **Large scope (>40h of tasks):** Split into phases. First phase = viable MVP. Note in summary.
-- **Same feature-name exists:** Overwrite existing spec. Note in summary.
+- **Same feature-name exists:** The uniqueness check in Step 3 prevents creating a spec with a feature-name that already exists in `specs/`. Stop and report the conflict. The developer should choose a different name or use `/pb-refine` to update the existing spec.
 - **No `AGENTS.md`:** Proceed anyway — search codebase directly. Recommend running `/pb-init` first.
 - **Bug fix, not feature:** Use same process. Design focuses on root cause + fix approach.
 - **External systems/APIs:** Document assumptions about external interfaces in design.
@@ -173,7 +196,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 ## DESIGN TEMPLATE
 
-> Fill this template and write to `specs/<feature-name>/design.md`.
+> Fill this template and write to `specs/<spec-dir>/design.md`.
 
 ---
 
@@ -326,7 +349,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 ## TASKS TEMPLATE
 
-> Fill this template and write to `specs/<feature-name>/tasks.md`.
+> Fill this template and write to `specs/<spec-dir>/tasks.md`.
 
 ---
 

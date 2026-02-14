@@ -51,7 +51,7 @@ pb-spec init --ai claude       # or: copilot, opencode, all
 
 # 2. Open the project in your AI coding assistant and use the skills:
 #    /pb-init                          → Generate AGENTS.md project context
-#    /pb-plan Add WebSocket auth       → Generate design.md + tasks.md
+#    /pb-plan Add WebSocket auth       → Generate specs/YYYY-MM-DD-01-add-websocket-auth/
 #    /pb-refine add-websocket-auth     → (Optional) Refine design based on feedback
 #    /pb-build add-websocket-auth      → Implement tasks via TDD subagents
 ```
@@ -103,10 +103,12 @@ Analyzes your project and generates an `AGENTS.md` file at the project root. Thi
 Takes a natural-language requirement and produces a complete feature spec:
 
 ```text
-specs/<feature-name>/
+specs/<YYYY-MM-DD-NO-feature-name>/
 ├── design.md    # Architecture, API contracts, data models
 └── tasks.md     # Ordered implementation tasks (logical units of work)
 ```
+
+The spec directory follows the naming format `YYYY-MM-DD-NO-feature-name` (e.g., `2026-02-15-01-add-websocket-auth`). The feature-name part must be unique across all specs.
 
 ### 3. `/pb-refine <feature-name>` — Design Iteration (Optional)
 
@@ -114,14 +116,14 @@ Reads user feedback or Design Change Requests (from failed builds) and intellige
 
 ### 4. `/pb-build <feature-name>` — Subagent-Driven Implementation
 
-Reads `specs/<feature-name>/tasks.md` and implements each task sequentially. Every task is executed by a fresh subagent following strict TDD (Red → Green → Refactor). Supports **Design Change Requests** if the planned design proves infeasible during implementation.
+Reads `specs/<YYYY-MM-DD-NO-feature-name>/tasks.md` and implements each task sequentially. Every task is executed by a fresh subagent following strict TDD (Red → Green → Refactor). Supports **Design Change Requests** if the planned design proves infeasible during implementation. Only the `<feature-name>` part is needed when invoking — the agent resolves the full directory automatically.
 
 ## Skills Overview
 
 | Skill | Trigger | Output | Description |
 |---|---|---|---|
 | `pb-init` | `/pb-init` | `AGENTS.md` | Detect stack, scan structure, generate project context |
-| `pb-plan` | `/pb-plan <requirement>` | `specs/<name>/design.md` + `tasks.md` | Design proposal + ordered task breakdown |
+| `pb-plan` | `/pb-plan <requirement>` | `specs/<YYYY-MM-DD-NO-feature-name>/design.md` + `tasks.md` | Design proposal + ordered task breakdown |
 | `pb-refine` | `/pb-refine <feature>` | Revised spec files | Apply feedback or Design Change Requests |
 | `pb-build` | `/pb-build <feature-name>` | Code + tests | TDD implementation via subagents |
 

@@ -2,7 +2,7 @@
 
 | Metadata | Details |
 | :--- | :--- |
-| **Design Doc** | [Link to specs/feature-name/design.md] |
+| **Design Doc** | [Link to specs/YYYY-MM-DD-NO-feature-name/design.md] |
 | **Owner** | [Name] |
 | **Start Date** | YYYY-MM-DD |
 | **Target Date** | YYYY-MM-DD |
