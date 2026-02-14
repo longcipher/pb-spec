@@ -57,7 +57,14 @@ Create a **fresh subagent** for this task. Pass it the implementer prompt templa
 - Project context from `AGENTS.md` and `design.md`.
 - The task number and name.
 
-**Each subagent gets a clean context.** Do not carry over implementation details from previous tasks — only the files on disk.
+**Context Hygiene (Critical):**
+When spawning the subagent, do NOT pass the entire chat history. Pass ONLY:
+1. The specific Task Description from `tasks.md`.
+2. The `AGENTS.md` (Project Rules & Conventions).
+3. The `design.md` (Feature Spec).
+4. **Summary of previous tasks** — a one-line-per-task summary of what was done (e.g., "Task 1.1 created `models.py` with `User` and `Session` classes which you should now use."). Do NOT pass raw logs or full outputs from previous subagents.
+
+> **Why Context Hygiene matters:** Passing too much context — especially error logs from previous attempts — can mislead the current subagent. A clean, focused context window leads to better outcomes, following Anthropic's "Fresh Context" strategy.
 
 #### 3d. Subagent Executes (TDD Cycle)
 
@@ -82,15 +89,19 @@ After the subagent succeeds, update `tasks.md`:
 
 > **⚠️ Context Reset:** After completing all tasks (or when context grows large), output: "Recommend starting a fresh session. Run `/pb-build <feature-name>` again to continue from where you left off."
 
-### Step 4: Handle Failures
+### Step 4: Handle Failures (The Recovery Loop)
 
 If a subagent fails (tests don't pass, implementation blocked, etc.):
 
-1. **Report** the failure with details — which task, what went wrong, test output.
-2. **Prompt the user** to choose:
-   - **Retry** — Spawn a new subagent for the same task with fresh context.
+1. **Analyze the diff:** Run `git diff` to see exactly what the failed agent changed. Understanding the attempted approach is essential before retrying.
+2. **Revert the workspace:** Run `git checkout .` to clean the workspace back to the last known-good state. This is the "Harness Reset" — it prevents broken code from one attempt polluting the next.
+3. **Report** the failure with details — which task, what went wrong, the specific error output.
+4. **Prompt the user** to choose:
+   - **Retry** — Spawn a new subagent with fresh context. Pass the previous failure's error message as a "Constraint" hint (e.g., "Previous attempt failed with 'circular import in auth.py'. Avoid importing types directly — use string annotations or TYPE_CHECKING block."). Maximum 2 retries per task.
    - **Skip** — Mark the task as skipped (`⏭️ SKIPPED`) and continue to the next task.
    - **Abort** — Stop the entire build. Report progress so far.
+
+> **Why revert before retry:** If the failed agent left partially-written code, a new agent may try to build on top of broken foundations. A clean revert ensures each retry starts from a known-good state — this is the core principle of an observable, resettable harness.
 
 #### Design Change Requests (DCR)
 
@@ -141,9 +152,10 @@ Next steps:
 ## Subagent Assignment Rules
 
 1. **One subagent per task.** Never combine multiple tasks into one subagent.
-2. **Fresh context per subagent.** Each subagent starts with only: the task description, project context, and the current state of files on disk.
+2. **Fresh context per subagent.** Each subagent starts with only: the task description, project context (AGENTS.md + design.md), a summary of completed tasks, and the current state of files on disk.
 3. **Sequential execution.** Tasks are executed strictly in `tasks.md` order. No parallelism.
 4. **Independence.** A subagent must not depend on in-memory state from a previous subagent. All cross-task communication happens through files on disk.
+5. **Grounding first.** Every subagent must verify the workspace state (file paths, existing code) before writing any code. This is enforced by the implementer prompt.
 
 ---
 
@@ -200,9 +212,11 @@ While executing, display progress after each task:
 1. **Small, focused, sequential, independent.** Each task is a self-contained unit of work.
 2. **TDD is non-negotiable.** Every task starts with a failing test. No exceptions.
 3. **Fresh context prevents contamination.** Subagents don't inherit assumptions from previous tasks.
-4. **Self-review catches over-engineering.** Every subagent audits its own work before submitting.
-5. **State lives on disk.** `tasks.md` checkboxes and committed code are the only persistent state.
-6. **Fail fast, recover gracefully.** Failures are reported immediately with clear options.
+4. **Grounding before action.** Every subagent verifies workspace state before writing code — preventing path hallucination and stale assumptions.
+5. **Self-review catches over-engineering.** Every subagent audits its own work before submitting.
+6. **State lives on disk.** `tasks.md` checkboxes and committed code are the only persistent state.
+7. **Fail fast, recover cleanly.** Failures trigger workspace revert (`git checkout .`) before retry — ensuring each attempt starts from a known-good state.
+8. **Context hygiene.** Only pass relevant, minimal context to subagents. Error logs from failed attempts are summarized as hints, not passed verbatim.
 
 ---
 

@@ -138,7 +138,19 @@ class FeatureInterface:
 
 > How modules work together. Mock strategies, sandbox environments.
 
-### 5.3 Validation Rules
+### 5.3 Critical Path Verification (The "Harness")
+
+> Define the exact command(s) or script(s) that prove this feature works end-to-end. The `pb-build` agent will use these to verify the final result. This acts as the acceptance test for the entire feature.
+
+| Verification Step | Command | Success Criteria |
+| :--- | :--- | :--- |
+| **VP-01** | `[e.g., python scripts/verify_auth.py]` | `[e.g., "Output contains 'Authenticated'"]` |
+| **VP-02** | `[e.g., curl -v http://localhost:8000/health]` | `[e.g., "Response code 200"]` |
+| **VP-03** | `[e.g., pytest tests/ -v --tb=short]` | `[e.g., "All tests pass, 0 failures"]` |
+
+> **Why this matters:** By defining verification commands at design time, the build agent does not need to invent its own verification strategy — it simply executes these commands and checks the criteria. This dramatically improves reliability.
+
+### 5.4 Validation Rules
 
 | Test Case ID | Action | Expected Outcome | Verification Method |
 | :--- | :--- | :--- | :--- |

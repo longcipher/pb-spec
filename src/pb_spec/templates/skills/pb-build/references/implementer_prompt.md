@@ -22,14 +22,18 @@ You are implementing **Task {{TASK_NUMBER}}: {{TASK_NAME}}**.
 
 ## Your Job
 
-Execute the following steps in strict order. Do not skip or reorder any step.
+Execute the following steps in strict order. **You must output your reasoning for each step.** Do not skip or reorder any step.
 
-### 1. Understand the Task
+### 1. Grounding & State Verification (Mandatory)
 
-- Read the Task Description above carefully.
-- Read `design.md` for the overall feature design and how this task fits.
-- Identify which files you need to create or modify.
-- Identify existing patterns in the codebase to follow.
+**Before writing any code**, you must verify the current state of the workspace. Do not rely on assumptions or memory — always confirm reality first.
+
+1. **Locate Files:** Run `ls`, `find`, or use file search to confirm the paths of files you intend to modify or create. **Do not guess paths.**
+2. **Read Context:** Read the content of target files (`cat`, `read_file`, or equivalent) to understand the surrounding code, existing patterns, and current state.
+3. **Check Dependencies:** Verify that any modules you plan to import actually exist. Check `pyproject.toml`, `package.json`, `Cargo.toml`, or equivalent before importing third-party libraries.
+4. **Confirm Test Infrastructure:** Verify the test directory exists and check how existing tests are structured (test runner, naming conventions, fixture patterns).
+
+> **Why this step is mandatory:** Long-running agents are prone to "path hallucination" — assuming files exist at locations they don't oratethat code has a structure it doesn't. This grounding step synchronizes your mental model with the actual workspace state.
 
 ### 2. TDD Cycle
 
@@ -42,24 +46,31 @@ Follow the Red → Green → Refactor cycle strictly. **Each phase must be a sep
 - Place tests in the project's test directory, following existing conventions.
 - **⚠️ STOP HERE.** Do not write any implementation code yet.
 
-#### 2b. Confirm RED
+#### 2b. Confirm RED (Error Analysis Required)
 
 - Run the test suite.
 - **The new test(s) MUST fail.** If they pass without implementation, your test is not testing the right thing — fix the test.
-- **Verify the failure output.** Confirm the test fails for the right reason (e.g., `ImportError`, `AttributeError`, or assertion failure — not a syntax error in the test itself).
-- **Only proceed to GREEN after seeing the failure output.**
+- **Quote the error:** You must identify and quote the specific error message from the test output.
+- **Classify the failure reason:**
+  - ✅ **Expected failure** (e.g., `ImportError`, `AttributeError`, `AssertionError` because logic is not implemented) → Proceed to GREEN.
+  - ❌ **Bad failure** (e.g., `SyntaxError`, `IndentationError`, file not found) → Fix the test code immediately, then re-run.
+- **Only proceed to GREEN after seeing and quoting the failure output.**
 
 #### 2c. GREEN — Write Minimum Implementation
 
 - Write the **minimum code** needed to make the failing test pass.
 - Do not add features, optimizations, or abstractions not required by this task.
+- **Constraint:** Do not edit files you did not read in Step 1. If you need to modify a new file, read it first.
 - Follow existing project patterns and conventions.
 
-#### 2d. Confirm GREEN
+#### 2d. Confirm GREEN (Full Suite Required)
 
-- Run the full test suite (not just the new tests).
+- Run the **full** test suite (not just the new tests).
 - **All tests must pass** — both the new ones and all pre-existing tests.
-- If any test fails, fix the implementation before proceeding.
+- If any test fails:
+  1. **Do not blind-fix.** Read the error message carefully.
+  2. **Read the failing code** — re-read the relevant source file to understand the current state.
+  3. **Then fix** with a targeted change.
 
 #### 2e. REFACTOR (if needed)
 
@@ -126,3 +137,16 @@ Report your work in this format:
 - **Tests are mandatory.** Never submit implementation without tests.
 - **TDD phases are separate actions.** Never write test and implementation in the same step. Write tests first, see them fail, then write implementation.
 - **File a Design Change Request** if the design is infeasible rather than forcing a broken approach.
+
+## Harness Rules (Strict)
+
+These rules act as your safety harness — they prevent common failure modes in long-running agent sessions:
+
+1. **No Blind Edits:** Always read a file before editing it. Never assume file contents from memory.
+2. **Verify Imports:** Check `pyproject.toml`, `package.json`, or equivalent before importing third-party libraries that may not be installed.
+3. **Idempotency:** Scripts and tests should be safe to run multiple times without side effects.
+4. **Quote Errors:** When a test or command fails, always quote the specific error message in your reasoning before attempting a fix.
+5. **One Fix at a Time:** When debugging a failure, make exactly one change, then re-run. Do not stack multiple speculative fixes.
+6. **Path Verification:** Never hardcode or assume file paths. Use `ls`, `find`, or file search to confirm paths before using them.
+
+````

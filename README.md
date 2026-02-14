@@ -10,6 +10,20 @@
 
 **pb-spec** is a CLI tool that installs AI coding assistant skills into your project. It provides a structured workflow — **init → plan → build** — that turns natural-language requirements into implemented, tested code through AI agent prompts.
 
+## 🧠 Design Philosophy
+
+This project is built on two core theoretical pillars for reliable AI development:
+
+1. **[The RPI Strategy](https://patrickarobinson.com/blog/introducing-rpi-strategy/)** (Research, Plan, Implement)
+   - *Why we love it:* It solves "lazy AI coding" by forbidding the AI from writing code until it has researched the context and planned the architecture. Separation of specific concerns (Planning vs. Coding) prevents "context overflow" and logic errors.
+2. **[Effective Harnesses for Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)** (Anthropic Engineering)
+   - *Why we love it:* It shifts reliance from "AI intelligence" to "System reliability." By placing agents in a verifiable "Harness" (strict state grounding, context hygiene, and recovery loops), we can trust them with longer, more complex tasks.
+
+**How pb-spec optimizes & simplifies:**
+- **Zero-Friction Context:** We automate the "Research" phase into `/pb-init` (static knowledge) and `/pb-plan` (live analysis), so you don't need to manually feed context to the AI.
+- **Strict TDD Harness:** Our "Implement" phase (`/pb-build`) forces a strict **Red → Green → Refactor** loop. If an agent fails, we automatically revert the workspace (Recovery) to prevent code pollution.
+- **Verification-Driven:** We require the "Plan" phase to define *exactly* how to verify success (Critical Path Verification), turning the inspection problem into a binary execution check.
+
 ## Features
 
 - **4 agent skills**: `pb-init`, `pb-plan`, `pb-refine`, `pb-build` — covering project analysis, design planning, iterative refinement, and TDD implementation
@@ -110,6 +124,28 @@ Reads `specs/<feature-name>/tasks.md` and implements each task sequentially. Eve
 | `pb-plan` | `/pb-plan <requirement>` | `specs/<name>/design.md` + `tasks.md` | Design proposal + ordered task breakdown |
 | `pb-refine` | `/pb-refine <feature>` | Revised spec files | Apply feedback or Design Change Requests |
 | `pb-build` | `/pb-build <feature-name>` | Code + tests | TDD implementation via subagents |
+
+## Design Philosophy: Agent Harness
+
+pb-spec's prompt design is inspired by Anthropic's research on [Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents). The core idea: place AI agents inside a strict, observable, recoverable execution environment — a "harness" — rather than relying on the agent's autonomous judgment alone.
+
+### Key Harness Principles
+
+| Principle | How pb-spec Implements It |
+|---|---|
+| **State Grounding** | Subagents must verify workspace state (`ls`, `find`, `read_file`) before writing any code — preventing path hallucination |
+| **Error Quoting** | Subagents must quote specific error messages before attempting fixes — preventing blind debugging |
+| **Context Hygiene** | Orchestrator passes only minimal, relevant context to each subagent — preventing context window pollution |
+| **Recovery Loop** | Failed tasks trigger `git checkout .` (workspace revert) before retry — ensuring each attempt starts from a known-good state |
+| **Verification Harness** | Design docs define explicit verification commands at planning time — subagents execute, not invent, verification |
+| **Agent Rules** | `AGENTS.md` embeds project-specific "laws of physics" that all subagents inherit as system-level constraints |
+
+### Where Each Principle Lives
+
+- **Worker (Implementer):** `implementer_prompt.md` enforces grounding-first workflow and error quoting
+- **Architect (Planner):** `design_template.md` includes Critical Path Verification table
+- **Orchestrator (Builder):** `pb-build` SKILL enforces context hygiene and workspace revert on failure
+- **Foundation (Init):** `AGENTS.md` template includes Agent Harness Rules as global conventions
 
 ## Development
 
