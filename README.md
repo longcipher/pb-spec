@@ -20,6 +20,7 @@ This project is built on two core theoretical pillars for reliable AI developmen
    - *Why we love it:* It shifts reliance from "AI intelligence" to "System reliability." By placing agents in a verifiable "Harness" (strict state grounding, context hygiene, and recovery loops), we can trust them with longer, more complex tasks.
 
 **How pb-spec optimizes & simplifies:**
+
 - **Zero-Friction Context:** We automate the "Research" phase into `/pb-init` (static knowledge) and `/pb-plan` (live analysis), so you don't need to manually feed context to the AI.
 - **Strict TDD Harness:** Our "Implement" phase (`/pb-build`) forces a strict **Red → Green → Refactor** loop. If an agent fails, we automatically revert the workspace (Recovery) to prevent code pollution.
 - **Verification-Driven:** We require the "Plan" phase to define *exactly* how to verify success (Critical Path Verification), turning the inspection problem into a binary execution check.
@@ -88,6 +89,7 @@ pb-spec update
 Update pb-spec to the latest version (requires `uv`).
 
 ## Workflow
+
 four agent skills that chain together:
 
 ```text

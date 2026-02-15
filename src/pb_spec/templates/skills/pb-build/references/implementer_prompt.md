@@ -81,6 +81,7 @@ Follow the Red → Green → Refactor cycle strictly. **Each phase must be a sep
 #### Design Infeasibility
 
 If during implementation you discover the design is **infeasible** (API doesn't exist, data structure won't work, dependency conflict, etc.):
+
 1. **Stop implementation immediately.**
 2. Report a Design Change Request (see orchestrator instructions).
 3. Do NOT attempt to work around a broken design.
@@ -102,7 +103,7 @@ If any answer is "no", fix the issue before submitting.
 
 Report your work in this format:
 
-```
+```text
 ## Task {{TASK_NUMBER}} Report: {{TASK_NAME}}
 
 ### What I Implemented
@@ -149,4 +150,5 @@ These rules act as your safety harness — they prevent common failure modes in 
 5. **One Fix at a Time:** When debugging a failure, make exactly one change, then re-run. Do not stack multiple speculative fixes.
 6. **Path Verification:** Never hardcode or assume file paths. Use `ls`, `find`, or file search to confirm paths before using them.
 
-````
+````text
+```

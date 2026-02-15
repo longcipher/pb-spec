@@ -11,6 +11,7 @@ Run this when the user invokes `/pb-plan <requirement description>`. Do not ask 
 Extract core requirements from the user's input. Derive a **feature-name** and determine the **scope mode**.
 
 **feature-name rules:**
+
 - Maximum 4 words, joined with `-` (kebab-case).
 - All lowercase, no special characters.
 - Capture the essence of the feature.
@@ -19,6 +20,7 @@ Extract core requirements from the user's input. Derive a **feature-name** and d
 **spec-dir naming convention:**
 The spec directory name (referred to as `<spec-dir>` in all paths below) follows the format:
 `YYYY-MM-DD-NO-feature-name`
+
 - `YYYY-MM-DD` = today's date.
 - `NO` = 2-digit sequence number (`01`, `02`, ...).
 - `feature-name` = the derived feature name above.
@@ -26,6 +28,7 @@ The spec directory name (referred to as `<spec-dir>` in all paths below) follows
 
 **Scope mode detection:**
 Count the words in the requirement description (excluding the `/pb-plan` trigger).
+
 - **Lightweight mode** (< 50 words): Simple change — produce a compact spec (see Step 4a/5a).
 - **Full mode** (≥ 50 words): Complex feature — produce the complete spec (see Step 4b/5b).
 
@@ -44,7 +47,7 @@ Gather context to inform the design. **Do not rely solely on `AGENTS.md`** — a
    - Existing abstractions (base classes, interfaces, protocols) to extend
    - Shared infrastructure (database connections, HTTP clients, cache layers)
    - Similar prior implementations that establish patterns to follow
-   
+
    **This audit is mandatory.** List reusable components in `design.md` Section 3.3 and reference them in `tasks.md` task context.
 
 If `AGENTS.md` does not exist, search the codebase directly for project context. Recommend running `/pb-init` first in your summary.
@@ -52,16 +55,19 @@ If `AGENTS.md` does not exist, search the codebase directly for project context.
 ## Step 3: Create Spec Directory
 
 **Uniqueness check (mandatory):**
+
 1. Scan all existing directories under `specs/`.
 2. Extract the `feature-name` suffix from each directory name (the part after the `YYYY-MM-DD-NO-` prefix).
 3. If the derived `feature-name` already exists in any spec directory, **stop and report**:
-   ```
+
+   ```text
    ❌ Feature name "<feature-name>" already exists in specs/.
       Existing spec: specs/<existing-spec-dir>/
       Choose a different feature name or run /pb-refine <feature-name> to update the existing spec.
    ```
 
 **Sequence number generation:**
+
 1. Find all existing directories under `specs/` that start with today's date (`YYYY-MM-DD-`).
 2. Extract the highest sequence number among them.
 3. Set `NO` = highest + 1 (or `01` if none exist for today). Zero-pad to 2 digits.
@@ -82,15 +88,19 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`:
 | **Scope** | Lightweight |
 
 ## Summary
+
 > 2-3 sentences: problem + solution.
 
 ## Approach
+
 > How to implement. Reference existing code/patterns to reuse.
 
 ## Existing Components to Reuse
+
 > List components found during codebase audit, or "None identified".
 
 ## Verification
+
 > How to verify the change works. Test commands, expected behavior.
 ```
 
@@ -115,6 +125,7 @@ Write a **flat task list** to `specs/<spec-dir>/tasks.md`:
 ## Tasks
 
 ### Task 1: [Task Name]
+
 > **Context:** ...
 > **Verification:** ...
 
@@ -130,6 +141,7 @@ Write a **flat task list** to `specs/<spec-dir>/tasks.md`:
 Fill the **Tasks Template** below and write to `specs/<spec-dir>/tasks.md`. Break down the implementation plan from `design.md` into concrete, actionable tasks.
 
 **Task requirements:**
+
 - Grouped into Phases (Foundation → Core → Integration → Polish).
 - Each task: **Context**, **Steps** (checkboxes), and **Verification**.
 - Each task represents a **Logical Unit of Work** — a self-contained, meaningful change. Do NOT split by time estimates.
@@ -142,7 +154,7 @@ Fill the **Tasks Template** below and write to `specs/<spec-dir>/tasks.md`. Brea
 
 After writing both files, output:
 
-```
+```text
 ✅ Spec created: specs/<spec-dir>/
 Mode: <Lightweight | Full>
 
@@ -192,6 +204,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 - **Short requirement but complex domain:** If <50 words but clearly complex (e.g., "refactor the entire auth system"), use full mode. Word count is a heuristic, not a hard rule.
 
 ---
+
 ---
 
 ## DESIGN TEMPLATE
@@ -345,6 +358,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 ```
 
 ---
+
 ---
 
 ## TASKS TEMPLATE

@@ -13,19 +13,21 @@ Execute the following steps in order.
 ### Step 1: Resolve Spec Directory & Read Task File
 
 **Resolve `<feature-name>` → `<spec-dir>`:**
+
 1. List all directories under `specs/`.
 2. Find the directory whose name ends with `-<feature-name>` (e.g., `2026-02-15-01-add-websocket-auth` for feature-name `add-websocket-auth`).
 3. If exactly one match is found, use it as `<spec-dir>`. All `specs/<spec-dir>/` paths below refer to this resolved directory.
 4. If multiple matches exist, use the most recent one (latest date prefix).
 5. If no match is found, stop and report:
-   ```
+
+   ```text
    ❌ No spec directory found for feature "<feature-name>" in specs/.
       Run /pb-plan <requirement> first to generate the spec.
    ```
 
 Read `specs/<spec-dir>/tasks.md`. If the file does not exist, stop and report:
 
-```
+```text
 ❌ specs/<spec-dir>/tasks.md not found.
    Run /pb-plan <requirement> first to generate the spec.
 ```
@@ -37,12 +39,13 @@ Scan `tasks.md` for all unchecked task items (`- [ ]`). Build an ordered list of
 **Use Task IDs for state tracking.** Each task has a unique ID in the format `Task X.Y` (e.g., `Task 1.1`, `Task 2.3`). When locating tasks, match on the `### Task X.Y:` heading pattern, not just bare checkboxes.
 
 **Error handling:**
+
 - If `tasks.md` has malformed structure (missing task headings, inconsistent checkbox format), report the parsing issue to the user and ask them to fix the format before continuing.
 - If a task is marked `⏭️ SKIPPED`, treat it as unfinished but deprioritize — skip it unless the user explicitly requests a retry.
 
 If all tasks are already checked (`- [x]`), report:
 
-```
+```text
 ✅ All tasks in specs/<spec-dir>/tasks.md are already completed.
 ```
 
@@ -70,6 +73,7 @@ Create a **fresh subagent** for this task. Pass it the implementer prompt templa
 
 **Context Hygiene (Critical):**
 When spawning the subagent, do NOT pass the entire chat history. Pass ONLY:
+
 1. The specific Task Description from `tasks.md`.
 2. The `AGENTS.md` (Project Rules & Conventions).
 3. The `design.md` (Feature Spec).
@@ -94,6 +98,7 @@ The subagent follows this strict process. **Each phase must be a separate action
 #### 3e. Mark Task Completed
 
 After the subagent succeeds, update `tasks.md`:
+
 - Change `- [ ]` to `- [x]` for every step in the completed task.
 - Update the task's Status from `🔴 TODO` to `🟢 DONE`.
 - **Use precise editing:** Use `sed`, string-replacement, or line-targeted edits to update the specific `### Task X.Y` block. Do NOT rewrite the entire `tasks.md` file — this risks truncation and content loss in large files.
@@ -120,13 +125,15 @@ If during implementation a subagent discovers that the design is **infeasible or
 
 1. **Stop implementation** — do not force a broken approach.
 2. **File a Design Change Request:**
-   ```
+
+   ```text
    🔄 Design Change Request — Task X.Y: [Task Name]
 
    Problem: [What is infeasible and why]
    Suggested Change: [What should change in design.md]
    Impact: [Which other tasks are affected]
    ```
+
 3. The orchestrator pauses the build, reports the DCR to the user, and awaits a decision:
    - **Accept** — user updates `design.md` (or approves the suggested change), then retries.
    - **Override** — user provides an alternative approach.
@@ -136,7 +143,7 @@ If during implementation a subagent discovers that the design is **infeasible or
 
 After all tasks are processed, output:
 
-```
+```text
 📊 pb-build Summary: specs/<spec-dir>/
 
 Tasks: X/Y completed | Z skipped | W failed
@@ -189,7 +196,7 @@ Update `tasks.md` in-place after each task completes using **precise edits** (ta
 
 While executing, display progress after each task:
 
-```
+```text
 [2/8] ✅ Task 1.2: Define data models — 3 tests added, 2 files changed
 [3/8] 🔄 Task 2.1: Implement core parser — in progress...
 ```
@@ -199,6 +206,7 @@ While executing, display progress after each task:
 ## Constraints
 
 ### NEVER
+
 - **NEVER** implement tasks out of order.
 - **NEVER** skip TDD steps (Red → Green → Refactor).
 - **NEVER** combine test writing and implementation in the same step.
@@ -208,6 +216,7 @@ While executing, display progress after each task:
 - **NEVER** rewrite the entire `tasks.md` file — use targeted edits only.
 
 ### ALWAYS
+
 - **ALWAYS** mark completed tasks in `tasks.md` immediately after success.
 - **ALWAYS** self-review before submitting a task's work.
 - **ALWAYS** run the full test suite after each task to catch regressions.

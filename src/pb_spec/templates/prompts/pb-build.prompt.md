@@ -9,19 +9,21 @@ Run this when the user invokes `/pb-build <feature-name>`.
 ## Step 1: Resolve Spec Directory & Read Task File
 
 **Resolve `<feature-name>` → `<spec-dir>`:**
+
 1. List all directories under `specs/`.
 2. Find the directory whose name ends with `-<feature-name>` (e.g., `2026-02-15-01-add-websocket-auth` for feature-name `add-websocket-auth`).
 3. If exactly one match is found, use it as `<spec-dir>`. All `specs/<spec-dir>/` paths below refer to this resolved directory.
 4. If multiple matches exist, use the most recent one (latest date prefix).
 5. If no match is found, stop and report:
-   ```
+
+   ```text
    ❌ No spec directory found for feature "<feature-name>" in specs/.
       Run /pb-plan <requirement> first to generate the spec.
    ```
 
 Read `specs/<spec-dir>/tasks.md`. If not found, stop and report:
 
-```
+```text
 ❌ specs/<spec-dir>/tasks.md not found.
    Run /pb-plan <requirement> first to generate the spec.
 ```
@@ -33,12 +35,13 @@ Scan for all unchecked items (`- [ ]`). Build an ordered list preserving Phase �
 **Use Task IDs for state tracking.** Each task has a unique ID in the format `Task X.Y` (e.g., `Task 1.1`, `Task 2.3`). When locating tasks, match on the `### Task X.Y:` heading pattern, not just bare checkboxes.
 
 **Error handling:**
+
 - If `tasks.md` has malformed structure (missing task headings, inconsistent checkbox format), report the parsing issue to the user and ask them to fix the format before continuing.
 - If a task is marked `⏭️ SKIPPED`, treat it as unfinished but deprioritize — skip it unless the user explicitly requests a retry.
 
 If all tasks are checked (`- [x]`), report:
 
-```
+```text
 ✅ All tasks in specs/<spec-dir>/tasks.md are already completed.
 ```
 
@@ -78,13 +81,15 @@ If during implementation a subagent discovers that the design is **infeasible or
 
 1. **Stop implementation** — do not force a broken approach.
 2. **File a Design Change Request (DCR):** Report to the orchestrator:
-   ```
+
+   ```text
    🔄 Design Change Request — Task X.Y: [Task Name]
 
    Problem: [What is infeasible and why]
    Suggested Change: [What should change in design.md]
    Impact: [Which other tasks are affected]
    ```
+
 3. The orchestrator pauses the build, reports the DCR to the user, and awaits a decision:
    - **Accept** — user updates `design.md` (or approves the suggested change), then retries the task.
    - **Override** — user provides an alternative approach.
@@ -92,7 +97,7 @@ If during implementation a subagent discovers that the design is **infeasible or
 
 ## Step 5: Output Summary
 
-```
+```text
 📊 pb-build Summary: specs/<spec-dir>/
 
 Tasks: X/Y completed | Z skipped | W failed
@@ -139,7 +144,7 @@ Update `tasks.md` in-place after each task using **precise edits** (target the s
 
 ## Progress Display
 
-```
+```text
 [2/8] ✅ Task 1.2: Define data models — 3 tests added, 2 files changed
 [3/8] 🔄 Task 2.1: Implement core parser — in progress...
 ```
@@ -149,6 +154,7 @@ Update `tasks.md` in-place after each task using **precise edits** (target the s
 ## Constraints
 
 ### NEVER
+
 - Implement tasks out of order.
 - Skip TDD steps (Red → Green → Refactor).
 - Let a subagent implement more than its assigned task.
@@ -157,6 +163,7 @@ Update `tasks.md` in-place after each task using **precise edits** (target the s
 - Rewrite the entire `tasks.md` file — use targeted edits only.
 
 ### ALWAYS
+
 - Mark completed tasks in `tasks.md` immediately.
 - Self-review before submitting each task.
 - Run full test suite after each task.
@@ -179,6 +186,7 @@ Update `tasks.md` in-place after each task using **precise edits** (target the s
 8. **Context hygiene.** Pass minimal, relevant context. Summarize — don't dump.
 
 ---
+
 ---
 
 ## IMPLEMENTER PROMPT TEMPLATE
@@ -208,6 +216,7 @@ Execute in strict order:
 **1. Grounding & State Verification (Mandatory)**
 
 Before writing any code, verify the current workspace state:
+
 - **Locate Files:** Run `ls` or `find` to confirm paths of files you intend to modify. Do not guess paths.
 - **Read Context:** Read target files to understand surrounding code and current state.
 - **Check Dependencies:** Verify modules you plan to import actually exist.
@@ -237,7 +246,7 @@ Fix any "no" answers before submitting.
 
 **4. Report**
 
-```
+```text
 ## Task {{TASK_NUMBER}} Report: {{TASK_NAME}}
 
 ### What I Implemented

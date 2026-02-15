@@ -15,6 +15,7 @@ Execute the following steps in order. Do **not** ask clarifying questions — an
 Extract core requirements from the user's input. Then derive a **feature-name** and determine the **scope mode**.
 
 **feature-name rules:**
+
 - Maximum 4 words, joined with `-` (kebab-case).
 - All lowercase, no special characters.
 - Capture the essence of the feature.
@@ -23,6 +24,7 @@ Extract core requirements from the user's input. Then derive a **feature-name** 
 **spec-dir naming convention:**
 The spec directory name (referred to as `<spec-dir>` in all paths below) follows the format:
 `YYYY-MM-DD-NO-feature-name`
+
 - `YYYY-MM-DD` = today's date.
 - `NO` = 2-digit sequence number (`01`, `02`, ...).
 - `feature-name` = the derived feature name above.
@@ -30,6 +32,7 @@ The spec directory name (referred to as `<spec-dir>` in all paths below) follows
 
 **Scope mode detection:**
 Count the words in the requirement description (excluding the `/pb-plan` trigger).
+
 - **Lightweight mode** (< 50 words): Simple change — produce a compact spec (see Step 4a/5a).
 - **Full mode** (≥ 50 words): Complex feature — produce the complete spec (see Step 4b/5b).
 
@@ -48,7 +51,7 @@ Gather context to inform the design. **Do not rely solely on `AGENTS.md`** — a
    - Existing abstractions (base classes, interfaces, protocols) to extend
    - Shared infrastructure (database connections, HTTP clients, cache layers)
    - Similar prior implementations that establish patterns to follow
-   
+
    **This audit is mandatory.** List reusable components in `design.md` Section 3.3 and reference them in `tasks.md` task context.
 
 If `AGENTS.md` does not exist, scan the project root directly (config files, directory structure) to infer project context. Recommend running `/pb-init` first in your summary.
@@ -56,16 +59,19 @@ If `AGENTS.md` does not exist, scan the project root directly (config files, dir
 ### Step 3: Create Spec Directory
 
 **Uniqueness check (mandatory):**
+
 1. Scan all existing directories under `specs/`.
 2. Extract the `feature-name` suffix from each directory name (the part after the `YYYY-MM-DD-NO-` prefix).
 3. If the derived `feature-name` already exists in any spec directory, **stop and report**:
-   ```
+
+   ```text
    ❌ Feature name "<feature-name>" already exists in specs/.
       Existing spec: specs/<existing-spec-dir>/
       Choose a different feature name or run /pb-refine <feature-name> to update the existing spec.
    ```
 
 **Sequence number generation:**
+
 1. Find all existing directories under `specs/` that start with today's date (`YYYY-MM-DD-`).
 2. Extract the highest sequence number among them.
 3. Set `NO` = highest + 1 (or `01` if none exist for today). Zero-pad to 2 digits.
@@ -86,15 +92,19 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`. Only include sec
 | **Scope** | Lightweight |
 
 ## Summary
+
 > 2-3 sentences: problem + solution.
 
 ## Approach
+
 > How to implement. Reference existing code/patterns to reuse.
 
 ## Existing Components to Reuse
+
 > List components found during codebase audit, or "None identified".
 
 ## Verification
+
 > How to verify the change works. Test commands, expected behavior.
 ```
 
@@ -105,6 +115,7 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`. Only include sec
 Read `references/design_template.md` and fill every section fully. Write the result to `specs/<spec-dir>/design.md`.
 
 **Requirements for design.md:**
+
 - **Executive Summary**: 2-3 sentences — problem + proposed solution.
 - **Requirements & Goals**: Functional goals, non-functional goals, and explicit out-of-scope items.
 - **Architecture Overview**: System context, key design principles. Include diagrams (Mermaid) where they add clarity.
@@ -129,6 +140,7 @@ Write a **flat task list** to `specs/<spec-dir>/tasks.md`. No phases — just or
 ## Tasks
 
 ### Task 1: [Task Name]
+
 > **Context:** ...
 > **Verification:** ...
 
@@ -144,6 +156,7 @@ Write a **flat task list** to `specs/<spec-dir>/tasks.md`. No phases — just or
 Read `references/tasks_template.md` and use it to break down the implementation plan from `design.md` into concrete, actionable tasks. Write the result to `specs/<spec-dir>/tasks.md`.
 
 **Requirements for tasks.md:**
+
 - Tasks are grouped into Phases (Foundation → Core → Integration → Polish).
 - Each task includes: **Context**, **Steps** (as checkboxes), and **Verification**.
 - Each task represents a **Logical Unit of Work** — a self-contained, meaningful change (e.g., "Implement Model layer", "Add API endpoint", "Wire up service integration"). Do NOT split by time estimates.
@@ -157,7 +170,7 @@ Read `references/tasks_template.md` and use it to break down the implementation 
 
 After writing both files, output a brief summary:
 
-```
+```text
 ✅ Spec created: specs/<spec-dir>/
 Mode: <Lightweight | Full>
 

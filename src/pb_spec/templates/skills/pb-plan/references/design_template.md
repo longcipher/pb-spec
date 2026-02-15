@@ -77,7 +77,7 @@
 
 > File/directory layout for the new or modified code.
 
-```
+```text
 src/
 ├── module_name/
 │   ├── __init__.py
@@ -90,7 +90,7 @@ src/
 
 > Define core data models, classes, enums, or schemas.
 
-```
+```text
 # Example pseudo-code — adapt to project language
 class FeatureConfig:
     enabled: bool
@@ -107,7 +107,7 @@ class FeatureState:
 
 > Public APIs, function signatures, abstract interfaces, or protocols this feature exposes or consumes.
 
-```
+```text
 class FeatureInterface:
     def execute(input: InputType) -> OutputType:
         """Describe purpose and contract."""
