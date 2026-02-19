@@ -1,11 +1,13 @@
 """Tests for pb-spec CLI entry point and basic commands."""
 
+import subprocess
 import tomllib
 from pathlib import Path
 from unittest.mock import patch
 
 from click.testing import CliRunner
 
+from pb_spec import __version__ as package_version
 from pb_spec.cli import main
 
 runner = CliRunner()
@@ -50,3 +52,25 @@ def test_update_calls_uv():
         result = runner.invoke(main, ["update"])
         assert result.exit_code == 0
         mock_run.assert_called_once_with(["uv", "tool", "upgrade", "pb-spec"], check=True)
+
+
+def test_update_missing_uv_returns_error_exit_code():
+    """pb-spec update should fail with non-zero exit code when uv is missing."""
+    with patch("pb_spec.commands.update.subprocess.run", side_effect=FileNotFoundError):
+        result = runner.invoke(main, ["update"])
+        assert result.exit_code != 0
+        assert "uv is not installed" in result.output
+
+
+def test_update_subprocess_error_returns_error_exit_code():
+    """pb-spec update should fail with non-zero exit code when uv upgrade fails."""
+    error = subprocess.CalledProcessError(2, ["uv", "tool", "upgrade", "pb-spec"])
+    with patch("pb_spec.commands.update.subprocess.run", side_effect=error):
+        result = runner.invoke(main, ["update"])
+        assert result.exit_code != 0
+        assert "exit code 2" in result.output
+
+
+def test_dunder_version_matches_project_version():
+    """pb_spec.__version__ should match pyproject.toml project.version."""
+    assert package_version == get_project_version()

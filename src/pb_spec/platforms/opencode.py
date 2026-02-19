@@ -14,6 +14,6 @@ class OpenCodePlatform(Platform):
         return cwd / ".opencode" / "skills" / skill_name / "SKILL.md"
 
     def render_skill(self, skill_name: str, template_content: str) -> str:
-        description = SKILL_METADATA.get(skill_name, "")
+        description = SKILL_METADATA.get(skill_name, "").replace('"', '\\"')
         frontmatter = f'---\nname: {skill_name}\ndescription: "{description}"\n---\n\n'
         return frontmatter + template_content

@@ -5,10 +5,20 @@ from pathlib import Path
 
 # Skill metadata: name -> description
 SKILL_METADATA: dict[str, str] = {
-    "pb-init": "Project State Initialization",
-    "pb-plan": "Design & Task Planning",
-    "pb-refine": "Design & Plan Refinement",
-    "pb-build": "Subagent-Driven Implementation",
+    "pb-init": (
+        "Use when onboarding a repo or after major structural changes to regenerate AGENTS.md "
+        "project context."
+    ),
+    "pb-plan": (
+        "Use when converting a requirement into a design proposal and executable tasks before coding."
+    ),
+    "pb-refine": (
+        "Use when feedback or a Design Change Request requires incremental updates to design.md "
+        "and tasks.md."
+    ),
+    "pb-build": (
+        "Use when tasks.md is ready and you need sequential TDD implementation with recovery loops."
+    ),
 }
 
 DEFAULT_SKILL_NAMES = list(SKILL_METADATA.keys())
@@ -46,7 +56,7 @@ class Platform(ABC):
                 continue
             content = self._load_and_render(skill_name)
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(content)
+            target.write_text(content, encoding="utf-8")
             installed.append(str(target.relative_to(cwd)))
 
             # Install reference files alongside the main skill file
@@ -74,7 +84,7 @@ class Platform(ABC):
             if ref_target.exists() and not force:
                 print(f"  Skipping {ref_target} (exists, use --force)")
                 continue
-            ref_target.write_text(content)
+            ref_target.write_text(content, encoding="utf-8")
             installed.append(str(ref_target.relative_to(cwd)))
 
     def _load_and_render(self, skill_name: str) -> str:

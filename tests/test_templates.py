@@ -16,7 +16,7 @@ def test_load_skill_content():
 
 
 def test_load_skill_content_all_skills():
-    for skill in ("pb-init", "pb-plan", "pb-build"):
+    for skill in ("pb-init", "pb-plan", "pb-refine", "pb-build"):
         content = load_skill_content(skill)
         assert isinstance(content, str)
         assert len(content) > 0, f"{skill} SKILL.md is empty"
@@ -51,7 +51,30 @@ def test_load_prompt_content():
 
 
 def test_load_prompt_all_skills():
-    for skill in ("pb-init", "pb-plan", "pb-build"):
+    for skill in ("pb-init", "pb-plan", "pb-refine", "pb-build"):
         content = load_prompt(skill)
         assert isinstance(content, str)
         assert len(content) > 0, f"{skill} prompt is empty"
+
+
+def test_pb_refine_templates_are_not_wrapped_as_code_block():
+    skill = load_skill_content("pb-refine").lstrip()
+    prompt = load_prompt("pb-refine").lstrip()
+    assert not skill.startswith("```"), "pb-refine SKILL should be plain markdown, not a code block"
+    assert not prompt.startswith("```"), "pb-refine prompt should be plain markdown, not a code block"
+
+
+def test_pb_build_templates_avoid_destructive_git_checkout():
+    skill = load_skill_content("pb-build")
+    prompt = load_prompt("pb-build")
+    assert "git checkout ." not in skill
+    assert "git checkout ." not in prompt
+
+
+def test_prompt_templates_no_duplicate_separators():
+    """Prompt templates should not have consecutive --- separators (redundant formatting)."""
+    for skill in ("pb-init", "pb-plan", "pb-refine", "pb-build"):
+        content = load_prompt(skill)
+        assert "\n---\n\n---\n" not in content, (
+            f"{skill} prompt has duplicate --- separators"
+        )

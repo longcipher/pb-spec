@@ -12,23 +12,31 @@
 
 ## 🧠 Design Philosophy
 
-This project is built on two core theoretical pillars for reliable AI development:
+pb-spec follows a **harness-first** philosophy: reliability comes from process design, explicit checks, and recoverability, not from assuming one-shot model correctness.
 
-1. **[The RPI Strategy](https://patrickarobinson.com/blog/introducing-rpi-strategy/)** (Research, Plan, Implement)
-   - *Why we love it:* It solves "lazy AI coding" by forbidding the AI from writing code until it has researched the context and planned the architecture. Separation of specific concerns (Planning vs. Coding) prevents "context overflow" and logic errors.
-2. **[Effective Harnesses for Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)** (Anthropic Engineering)
-   - *Why we love it:* It shifts reliance from "AI intelligence" to "System reliability." By placing agents in a verifiable "Harness" (strict state grounding, context hygiene, and recovery loops), we can trust them with longer, more complex tasks.
+### Best-Practice Alignment
 
-**How pb-spec optimizes & simplifies:**
+| Source | Core Idea | How pb-spec Applies It |
+|---|---|---|
+| [RPI Strategy](https://patrickarobinson.com/blog/introducing-rpi-strategy/) | Separate research, planning, and implementation | `/pb-init` + `/pb-plan` precede `/pb-build` |
+| [Plan-and-Solve Prompting](https://arxiv.org/abs/2305.04091) | Plan first to reduce missing-step errors | `design.md` + `tasks.md` are mandatory artifacts |
+| [ReAct](https://arxiv.org/abs/2210.03629) | Interleave reasoning and actions with environment feedback | `/pb-build` executes task-by-task with test/tool feedback loops |
+| [Reflexion](https://arxiv.org/abs/2303.11366) | Learn from failure signals via iterative retries | Retry/skip/abort and DCR flow in `pb-build` |
+| [Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) | Grounding, context hygiene, recovery, observability | State checks, minimal context handoff, task-local rollback guidance |
+| [Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) | Prefer simple composable workflows over framework complexity | Small adapter-based CLI + explicit workflow prompts |
 
-- **Zero-Friction Context:** We automate the "Research" phase into `/pb-init` (static knowledge) and `/pb-plan` (live analysis), so you don't need to manually feed context to the AI.
-- **Strict TDD Harness:** Our "Implement" phase (`/pb-build`) forces a strict **Red → Green → Refactor** loop. If an agent fails, we automatically revert the workspace (Recovery) to prevent code pollution.
-- **Verification-Driven:** We require the "Plan" phase to define *exactly* how to verify success (Critical Path Verification), turning the inspection problem into a binary execution check.
+### Practical Principles in pb-spec
+
+- **Context Before Code:** `/pb-init` and `/pb-plan` establish project and requirement context before implementation starts.
+- **Verification by Design:** Planning requires explicit verification commands so completion is measurable.
+- **Strict TDD Execution:** `/pb-build` enforces Red → Green → Refactor with per-task status tracking.
+- **Safe Failure Recovery:** Failed attempts use scoped recovery guidance to avoid polluting unrelated workspace state.
+- **Composable Architecture:** Platform differences stay in adapters; workflow semantics stay in shared templates.
 
 ## Features
 
 - **4 agent skills**: `pb-init`, `pb-plan`, `pb-refine`, `pb-build` — covering project analysis, design planning, iterative refinement, and TDD implementation
-- **3 platforms**: Claude Code, VS Code Copilot, OpenCode
+- **5 platforms**: Claude Code, VS Code Copilot, OpenCode, Gemini CLI, Codex
 - **Zero config**: run `pb-spec init` and start using AI prompts immediately
 - **Idempotent**: safe to re-run; use `--force` to overwrite existing files
 - **Built with**: Python 3.12+, [click](https://click.palletsprojects.com/), [uv](https://docs.astral.sh/uv/)
@@ -46,15 +54,17 @@ pipx install pb-spec
 ## Quick Start
 
 ```bash
-# 1. Install skills for your AI tool
+# 1. Install skills/prompts for your AI tool
 cd my-project
-pb-spec init --ai claude       # or: copilot, opencode, all
+pb-spec init --ai claude       # or: copilot, opencode, gemini, codex, all
 
-# 2. Open the project in your AI coding assistant and use the skills:
+# 2. Open the project in your AI coding assistant and use the installed commands/prompts:
 #    /pb-init                          → Generate AGENTS.md project context
 #    /pb-plan Add WebSocket auth       → Generate specs/YYYY-MM-DD-01-add-websocket-auth/
 #    /pb-refine add-websocket-auth     → (Optional) Refine design based on feedback
 #    /pb-build add-websocket-auth      → Implement tasks via TDD subagents
+#
+#    Note for Codex: prompts are loaded from .codex/prompts and typically run via /prompts:<name>.
 ```
 
 ## Supported AI Tools
@@ -64,6 +74,8 @@ pb-spec init --ai claude       # or: copilot, opencode, all
 | Claude Code | `.claude/skills/pb-<name>/SKILL.md` | YAML frontmatter + Markdown |
 | VS Code Copilot | `.github/prompts/pb-<name>.prompt.md` | Markdown (no frontmatter) |
 | OpenCode | `.opencode/skills/pb-<name>/SKILL.md` | YAML frontmatter + Markdown |
+| Gemini CLI | `.gemini/commands/pb-<name>.toml` | TOML (`description` + `prompt`) |
+| Codex | `.codex/prompts/pb-<name>.md` | YAML frontmatter + Markdown |
 
 ## CLI Reference
 
@@ -73,7 +85,7 @@ pb-spec init --ai <platform> [--force]
 
 Install skill files into the current project.
 
-- `--ai` — Target platform: `claude`, `copilot`, `opencode`, or `all`
+- `--ai` — Target platform: `claude`, `copilot`, `opencode`, `gemini`, `codex`, or `all`
 - `--force` — Overwrite existing files
 
 ```text

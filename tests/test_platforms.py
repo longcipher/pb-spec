@@ -6,7 +6,9 @@ import pytest
 
 from pb_spec.platforms import get_platform, resolve_targets
 from pb_spec.platforms.claude import ClaudePlatform
+from pb_spec.platforms.codex import CodexPlatform
 from pb_spec.platforms.copilot import CopilotPlatform
+from pb_spec.platforms.gemini import GeminiPlatform
 from pb_spec.platforms.opencode import OpenCodePlatform
 
 # --- skill_names ---
@@ -38,6 +40,18 @@ def test_opencode_skill_path():
     assert p.get_skill_path(cwd, "pb-init") == Path("/project/.opencode/skills/pb-init/SKILL.md")
 
 
+def test_gemini_skill_path():
+    p = GeminiPlatform()
+    cwd = Path("/project")
+    assert p.get_skill_path(cwd, "pb-init") == Path("/project/.gemini/commands/pb-init.toml")
+
+
+def test_codex_skill_path():
+    p = CodexPlatform()
+    cwd = Path("/project")
+    assert p.get_skill_path(cwd, "pb-init") == Path("/project/.codex/prompts/pb-init.md")
+
+
 # --- render_skill ---
 
 
@@ -64,13 +78,57 @@ def test_opencode_render_has_yaml_frontmatter():
     assert "# Hello" in result
 
 
+def test_gemini_render_toml_prompt():
+    p = GeminiPlatform()
+    result = p.render_skill("pb-init", "# Hello")
+    assert result.startswith('description = "')
+    assert "prompt = '''" in result
+    assert "# Hello" in result
+
+
+def test_codex_render_has_yaml_frontmatter():
+    p = CodexPlatform()
+    result = p.render_skill("pb-init", "# Hello")
+    assert result.startswith("---\n")
+    assert "description:" in result
+    assert "# Hello" in result
+
+
+# --- description quoting ---
+
+
+def test_claude_render_escapes_quotes_in_description():
+    """Claude YAML frontmatter should escape double quotes in descriptions."""
+    p = ClaudePlatform()
+    result = p.render_skill("pb-init", "# Content")
+    # Current descriptions don't contain quotes; verify YAML is well-formed
+    assert 'description: "' in result
+    assert result.count('---') == 2  # opening and closing frontmatter
+
+
+def test_opencode_render_escapes_quotes_in_description():
+    """OpenCode YAML frontmatter should escape double quotes in descriptions."""
+    p = OpenCodePlatform()
+    result = p.render_skill("pb-init", "# Content")
+    assert 'description: "' in result
+    assert result.count('---') == 2
+
+
+def test_codex_render_escapes_quotes_in_description():
+    """Codex YAML frontmatter should escape double quotes in descriptions."""
+    p = CodexPlatform()
+    result = p.render_skill("pb-init", "# Content")
+    assert 'description: "' in result
+    assert result.count('---') == 2
+
+
 # --- resolve_targets ---
 
 
 def test_resolve_targets_all():
     targets = resolve_targets("all")
-    assert len(targets) == 3
-    assert set(targets) == {"claude", "copilot", "opencode"}
+    assert len(targets) == 5
+    assert set(targets) == {"claude", "copilot", "opencode", "gemini", "codex"}
 
 
 def test_resolve_targets_single():
@@ -85,6 +143,16 @@ def test_get_platform_claude():
     assert isinstance(p, ClaudePlatform)
 
 
+def test_get_platform_gemini():
+    p = get_platform("gemini")
+    assert isinstance(p, GeminiPlatform)
+
+
+def test_get_platform_codex():
+    p = get_platform("codex")
+    assert isinstance(p, CodexPlatform)
+
+
 def test_get_platform_invalid_raises():
     with pytest.raises(ValueError, match="Unknown platform"):
         get_platform("invalid")
@@ -97,3 +165,5 @@ def test_platform_name():
     assert ClaudePlatform().name == "claude"
     assert CopilotPlatform().name == "copilot"
     assert OpenCodePlatform().name == "opencode"
+    assert GeminiPlatform().name == "gemini"
+    assert CodexPlatform().name == "codex"

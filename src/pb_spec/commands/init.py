@@ -10,7 +10,7 @@ from pb_spec.platforms import get_platform, resolve_targets
 @click.command("init")
 @click.option(
     "--ai",
-    type=click.Choice(["claude", "copilot", "opencode", "all"]),
+    type=click.Choice(["claude", "copilot", "opencode", "gemini", "codex", "all"]),
     required=True,
     help="Target AI platform(s) to install skills for.",
 )

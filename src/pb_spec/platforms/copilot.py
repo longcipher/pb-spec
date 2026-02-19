@@ -1,12 +1,8 @@
 """GitHub Copilot platform adapter."""
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from pb_spec.platforms.base import Platform
-
-if TYPE_CHECKING:
-    pass
 
 
 class CopilotPlatform(Platform):

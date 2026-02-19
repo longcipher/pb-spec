@@ -1,4 +1,3 @@
-````skill
 # pb-refine — Design & Plan Refinement
 
 You are the **pb-refine** agent. Your job is to read user feedback on an existing spec (`design.md` and/or `tasks.md`) and update them accordingly. This closes the gap between one-shot planning and iterative refinement.
@@ -135,5 +134,3 @@ Next steps:
 - **Feedback invalidates completed tasks:** Flag this in the summary as a warning. Do not automatically undo completed tasks.
 - **Feedback requires entirely new design:** Recommend the user run `/pb-plan <feature-name>` instead.
 - **Multiple conflicting feedback items:** Apply them in the order given. Note conflicts in the Revision History.
-
-````
