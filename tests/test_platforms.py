@@ -103,7 +103,7 @@ def test_claude_render_escapes_quotes_in_description():
     result = p.render_skill("pb-init", "# Content")
     # Current descriptions don't contain quotes; verify YAML is well-formed
     assert 'description: "' in result
-    assert result.count('---') == 2  # opening and closing frontmatter
+    assert result.count("---") == 2  # opening and closing frontmatter
 
 
 def test_opencode_render_escapes_quotes_in_description():
@@ -111,7 +111,7 @@ def test_opencode_render_escapes_quotes_in_description():
     p = OpenCodePlatform()
     result = p.render_skill("pb-init", "# Content")
     assert 'description: "' in result
-    assert result.count('---') == 2
+    assert result.count("---") == 2
 
 
 def test_codex_render_escapes_quotes_in_description():
@@ -119,7 +119,7 @@ def test_codex_render_escapes_quotes_in_description():
     p = CodexPlatform()
     result = p.render_skill("pb-init", "# Content")
     assert 'description: "' in result
-    assert result.count('---') == 2
+    assert result.count("---") == 2
 
 
 # --- resolve_targets ---

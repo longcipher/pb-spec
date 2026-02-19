@@ -61,7 +61,9 @@ def test_pb_refine_templates_are_not_wrapped_as_code_block():
     skill = load_skill_content("pb-refine").lstrip()
     prompt = load_prompt("pb-refine").lstrip()
     assert not skill.startswith("```"), "pb-refine SKILL should be plain markdown, not a code block"
-    assert not prompt.startswith("```"), "pb-refine prompt should be plain markdown, not a code block"
+    assert not prompt.startswith("```"), (
+        "pb-refine prompt should be plain markdown, not a code block"
+    )
 
 
 def test_pb_build_templates_avoid_destructive_git_checkout():
@@ -75,6 +77,4 @@ def test_prompt_templates_no_duplicate_separators():
     """Prompt templates should not have consecutive --- separators (redundant formatting)."""
     for skill in ("pb-init", "pb-plan", "pb-refine", "pb-build"):
         content = load_prompt(skill)
-        assert "\n---\n\n---\n" not in content, (
-            f"{skill} prompt has duplicate --- separators"
-        )
+        assert "\n---\n\n---\n" not in content, f"{skill} prompt has duplicate --- separators"

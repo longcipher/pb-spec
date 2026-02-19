@@ -36,4 +36,3 @@ class GeminiPlatform(Platform):
         self, cwd: Path, skill_name: str, skill_target: Path, force: bool, installed: list[str]
     ) -> None:
         """Gemini command files are self-contained — no references."""
-

@@ -29,4 +29,3 @@ class CodexPlatform(Platform):
         self, cwd: Path, skill_name: str, skill_target: Path, force: bool, installed: list[str]
     ) -> None:
         """Codex prompt files are self-contained — no references."""
-

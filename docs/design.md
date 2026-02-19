@@ -75,6 +75,7 @@ pb-spec/
 | Codex | `.codex/prompts/pb-<name>.md` | YAML frontmatter + Markdown prompt | No |
 
 Notes:
+
 - Skills (`pb-init`, `pb-plan`, `pb-refine`, `pb-build`) are common semantic units.
 - Prompt-oriented platforms consume templates from `templates/prompts`.
 - Skill-oriented platforms consume templates from `templates/skills` and optional `references/`.
@@ -91,6 +92,7 @@ Notes:
    - install references when platform supports references
 
 Behavior guarantees:
+
 - Idempotent by default.
 - Explicit overwrite only with `--force`.
 - Printed install paths are relative to cwd.
