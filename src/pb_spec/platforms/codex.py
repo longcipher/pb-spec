@@ -13,7 +13,9 @@ class CodexPlatform(Platform):
 
     def get_skill_path(self, cwd: Path, skill_name: str, global_install: bool = False) -> Path:
         if global_install:
-            codex_home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).expanduser()
+            codex_home = Path(
+                os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))
+            ).expanduser()
             return codex_home / "prompts" / f"{skill_name}.md"
         return cwd / ".codex" / "prompts" / f"{skill_name}.md"
 
