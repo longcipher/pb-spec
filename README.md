@@ -57,6 +57,7 @@ pipx install pb-spec
 # 1. Install skills/prompts for your AI tool
 cd my-project
 pb-spec init --ai claude       # or: copilot, opencode, gemini, codex, all
+pb-spec init --ai all -g       # install globally to each agent's home/config dir
 
 # 2. Open the project in your AI coding assistant and use the installed commands/prompts:
 #    /pb-init                          → Generate AGENTS.md project context
@@ -80,12 +81,13 @@ pb-spec init --ai claude       # or: copilot, opencode, gemini, codex, all
 ## CLI Reference
 
 ```text
-pb-spec init --ai <platform> [--force]
+pb-spec init --ai <platform> [-g, --global] [--force]
 ```
 
-Install skill files into the current project.
+Install skill files into the current project, or into global agent config directories with `-g`.
 
 - `--ai` — Target platform: `claude`, `copilot`, `opencode`, `gemini`, `codex`, or `all`
+- `-g, --global` — Install into each AI tool's home/config directory (instead of current project)
 - `--force` — Overwrite existing files
 
 ```text

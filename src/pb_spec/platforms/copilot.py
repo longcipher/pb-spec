@@ -10,7 +10,9 @@ class CopilotPlatform(Platform):
 
     name = "copilot"
 
-    def get_skill_path(self, cwd: Path, skill_name: str) -> Path:
+    def get_skill_path(self, cwd: Path, skill_name: str, global_install: bool = False) -> Path:
+        if global_install:
+            return Path.home() / ".copilot" / "prompts" / f"{skill_name}.prompt.md"
         return cwd / ".github" / "prompts" / f"{skill_name}.prompt.md"
 
     def render_skill(self, skill_name: str, template_content: str) -> str:

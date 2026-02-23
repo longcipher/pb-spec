@@ -52,6 +52,55 @@ def test_codex_skill_path():
     assert p.get_skill_path(cwd, "pb-init") == Path("/project/.codex/prompts/pb-init.md")
 
 
+# --- get_skill_path (global) ---
+
+
+def test_claude_global_skill_path_uses_claude_config_dir(monkeypatch):
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", "/claude-config")
+    p = ClaudePlatform()
+    cwd = Path("/project")
+    assert p.get_skill_path(cwd, "pb-init", global_install=True) == Path(
+        "/claude-config/skills/pb-init/SKILL.md"
+    )
+
+
+def test_copilot_global_skill_path(monkeypatch):
+    p = CopilotPlatform()
+    cwd = Path("/project")
+    with monkeypatch.context() as m:
+        m.setenv("HOME", "/users/alice")
+        assert p.get_skill_path(cwd, "pb-init", global_install=True) == Path(
+            "/users/alice/.copilot/prompts/pb-init.prompt.md"
+        )
+
+
+def test_opencode_global_skill_path_uses_xdg_config_home(monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", "/users/alice/.config")
+    p = OpenCodePlatform()
+    cwd = Path("/project")
+    assert p.get_skill_path(cwd, "pb-init", global_install=True) == Path(
+        "/users/alice/.config/opencode/skills/pb-init/SKILL.md"
+    )
+
+
+def test_gemini_global_skill_path(monkeypatch):
+    monkeypatch.setenv("HOME", "/users/alice")
+    p = GeminiPlatform()
+    cwd = Path("/project")
+    assert p.get_skill_path(cwd, "pb-init", global_install=True) == Path(
+        "/users/alice/.gemini/commands/pb-init.toml"
+    )
+
+
+def test_codex_global_skill_path_uses_codex_home(monkeypatch):
+    monkeypatch.setenv("CODEX_HOME", "/my/codex-home")
+    p = CodexPlatform()
+    cwd = Path("/project")
+    assert p.get_skill_path(cwd, "pb-init", global_install=True) == Path(
+        "/my/codex-home/prompts/pb-init.md"
+    )
+
+
 # --- render_skill ---
 
 

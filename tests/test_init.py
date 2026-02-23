@@ -140,6 +140,34 @@ def test_init_all(tmp_path, monkeypatch, runner):
     assert (tmp_path / ".codex" / "prompts" / "pb-init.md").exists()
 
 
+def test_init_all_global_installs_to_agent_home_dirs(tmp_path, monkeypatch, runner):
+    """pb-spec init --ai all --global installs into each agent's home config directory."""
+    project = tmp_path / "project"
+    home = tmp_path / "home"
+    config_home = home / ".config"
+    project.mkdir()
+    home.mkdir()
+    config_home.mkdir()
+
+    monkeypatch.chdir(project)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(config_home))
+
+    result = runner.invoke(main, ["init", "--ai", "all", "--global"])
+    assert result.exit_code == 0, result.output
+
+    # Claude
+    assert (home / ".claude" / "skills" / "pb-init" / "SKILL.md").exists()
+    # Copilot
+    assert (home / ".copilot" / "prompts" / "pb-init.prompt.md").exists()
+    # OpenCode
+    assert (config_home / "opencode" / "skills" / "pb-init" / "SKILL.md").exists()
+    # Gemini
+    assert (home / ".gemini" / "commands" / "pb-init.toml").exists()
+    # Codex
+    assert (home / ".codex" / "prompts" / "pb-init.md").exists()
+
+
 # --- --force overwrites ---
 
 

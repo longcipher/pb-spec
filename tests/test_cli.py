@@ -30,6 +30,13 @@ def test_help_contains_subcommands():
     assert "update" in result.output
 
 
+def test_init_help_contains_global_option():
+    """pb-spec init --help should show the global install option."""
+    result = runner.invoke(main, ["init", "--help"])
+    assert result.exit_code == 0
+    assert "-g, --global" in result.output
+
+
 def test_version_shows_version_number():
     """pb-spec version should print the version number."""
     expected_version = get_project_version()

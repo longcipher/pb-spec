@@ -37,7 +37,7 @@ class Platform(ABC):
         return DEFAULT_SKILL_NAMES
 
     @abstractmethod
-    def get_skill_path(self, cwd: Path, skill_name: str) -> Path:
+    def get_skill_path(self, cwd: Path, skill_name: str, global_install: bool = False) -> Path:
         """Return path for skill file in target project."""
         ...
 
@@ -46,18 +46,18 @@ class Platform(ABC):
         """Render template content into platform-specific format."""
         ...
 
-    def install(self, cwd: Path, force: bool = False) -> list[str]:
+    def install(self, cwd: Path, force: bool = False, global_install: bool = False) -> list[str]:
         """Install all skills to target directory."""
         installed = []
         for skill_name in self.skill_names:
-            target = self.get_skill_path(cwd, skill_name)
+            target = self.get_skill_path(cwd, skill_name, global_install=global_install)
             if target.exists() and not force:
                 print(f"  Skipping {target} (exists, use --force)")
                 continue
             content = self._load_and_render(skill_name)
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding="utf-8")
-            installed.append(str(target.relative_to(cwd)))
+            installed.append(self._format_output_path(target, cwd))
 
             # Install reference files alongside the main skill file
             self._install_references(cwd, skill_name, target, force, installed)
@@ -85,7 +85,19 @@ class Platform(ABC):
                 print(f"  Skipping {ref_target} (exists, use --force)")
                 continue
             ref_target.write_text(content, encoding="utf-8")
-            installed.append(str(ref_target.relative_to(cwd)))
+            installed.append(self._format_output_path(ref_target, cwd))
+
+    @staticmethod
+    def _format_output_path(path: Path, cwd: Path) -> str:
+        """Format path for CLI output across project/global installs."""
+        try:
+            return str(path.relative_to(cwd))
+        except ValueError:
+            home = Path.home()
+            try:
+                return f"~/{path.relative_to(home)}"
+            except ValueError:
+                return str(path)
 
     def _load_and_render(self, skill_name: str) -> str:
         """Load template and render for this platform."""

@@ -11,7 +11,9 @@ class GeminiPlatform(Platform):
 
     name = "gemini"
 
-    def get_skill_path(self, cwd: Path, skill_name: str) -> Path:
+    def get_skill_path(self, cwd: Path, skill_name: str, global_install: bool = False) -> Path:
+        if global_install:
+            return Path.home() / ".gemini" / "commands" / f"{skill_name}.toml"
         return cwd / ".gemini" / "commands" / f"{skill_name}.toml"
 
     def render_skill(self, skill_name: str, template_content: str) -> str:
