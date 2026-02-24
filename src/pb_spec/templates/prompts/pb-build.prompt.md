@@ -237,6 +237,7 @@ You are implementing **Task {{TASK_NUMBER}}: {{TASK_NAME}}**.
 Execute in strict order:
 
 Before coding, define a compact task contract from the provided task block:
+
 - What must change
 - What must not change
 - How success is verified

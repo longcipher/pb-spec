@@ -27,7 +27,6 @@
 - **Priority:** P0
 - **Est. Time:** 1h
 - **Status:** � DONE
-
 - [ ] **Step 1:** Run `uv init --lib` to initialize project.
 - [ ] **Step 2:** Edit `pyproject.toml`:
   - Set `name = "pb-spec"`, minimum Python version `>=3.12`.
@@ -56,7 +55,6 @@
 - **Priority:** P0
 - **Est. Time:** 2h
 - **Status:** � DONE
-
 - [x] **Step 1:** Write `src/pb/cli.py`:
   - Create `click.Group` main command `pb`.
   - Register `init`, `version`, `update` subcommands.
@@ -82,7 +80,6 @@
 - **Priority:** P0
 - **Est. Time:** 3h
 - **Status:** � DONE
-
 - [ ] **Step 1:** Implement `src/pb/platforms/base.py`:
   - Define `Platform` ABC: `name`, `get_skill_path()`, `render_skill()`, `install()`.
   - Implement generic `install()` logic (iterate skill_names, check file existence, write).
@@ -113,7 +110,6 @@
 - **Priority:** P0
 - **Est. Time:** 2h
 - **Status:** � DONE
-
 - [ ] **Step 1:** Implement `src/pb/templates/__init__.py`:
   - `load_template(skill_name: str, filename: str) -> str` — Load template file content.
   - `load_skill_content(skill_name: str) -> str` — Load SKILL.md template.
@@ -156,7 +152,6 @@
 - **Priority:** P0
 - **Est. Time:** 3h
 - **Status:** � DONE
-
 - [ ] **Step 1:** Write `src/pb/templates/skills/pb-init/SKILL.md`:
   - Define agent behavior: Scan project → Detect language/framework → Generate AGENTS.md.
   - Define AGENTS.md output format template.
@@ -179,7 +174,6 @@
 - **Priority:** P0
 - **Est. Time:** 4h
 - **Status:** � DONE
-
 - [ ] **Step 1:** Write `src/pb/templates/skills/pb-plan/SKILL.md`:
   - Define agent behavior: Requirement analysis → Context collection → Generate design.md + tasks.md.
   - Define feature-name generation rules (≤4 words, kebab-case).
@@ -206,7 +200,6 @@
 - **Priority:** P0
 - **Est. Time:** 4h
 - **Status:** � DONE
-
 - [ ] **Step 1:** Write `src/pb/templates/skills/pb-build/SKILL.md`:
   - Define workflow: Read tasks.md → Assign subagent per task → TDD implementation → Mark completed.
   - Define subagent assignment rules (sequential, fresh context).
@@ -233,7 +226,6 @@
 - **Priority:** P0
 - **Est. Time:** 3h
 - **Status:** � DONE
-
 - [ ] **Step 1:** Implement `src/pb/commands/init.py`:
   - Accept `--ai` argument (claude/copilot/opencode/all).
   - Accept `--force` argument.
@@ -264,7 +256,6 @@
 - **Priority:** P1
 - **Est. Time:** 2h
 - **Status:** � DONE
-
 - [ ] **Step 1:** Create E2E test script `tests/e2e_test.sh`:
 
   ```bash
@@ -313,7 +304,6 @@
 - **Priority:** P1
 - **Est. Time:** 2h
 - **Status:** � DONE
-
 - [ ] **Step 1:** Update `README.md`:
   - Project introduction and feature overview.
   - Installation methods (`uv tool install pb-spec` / `pipx install pb-spec`).
@@ -333,7 +323,6 @@
 - **Priority:** P2
 - **Est. Time:** 1h
 - **Status:** � DONE
-
 - [ ] **Step 1:** Create `.github/workflows/ci.yml`:
   - Trigger: push to main, pull_request.
   - Matrix: Python 3.12, 3.13.
@@ -350,7 +339,6 @@
 - **Priority:** P2
 - **Est. Time:** 1h
 - **Status:** � DONE
-
 - [ ] **Step 1:** Confirm `pyproject.toml` contains:
   - `[project]` full metadata (name, version, description, authors, license, urls).
   - `[build-system]` using hatchling.

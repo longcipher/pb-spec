@@ -73,6 +73,7 @@ Gather context to inform the design. **Do not rely solely on `AGENTS.md`** — a
 If `AGENTS.md` does not exist, scan the project root directly (config files, directory structure) to infer project context. Recommend running `/pb-init` first in your summary.
 
 **Evidence precedence (highest to lowest):**
+
 1. Live codebase state
 2. Existing project docs/specs
 3. `AGENTS.md`

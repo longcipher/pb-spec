@@ -25,6 +25,7 @@ You are implementing **Task {{TASK_NUMBER}}: {{TASK_NAME}}**.
 Execute the following steps in strict order. **You must output your reasoning for each step.** Do not skip or reorder any step.
 
 Before coding, define a compact task contract from the provided task block:
+
 - What must change
 - What must not change
 - How success is verified

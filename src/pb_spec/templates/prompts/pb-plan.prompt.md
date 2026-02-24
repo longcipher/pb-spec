@@ -69,6 +69,7 @@ Gather context to inform the design. **Do not rely solely on `AGENTS.md`** — a
 If `AGENTS.md` does not exist, search the codebase directly for project context. Recommend running `/pb-init` first in your summary.
 
 **Evidence precedence (highest to lowest):**
+
 1. Live codebase state
 2. Existing project docs/specs
 3. `AGENTS.md`
