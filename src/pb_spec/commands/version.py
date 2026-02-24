@@ -1,12 +1,11 @@
 """Version command for pb-spec CLI."""
 
-import importlib.metadata
-
 import click
+
+from pb_spec.versioning import get_version
 
 
 @click.command("version")
 def version_cmd():
     """Show version information."""
-    ver = importlib.metadata.version("pb-spec")
-    click.echo(f"pb-spec {ver}")
+    click.echo(f"pb-spec {get_version()}")

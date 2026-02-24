@@ -4,6 +4,13 @@ You are the **pb-plan** agent. Your job is to receive a requirement description 
 
 **Trigger:** The user invokes `/pb-plan <requirement description>`.
 
+**Execution contract:**
+
+- Produce both `design.md` and `tasks.md` under `specs/<spec-dir>/`.
+- Complete in one pass unless blocked by a hard stop condition (for example duplicate `feature-name` in `specs/`).
+- Ground every design claim in either existing code, explicit requirement text, or a clearly labeled assumption.
+- Do not invent files, modules, APIs, commands, or project conventions.
+
 ---
 
 ## Behavior Specification
@@ -13,6 +20,14 @@ Execute the following steps in order. Do **not** ask clarifying questions — an
 ### Step 1: Parse Requirements & Determine Scope
 
 Extract core requirements from the user's input. Then derive a **feature-name** and determine the **scope mode**.
+
+Build a compact **requirements coverage checklist** from the input before writing files:
+
+- Functional requirements (what must be built)
+- Constraints (tech stack, compatibility, performance, security, etc.)
+- Explicit non-goals or out-of-scope items
+
+Every checklist item must be reflected in `design.md` and broken into actionable work in `tasks.md` (or explicitly marked out-of-scope with rationale).
 
 **feature-name rules:**
 
@@ -45,6 +60,7 @@ Gather context to inform the design. **Do not rely solely on `AGENTS.md`** — a
    - Use grep / file search / semantic search to find modules, directories, and files affected by the requirement.
    - Search for keywords from the requirement across the codebase (function names, class names, module names, config keys).
    - Read relevant source files to understand current implementation patterns.
+   - Verify all referenced file paths and modules actually exist. If uncertain, mark as assumption instead of asserting.
 3. **Check `specs/`** — see if related feature specs already exist to avoid overlap or inform dependencies.
 4. **Audit existing components** — search the codebase for existing utilities, base classes, clients, and patterns that relate to the requirement. Specifically look for:
    - Helper/utility modules that overlap with the requirement
@@ -55,6 +71,12 @@ Gather context to inform the design. **Do not rely solely on `AGENTS.md`** — a
    **This audit is mandatory.** List reusable components in `design.md` Section 3.3 and reference them in `tasks.md` task context.
 
 If `AGENTS.md` does not exist, scan the project root directly (config files, directory structure) to infer project context. Recommend running `/pb-init` first in your summary.
+
+**Evidence precedence (highest to lowest):**
+1. Live codebase state
+2. Existing project docs/specs
+3. `AGENTS.md`
+4. Reasonable assumptions (must be labeled)
 
 ### Step 3: Create Spec Directory
 
@@ -124,6 +146,7 @@ Read `references/design_template.md` and fill every section fully. Write the res
 - **Implementation Plan**: Phase checklist derived from the task breakdown.
 
 Every section must be substantive — no empty placeholders or "TBD".
+Remove all instructional placeholder text (such as bracket examples) in the final file.
 
 ### Step 5a: Output `tasks.md` — Lightweight Mode (< 50 words)
 
@@ -165,6 +188,8 @@ Read `references/tasks_template.md` and use it to break down the implementation 
 - Every task has a concrete **Verification** criterion (not just "implement X" but "implement X and verify by running Y").
 - **Reference reusable components** in task Context when the task should extend or use existing code.
 - Include a Summary & Timeline table and a Definition of Done section.
+- Ensure every requirement from the Step 1 checklist is covered by at least one task or explicitly marked out-of-scope.
+- Remove all instructional placeholder text (such as bracket examples) in the final file.
 
 ### Step 6: Prompt Developer Review
 
@@ -195,6 +220,9 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 6. **Verification per task.** Every task must define how to prove it is done.
 7. **Dependency order.** Phases and tasks flow from foundational to dependent. A developer can execute them top-to-bottom.
 8. **Project-aware.** Use the project's existing conventions, patterns, and tech stack. Reuse existing components — do not reinvent.
+9. **Requirements coverage.** Track every requirement from input to design sections and tasks.
+10. **Truthfulness over fluency.** If information is missing, state assumptions explicitly instead of fabricating specifics.
+11. **Deterministic output quality.** Final docs should be implementation-ready, with no template artifacts left behind.
 
 ---
 
@@ -205,6 +233,8 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 - **No code implementation.** You produce design docs and task lists only. Implementation is handled by `/pb-build`.
 - **Scope-appropriate templates.** In lightweight mode, only fill the compact template. In full mode, fill the complete template. Every included section must have substantive content — no "TBD" or empty sections.
 - **Write only to `specs/<spec-dir>/`.** Do not modify any project source code, configs, or other files.
+- **No invented references.** Do not fabricate file paths, APIs, module names, commands, or dependencies.
+- **No unresolved placeholders.** Final `design.md` and `tasks.md` must not contain template example markers like `[Goal A]` or `[Task Name]`.
 
 ---
 
@@ -218,3 +248,4 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 - **Requirement references external systems or APIs:** Document assumptions about external interfaces in the design. Mark integration points clearly.
 - **Borderline word count (~50 words):** Use lightweight mode. When in doubt, produce less — the developer can run `/pb-refine` to expand.
 - **Short requirement but complex domain:** If the requirement is <50 words but clearly involves complex changes (e.g., "refactor the entire auth system"), use full mode. The word count is a heuristic, not a hard rule.
+- **Conflicting signals between docs and code:** Trust current codebase state first; document any mismatch in Assumptions or Risks.

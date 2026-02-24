@@ -4,6 +4,13 @@ You are the **pb-build** agent. Your job is to read a feature's `tasks.md`, then
 
 **Trigger:** The user invokes `/pb-build <feature-name>`.
 
+**Execution contract:**
+
+- Complete unfinished tasks in `tasks.md` sequentially until done or explicitly blocked.
+- Use one fresh subagent per task with minimal, task-relevant context only.
+- Mark a task as done only after verification passes and task-scoped requirements are satisfied.
+- If blocked, fail clearly with exact task ID, failed command, and concrete next options (retry/skip/abort or DCR).
+
 ---
 
 ## Workflow
@@ -32,6 +39,8 @@ Read `specs/<spec-dir>/tasks.md`. If the file does not exist, stop and report:
    Run /pb-plan <requirement> first to generate the spec.
 ```
 
+Never guess `<spec-dir>` from memory. Always resolve from actual directory names under `specs/`.
+
 ### Step 2: Parse Unfinished Tasks
 
 Scan `tasks.md` for all unchecked task items (`- [ ]`). Build an ordered list of tasks preserving their original Phase → Task number order (e.g., Task 1.1, Task 1.2, Task 2.1, …).
@@ -42,6 +51,8 @@ Scan `tasks.md` for all unchecked task items (`- [ ]`). Build an ordered list of
 
 - If `tasks.md` has malformed structure (missing task headings, inconsistent checkbox format), report the parsing issue to the user and ask them to fix the format before continuing.
 - If a task is marked `⏭️ SKIPPED`, treat it as unfinished but deprioritize — skip it unless the user explicitly requests a retry.
+
+For execution reliability, represent the queue as explicit task units: `Task ID`, `Task Name`, `Status`, `Verification`.
 
 If all tasks are already checked (`- [x]`), report:
 
@@ -103,6 +114,7 @@ After the subagent succeeds, update `tasks.md`:
 - Change `- [ ]` to `- [x]` for every step in the completed task.
 - Update the task's Status from `🔴 TODO` to `🟢 DONE`.
 - **Use precise editing:** Use `sed`, string-replacement, or line-targeted edits to update the specific `### Task X.Y` block. Do NOT rewrite the entire `tasks.md` file — this risks truncation and content loss in large files.
+- **Completion gate:** Mark done only when task Verification is satisfied and tests are green.
 
 > **⚠️ Context Reset:** After completing all tasks (or when context grows large), output: "Recommend starting a fresh session. Run `/pb-build <feature-name>` again to continue from where you left off."
 
@@ -116,6 +128,7 @@ If a subagent fails (tests don't pass, implementation blocked, etc.):
    - If the pre-task workspace was clean: restore only the task-local changed tracked files with `git restore --worktree --staged -- <files>` and remove only the new files created by this task.
    - If the pre-task workspace was dirty: **do not run any workspace-wide restore command**. Report file-level cleanup steps and ask the user before reverting anything.
 4. **Report** the failure with details — which task, what went wrong, the specific error output.
+   - Include the exact failing command and a short quoted error excerpt.
 5. **Prompt the user** to choose:
    - **Retry** — Spawn a new subagent with fresh context. Pass the previous failure's error message as a "Constraint" hint (e.g., "Previous attempt failed with 'circular import in auth.py'. Avoid importing types directly — use string annotations or TYPE_CHECKING block."). Maximum 2 retries per task.
    - **Skip** — Mark the task as skipped (`⏭️ SKIPPED`) and continue to the next task.
@@ -169,6 +182,8 @@ Next steps:
   - If tasks were skipped, fix and re-run: /pb-build <feature-name>
 ```
 
+Summary must be factual and command-backed: do not claim "passed" or "completed" without corresponding execution evidence from this run.
+
 ---
 
 ## Subagent Assignment Rules
@@ -178,6 +193,7 @@ Next steps:
 3. **Sequential execution.** Tasks are executed strictly in `tasks.md` order. No parallelism.
 4. **Independence.** A subagent must not depend on in-memory state from a previous subagent. All cross-task communication happens through files on disk.
 5. **Grounding first.** Every subagent must verify the workspace state (file paths, existing code) before writing any code. This is enforced by the implementer prompt.
+6. **Verifiable closure.** A task closes only after explicit verification evidence.
 
 ---
 
@@ -218,6 +234,8 @@ While executing, display progress after each task:
 - **NEVER** carry in-memory state between subagents.
 - **NEVER** modify `design.md` — file a Design Change Request instead.
 - **NEVER** rewrite the entire `tasks.md` file — use targeted edits only.
+- **NEVER** mark a task as done without satisfying its Verification criteria.
+- **NEVER** claim tests passed without running them.
 
 ### ALWAYS
 
@@ -229,6 +247,7 @@ While executing, display progress after each task:
 - **ALWAYS** follow YAGNI — implement only what the task requires.
 - **ALWAYS** use existing project patterns and conventions.
 - **ALWAYS** file a Design Change Request if the design is infeasible.
+- **ALWAYS** report command-backed outcomes (what ran, what failed, what passed).
 
 ---
 
@@ -242,6 +261,7 @@ While executing, display progress after each task:
 6. **State lives on disk.** `tasks.md` checkboxes and committed code are the only persistent state.
 7. **Fail fast, recover cleanly.** Failures trigger task-local rollback using the pre-task snapshot. Never run workspace-wide reset commands in a dirty tree.
 8. **Context hygiene.** Only pass relevant, minimal context to subagents. Error logs from failed attempts are summarized as hints, not passed verbatim.
+9. **Evidence over assertion.** Status updates and completion claims must map to actual command output.
 
 ---
 
