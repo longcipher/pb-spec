@@ -78,3 +78,32 @@ def test_prompt_templates_no_duplicate_separators():
     for skill in ("pb-init", "pb-plan", "pb-refine", "pb-build"):
         content = load_prompt(skill)
         assert "\n---\n\n---\n" not in content, f"{skill} prompt has duplicate --- separators"
+
+
+def test_pb_init_templates_use_non_destructive_marker_merge_for_agents_md():
+    """pb-init templates should update AGENTS.md via a marker block without rewriting existing text."""
+    for content in (load_skill_content("pb-init"), load_prompt("pb-init")):
+        assert "<!-- BEGIN PB-INIT MANAGED BLOCK -->" in content
+        assert "<!-- END PB-INIT MANAGED BLOCK -->" in content
+        assert (
+            "If `AGENTS.md` exists but markers are absent: append the managed block at the end"
+            in content
+        )
+        assert (
+            "Do NOT delete, reorder, or rewrite any pre-existing content outside the managed block."
+            in content
+        )
+        assert (
+            "Never assume a specific `AGENTS.md` format, section name, or template structure."
+            in content
+        )
+
+
+def test_non_init_templates_treat_agents_md_as_read_only():
+    """pb-plan/pb-refine/pb-build should not modify AGENTS.md unless explicitly asked."""
+    for skill in ("pb-plan", "pb-refine", "pb-build"):
+        for content in (load_skill_content(skill), load_prompt(skill)):
+            assert (
+                "`AGENTS.md` is read-only in this phase." in content
+                or "modify, delete, or reformat `AGENTS.md`" in content
+            ), f"{skill} template must mark AGENTS.md as read-only"

@@ -24,7 +24,7 @@ pb-spec follows a **harness-first** philosophy: reliability comes from process d
 | [Reflexion](https://arxiv.org/abs/2303.11366) | Learn from failure signals via iterative retries | Retry/skip/abort and DCR flow in `pb-build` |
 | [Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) | Grounding, context hygiene, recovery, observability | State checks, minimal context handoff, task-local rollback guidance |
 | [Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) | Prefer simple composable workflows over framework complexity | Small adapter-based CLI + explicit workflow prompts |
-| [Stop Using /init for AGENTS.md](https://addyosmani.com/blog/agents-md/) | Prefer minimal AGENTS.md (only undiscoverable facts) | `/pb-init` audits repo and generates minimal AGENTS.md with strict three-part filter (not inferrable, operationally decisive, not guessable) |
+| [Stop Using /init for AGENTS.md](https://addyosmani.com/blog/agents-md/) | Keep AGENTS.md focused and maintainable | `/pb-init` updates a managed snapshot block in `AGENTS.md` while preserving all user-authored constraints outside that block |
 
 ### Practical Principles in pb-spec
 
@@ -61,7 +61,7 @@ pb-spec init --ai claude       # or: copilot, opencode, gemini, codex, all
 pb-spec init --ai all -g       # install globally to each agent's home/config dir
 
 # 2. Open the project in your AI coding assistant and use the installed commands/prompts:
-#    /pb-init                          → Audit repo, produce minimal AGENTS.md (only undiscoverable facts)
+#    /pb-init                          → Audit repo, append/update a managed AGENTS.md snapshot block (non-destructive)
 #    /pb-plan Add WebSocket auth       → Generate specs/YYYY-MM-DD-01-add-websocket-auth/
 #    /pb-refine add-websocket-auth     → (Optional) Refine design based on feedback
 #    /pb-build add-websocket-auth      → Implement tasks via TDD subagents
@@ -111,9 +111,20 @@ four agent skills that chain together:
 /pb-init → /pb-plan → [/pb-refine] → /pb-build
 ```
 
-### 1. `/pb-init` — AGENTS.md Audit & Minimization
+### 1. `/pb-init` — AGENTS.md Snapshot & Safe Merge
 
-Audits your project and produces an **extremely minimal** `AGENTS.md` at the project root. Instead of dumping project overview info that agents can discover themselves, it applies a strict three-part filter: each entry must be (1) not inferrable from code, (2) operationally decisive, and (3) not guessable from industry conventions. Every entry in AGENTS.md represents a codebase smell — the goal is to fix root causes and drive AGENTS.md toward zero entries over time. **Preserves user-added context** across re-runs.
+Audits your project and writes a `pb-init` snapshot into `AGENTS.md` using managed markers:
+
+- `<!-- BEGIN PB-INIT MANAGED BLOCK -->`
+- `<!-- END PB-INIT MANAGED BLOCK -->`
+
+Merge behavior is non-destructive:
+
+- If markers exist, only that managed block is replaced.
+- If markers do not exist, the managed block is appended.
+- All existing content outside the managed block is preserved verbatim.
+
+This design avoids relying on any fixed `AGENTS.md` section layout and protects user-maintained constraints across re-runs.
 
 ### 2. `/pb-plan <requirement>` — Design & Task Planning
 
@@ -125,21 +136,21 @@ specs/<YYYY-MM-DD-NO-feature-name>/
 └── tasks.md     # Ordered implementation tasks (logical units of work)
 ```
 
-The spec directory follows the naming format `YYYY-MM-DD-NO-feature-name` (e.g., `2026-02-15-01-add-websocket-auth`). The feature-name part must be unique across all specs.
+The spec directory follows the naming format `YYYY-MM-DD-NO-feature-name` (e.g., `2026-02-15-01-add-websocket-auth`). The feature-name part must be unique across all specs. During planning, `AGENTS.md` is treated as read-only policy context (free-form, no fixed layout assumptions).
 
 ### 3. `/pb-refine <feature-name>` — Design Iteration (Optional)
 
-Reads user feedback or Design Change Requests (from failed builds) and intelligently updates `design.md` and `tasks.md`. It maintains a revision history and cascades design changes to the task list without overwriting completed work.
+Reads user feedback or Design Change Requests (from failed builds) and intelligently updates `design.md` and `tasks.md`. It maintains a revision history and cascades design changes to the task list without overwriting completed work. `AGENTS.md` remains read-only in this phase.
 
 ### 4. `/pb-build <feature-name>` — Subagent-Driven Implementation
 
-Reads `specs/<YYYY-MM-DD-NO-feature-name>/tasks.md` and implements each task sequentially. Every task is executed by a fresh subagent following strict TDD (Red → Green → Refactor). Supports **Design Change Requests** if the planned design proves infeasible during implementation. Only the `<feature-name>` part is needed when invoking — the agent resolves the full directory automatically.
+Reads `specs/<YYYY-MM-DD-NO-feature-name>/tasks.md` and implements each task sequentially. Every task is executed by a fresh subagent following strict TDD (Red → Green → Refactor). Supports **Design Change Requests** if the planned design proves infeasible during implementation. Only the `<feature-name>` part is needed when invoking — the agent resolves the full directory automatically. `AGENTS.md` is read-only unless the user explicitly requests an `AGENTS.md` change.
 
 ## Skills Overview
 
 | Skill | Trigger | Output | Description |
 |---|---|---|---|
-| `pb-init` | `/pb-init` | `AGENTS.md` | Audit repo for undiscoverable gotchas, produce minimal agent context |
+| `pb-init` | `/pb-init` | `AGENTS.md` | Audit repo and safely update/append a managed snapshot block without rewriting user-authored constraints |
 | `pb-plan` | `/pb-plan <requirement>` | `specs/<YYYY-MM-DD-NO-feature-name>/design.md` + `tasks.md` | Design proposal + ordered task breakdown |
 | `pb-refine` | `/pb-refine <feature>` | Revised spec files | Apply feedback or Design Change Requests |
 | `pb-build` | `/pb-build <feature-name>` | Code + tests | TDD implementation via subagents |
@@ -155,16 +166,16 @@ pb-spec's prompt design is inspired by Anthropic's research on [Effective Harnes
 | **State Grounding** | Subagents must verify workspace state (`ls`, `find`, `read_file`) before writing any code — preventing path hallucination |
 | **Error Quoting** | Subagents must quote specific error messages before attempting fixes — preventing blind debugging |
 | **Context Hygiene** | Orchestrator passes only minimal, relevant context to each subagent — preventing context window pollution |
-| **Recovery Loop** | Failed tasks trigger `git checkout .` (workspace revert) before retry — ensuring each attempt starts from a known-good state |
+| **Recovery Loop** | Failed tasks use pre-task snapshots + file-scoped recovery (`git restore` + task-local cleanup), and avoid workspace-wide restore in dirty trees |
 | **Verification Harness** | Design docs define explicit verification commands at planning time — subagents execute, not invent, verification |
-| **Agent Rules** | `AGENTS.md` contains only undiscoverable gotchas and hard constraints — not project overview info that agents can infer from code |
+| **Agent Rules** | `AGENTS.md` is treated as free-form policy context: `pb-init` manages only its marker block; `pb-plan`/`pb-refine`/`pb-build` read it without rewriting |
 
 ### Where Each Principle Lives
 
 - **Worker (Implementer):** `implementer_prompt.md` enforces grounding-first workflow and error quoting
 - **Architect (Planner):** `design_template.md` includes Critical Path Verification table
-- **Orchestrator (Builder):** `pb-build` SKILL enforces context hygiene and workspace revert on failure
-- **Foundation (Init):** `AGENTS.md` captures only non-obvious gotchas, hard constraints, and traps that agents cannot infer from code — not a full project overview
+- **Orchestrator (Builder):** `pb-build` SKILL enforces context hygiene and task-local recovery with safe rollback rules
+- **Foundation (Init):** `pb-init` updates only the managed marker block in `AGENTS.md`, preserving all external user-authored constraints
 
 ## Development
 

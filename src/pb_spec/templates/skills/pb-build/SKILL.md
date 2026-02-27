@@ -71,7 +71,7 @@ Extract the full task block from `tasks.md` — including Context, Steps, and Ve
 #### 3b. Gather Project Context
 
 - Read `specs/<spec-dir>/design.md` for design context.
-- Read `AGENTS.md` (if it exists) for non-obvious gotchas and hard constraints.
+- Read `AGENTS.md` (if it exists) for project constraints and hard rules. Treat it as read-only policy context.
 - Identify files most relevant to this task.
 - Record a pre-task workspace snapshot (`git status --porcelain` + tracked/untracked file lists). This baseline is used for safe recovery if the task fails.
 
@@ -87,7 +87,7 @@ Create a **fresh subagent** for this task. Pass it the implementer prompt templa
 When spawning the subagent, do NOT pass the entire chat history. Pass ONLY:
 
 1. The specific Task Description from `tasks.md`.
-2. The `AGENTS.md` (non-obvious gotchas and hard constraints — intentionally minimal).
+2. The `AGENTS.md` (project constraints and hard rules; do not assume any fixed template layout).
 3. The `design.md` (Feature Spec).
 4. **Summary of previous tasks** — a one-line-per-task summary of what was done (e.g., "Task 1.1 created `models.py` with `User` and `Session` classes which you should now use."). Do NOT pass raw logs or full outputs from previous subagents.
 
@@ -233,6 +233,7 @@ While executing, display progress after each task:
 - **NEVER** let a subagent implement more than its assigned task.
 - **NEVER** carry in-memory state between subagents.
 - **NEVER** modify `design.md` — file a Design Change Request instead.
+- **NEVER** modify, delete, or reformat `AGENTS.md` unless the user explicitly requests an `AGENTS.md` change.
 - **NEVER** rewrite the entire `tasks.md` file — use targeted edits only.
 - **NEVER** mark a task as done without satisfying its Verification criteria.
 - **NEVER** claim tests passed without running them.

@@ -16,7 +16,7 @@ You are implementing **Task {{TASK_NUMBER}}: {{TASK_NAME}}**.
 
 {{PROJECT_CONTEXT}}
 
-> The above is assembled from `AGENTS.md` (non-obvious gotchas and hard constraints) and `design.md` (feature design). AGENTS.md is intentionally minimal — discover tech stack, structure, and conventions directly from the codebase.
+> The above is assembled from `AGENTS.md` (project constraints and hard rules) and `design.md` (feature design). `AGENTS.md` may be free-form and user-maintained; do not assume any fixed section layout.
 
 ---
 
@@ -150,6 +150,7 @@ Report your work in this format:
 - **Follow YAGNI.** No speculative features, premature abstractions, or "while I'm here" changes.
 - **Use existing patterns.** Match the project's coding style, naming conventions, and architecture.
 - **Do not modify `design.md` or `tasks.md`.** Those are managed by the orchestrator.
+- **Do not modify, delete, or reformat `AGENTS.md`.** Treat it as read-only unless the user explicitly requests an `AGENTS.md` change.
 - **Do not modify unrelated code.** Your changes should be scoped to this task only.
 - **Tests are mandatory.** Never submit implementation without tests.
 - **TDD phases are separate actions.** Never write test and implementation in the same step. Write tests first, see them fail, then write implementation.

@@ -51,7 +51,7 @@ Count the words in the requirement description (excluding the `/pb-plan` trigger
 
 Gather context to inform the design. **Always perform live codebase analysis** — do not rely on any static file.
 
-1. **Read `AGENTS.md`** (if it exists) — check for non-obvious gotchas, hard constraints, and traps that you cannot infer from code. AGENTS.md intentionally omits discoverable info (language, structure, test commands) — you must find those yourself.
+1. **Read `AGENTS.md`** (if it exists) — capture explicit project constraints, team rules, and gotchas. Do not assume any fixed section layout; treat it as free-form user-authored policy text.
 2. **Search the live codebase directly** — this is **mandatory** regardless of whether `AGENTS.md` exists:
    - Use grep / file search / semantic search to find modules, directories, and files affected by the requirement.
    - Search for keywords from the requirement across the codebase.
@@ -200,7 +200,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 1. **One-shot output.** Complete design + tasks in a single pass. No mid-way confirmation.
 2. **Optimal solution first.** Output the best design. Developer requests changes after review if needed.
 3. **Right-sized output (YAGNI).** Match output detail to requirement complexity. Simple changes get compact specs; complex features get full specs.
-4. **Live codebase analysis.** Always search the actual codebase — `AGENTS.md` contains only non-obvious gotchas, not project overview info.
+4. **Live codebase analysis.** Always search the actual codebase. Use `AGENTS.md` as complementary policy context, not a replacement for code inspection.
 5. **Task granularity: Logical Unit of Work.** Each task is a self-contained, meaningful change. Do not split based on arbitrary time estimates.
 6. **Verification per task.** Every task defines how to prove it is done.
 7. **Dependency order.** Phases and tasks flow foundational → dependent.
@@ -218,6 +218,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 - **No code implementation.** Design docs and task lists only.
 - **Scope-appropriate templates.** In lightweight mode, only fill the compact template. In full mode, fill the complete template. Every included section must have substantive content.
 - **Write only to `specs/<spec-dir>/`.** Do not modify project source code.
+- **`AGENTS.md` is read-only in this phase.** Do not modify, delete, or reformat it unless the user explicitly asks for an `AGENTS.md` update.
 - **No invented references.** Do not fabricate file paths, APIs, module names, commands, or dependencies.
 - **No unresolved placeholders.** Final `design.md` and `tasks.md` must not contain template example markers like `[Goal A]` or `[Task Name]`.
 

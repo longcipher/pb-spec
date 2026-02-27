@@ -29,7 +29,7 @@ Execute the following steps in order.
 
 1. `specs/<spec-dir>/design.md` — the current design.
 2. `specs/<spec-dir>/tasks.md` — the current task breakdown.
-3. `AGENTS.md` (if it exists) — non-obvious constraints and gotchas.
+3. `AGENTS.md` (if it exists) — read-only source of constraints and gotchas.
 
 ### Step 2: Parse User Feedback
 
@@ -127,6 +127,7 @@ Next steps:
 - **Do not modify project source code.** Refinement is planning only.
 - **Do not re-run the entire planning process.** This is an incremental update, not a fresh plan.
 - **Preserve formatting and structure** of both files.
+- **`AGENTS.md` is read-only in this phase.** Do not modify, delete, or reformat it unless the user explicitly asks for an `AGENTS.md` update.
 - **No interactive multi-turn probing.** Apply the feedback given. If the feedback is ambiguous, state your interpretation in the Revision History and proceed.
 
 ---

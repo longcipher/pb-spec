@@ -61,12 +61,12 @@ If all tasks are checked (`- [x]`), report:
 For each unfinished task, in order:
 
 1. **Extract** the full task block (Context, Steps, Verification).
-2. **Gather context** — read `design.md` and `AGENTS.md` (if it exists).
+2. **Gather context** — read `design.md` and `AGENTS.md` (if it exists). Treat `AGENTS.md` as read-only policy context.
    - Record a pre-task workspace snapshot (`git status --porcelain` + tracked/untracked file lists) for safe rollback.
 3. **Spawn a fresh subagent** with the Implementer Prompt (below), filled in with the task content and project context.
    **Context Hygiene:** Do NOT pass the entire chat history. Pass ONLY:
    - The specific Task Description from `tasks.md`.
-   - The `AGENTS.md` (non-obvious gotchas and hard constraints — intentionally minimal).
+   - The `AGENTS.md` (project constraints and hard rules; do not assume any fixed template layout).
    - The `design.md` (Feature Spec).
    - **Summary of previous tasks** — a one-line-per-task summary (e.g., "Task 1.1 created `models.py` with `User` class."). Do NOT pass raw logs or full outputs.
 4. **Subagent executes** the TDD cycle (see Implementer Prompt section).
@@ -180,6 +180,7 @@ Update `tasks.md` in-place after each task using **precise edits** (target the s
 - Let a subagent implement more than its assigned task.
 - Carry in-memory state between subagents.
 - Modify `design.md` (file a Design Change Request instead).
+- Modify, delete, or reformat `AGENTS.md` unless the user explicitly requests an `AGENTS.md` change.
 - Rewrite the entire `tasks.md` file — use targeted edits only.
 - Mark a task as done without satisfying its Verification criteria.
 - Claim tests passed without running them.
@@ -230,7 +231,7 @@ You are implementing **Task {{TASK_NUMBER}}: {{TASK_NAME}}**.
 
 {{PROJECT_CONTEXT}}
 
-> From `AGENTS.md` (non-obvious gotchas and constraints) and `design.md` (feature design decisions).
+> From `AGENTS.md` (project constraints and rules) and `design.md` (feature design decisions).
 
 ### Your Job
 
@@ -307,6 +308,7 @@ Fix any "no" answers before submitting.
 - Follow YAGNI — no speculative features.
 - Use existing patterns — match project style.
 - Do not modify `design.md` or `tasks.md`.
+- Do not modify, delete, or reformat `AGENTS.md` unless the user explicitly requests an `AGENTS.md` change.
 - Do not modify unrelated code.
 - Tests are mandatory — never submit without them.
 - **No Blind Edits:** Always read a file before editing it.
