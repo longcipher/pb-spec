@@ -24,7 +24,7 @@ pb-spec follows a **harness-first** philosophy: reliability comes from process d
 | [Reflexion](https://arxiv.org/abs/2303.11366) | Learn from failure signals via iterative retries | Retry/skip/abort and DCR flow in `pb-build` |
 | [Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) | Grounding, context hygiene, recovery, observability | State checks, minimal context handoff, task-local rollback guidance |
 | [Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) | Prefer simple composable workflows over framework complexity | Small adapter-based CLI + explicit workflow prompts |
-| [Stop Using /init for AGENTS.md](https://addyosmani.com/blog/agents-md/) | Prefer minimal AGENTS.md (only undiscoverable facts) |  |
+| [Stop Using /init for AGENTS.md](https://addyosmani.com/blog/agents-md/) | Prefer minimal AGENTS.md (only undiscoverable facts) | `/pb-init` audits repo and generates minimal AGENTS.md with strict three-part filter (not inferrable, operationally decisive, not guessable) |
 
 ### Practical Principles in pb-spec
 
