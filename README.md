@@ -24,6 +24,7 @@ pb-spec follows a **harness-first** philosophy: reliability comes from process d
 | [Reflexion](https://arxiv.org/abs/2303.11366) | Learn from failure signals via iterative retries | Retry/skip/abort and DCR flow in `pb-build` |
 | [Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) | Grounding, context hygiene, recovery, observability | State checks, minimal context handoff, task-local rollback guidance |
 | [Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) | Prefer simple composable workflows over framework complexity | Small adapter-based CLI + explicit workflow prompts |
+| [Stop Using /init for AGENTS.md](https://addyosmani.com/blog/agents-md/) | Prefer minimal AGENTS.md (only undiscoverable facts) |  |
 
 ### Practical Principles in pb-spec
 
@@ -60,7 +61,7 @@ pb-spec init --ai claude       # or: copilot, opencode, gemini, codex, all
 pb-spec init --ai all -g       # install globally to each agent's home/config dir
 
 # 2. Open the project in your AI coding assistant and use the installed commands/prompts:
-#    /pb-init                          → Generate AGENTS.md project context
+#    /pb-init                          → Audit repo, produce minimal AGENTS.md (only undiscoverable facts)
 #    /pb-plan Add WebSocket auth       → Generate specs/YYYY-MM-DD-01-add-websocket-auth/
 #    /pb-refine add-websocket-auth     → (Optional) Refine design based on feedback
 #    /pb-build add-websocket-auth      → Implement tasks via TDD subagents
@@ -110,9 +111,9 @@ four agent skills that chain together:
 /pb-init → /pb-plan → [/pb-refine] → /pb-build
 ```
 
-### 1. `/pb-init` — Project Initialization
+### 1. `/pb-init` — AGENTS.md Audit & Minimization
 
-Analyzes your project and generates an `AGENTS.md` file at the project root. This file captures the tech stack, directory structure, conventions, and testing patterns. **Preserves user-added context** so manual notes aren't lost on re-runs.
+Audits your project and produces an **extremely minimal** `AGENTS.md` at the project root. Instead of dumping project overview info that agents can discover themselves, it applies a strict three-part filter: each entry must be (1) not inferrable from code, (2) operationally decisive, and (3) not guessable from industry conventions. Every entry in AGENTS.md represents a codebase smell — the goal is to fix root causes and drive AGENTS.md toward zero entries over time. **Preserves user-added context** across re-runs.
 
 ### 2. `/pb-plan <requirement>` — Design & Task Planning
 
@@ -138,7 +139,7 @@ Reads `specs/<YYYY-MM-DD-NO-feature-name>/tasks.md` and implements each task seq
 
 | Skill | Trigger | Output | Description |
 |---|---|---|---|
-| `pb-init` | `/pb-init` | `AGENTS.md` | Detect stack, scan structure, generate project context |
+| `pb-init` | `/pb-init` | `AGENTS.md` | Audit repo for undiscoverable gotchas, produce minimal agent context |
 | `pb-plan` | `/pb-plan <requirement>` | `specs/<YYYY-MM-DD-NO-feature-name>/design.md` + `tasks.md` | Design proposal + ordered task breakdown |
 | `pb-refine` | `/pb-refine <feature>` | Revised spec files | Apply feedback or Design Change Requests |
 | `pb-build` | `/pb-build <feature-name>` | Code + tests | TDD implementation via subagents |
@@ -156,14 +157,14 @@ pb-spec's prompt design is inspired by Anthropic's research on [Effective Harnes
 | **Context Hygiene** | Orchestrator passes only minimal, relevant context to each subagent — preventing context window pollution |
 | **Recovery Loop** | Failed tasks trigger `git checkout .` (workspace revert) before retry — ensuring each attempt starts from a known-good state |
 | **Verification Harness** | Design docs define explicit verification commands at planning time — subagents execute, not invent, verification |
-| **Agent Rules** | `AGENTS.md` embeds project-specific "laws of physics" that all subagents inherit as system-level constraints |
+| **Agent Rules** | `AGENTS.md` contains only undiscoverable gotchas and hard constraints — not project overview info that agents can infer from code |
 
 ### Where Each Principle Lives
 
 - **Worker (Implementer):** `implementer_prompt.md` enforces grounding-first workflow and error quoting
 - **Architect (Planner):** `design_template.md` includes Critical Path Verification table
 - **Orchestrator (Builder):** `pb-build` SKILL enforces context hygiene and workspace revert on failure
-- **Foundation (Init):** `AGENTS.md` template includes Agent Harness Rules as global conventions
+- **Foundation (Init):** `AGENTS.md` captures only non-obvious gotchas, hard constraints, and traps that agents cannot infer from code — not a full project overview
 
 ## Development
 

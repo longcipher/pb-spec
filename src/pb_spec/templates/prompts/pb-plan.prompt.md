@@ -49,9 +49,9 @@ Count the words in the requirement description (excluding the `/pb-plan` trigger
 
 ## Step 2: Collect Project Context
 
-Gather context to inform the design. **Do not rely solely on `AGENTS.md`** — always perform live codebase analysis.
+Gather context to inform the design. **Always perform live codebase analysis** — do not rely on any static file.
 
-1. **Read `AGENTS.md`** (if it exists) — use as a starting reference. **Treat as supplementary, not authoritative** — verify against actual project state.
+1. **Read `AGENTS.md`** (if it exists) — check for non-obvious gotchas, hard constraints, and traps that you cannot infer from code. AGENTS.md intentionally omits discoverable info (language, structure, test commands) — you must find those yourself.
 2. **Search the live codebase directly** — this is **mandatory** regardless of whether `AGENTS.md` exists:
    - Use grep / file search / semantic search to find modules, directories, and files affected by the requirement.
    - Search for keywords from the requirement across the codebase.
@@ -66,7 +66,7 @@ Gather context to inform the design. **Do not rely solely on `AGENTS.md`** — a
 
    **This audit is mandatory.** List reusable components in `design.md` Section 3.3 and reference them in `tasks.md` task context.
 
-If `AGENTS.md` does not exist, search the codebase directly for project context. Recommend running `/pb-init` first in your summary.
+If `AGENTS.md` does not exist, that's fine — scan the project root directly (config files, directory structure) to infer project context. You can recommend running `/pb-init` to surface any hidden gotchas, but its absence should not block planning.
 
 **Evidence precedence (highest to lowest):**
 
@@ -200,7 +200,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 1. **One-shot output.** Complete design + tasks in a single pass. No mid-way confirmation.
 2. **Optimal solution first.** Output the best design. Developer requests changes after review if needed.
 3. **Right-sized output (YAGNI).** Match output detail to requirement complexity. Simple changes get compact specs; complex features get full specs.
-4. **Live codebase analysis.** Always search the actual codebase — never rely solely on `AGENTS.md` which may be stale.
+4. **Live codebase analysis.** Always search the actual codebase — `AGENTS.md` contains only non-obvious gotchas, not project overview info.
 5. **Task granularity: Logical Unit of Work.** Each task is a self-contained, meaningful change. Do not split based on arbitrary time estimates.
 6. **Verification per task.** Every task defines how to prove it is done.
 7. **Dependency order.** Phases and tasks flow foundational → dependent.
@@ -228,7 +228,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 - **Ambiguous requirements:** Make reasonable assumptions. State them in the design's Assumptions section.
 - **Large scope (>40h of tasks):** Split into phases. First phase = viable MVP. Note in summary.
 - **Same feature-name exists:** The uniqueness check in Step 3 prevents creating a spec with a feature-name that already exists in `specs/`. Stop and report the conflict. The developer should choose a different name or use `/pb-refine` to update the existing spec.
-- **No `AGENTS.md`:** Proceed anyway — search codebase directly. Recommend running `/pb-init` first.
+- **No `AGENTS.md`:** Proceed anyway — search codebase directly. Recommend `/pb-init` to surface hidden gotchas.
 - **Bug fix, not feature:** Use same process. Design focuses on root cause + fix approach.
 - **External systems/APIs:** Document assumptions about external interfaces in design.
 - **Borderline word count (~50 words):** Use lightweight mode. Developer can run `/pb-refine` to expand.

@@ -101,7 +101,7 @@ Behavior guarantees:
 
 ### 6.1 pb-init
 
-Generates/merges `AGENTS.md` from live repository state. It preserves user-authored sections while refreshing generated sections.
+Audits the repository and produces a **minimal** `AGENTS.md` containing only information that agents cannot discover from the codebase itself. Applies a strict three-part filter: each entry must be (1) not inferrable from code, (2) operationally decisive, and (3) not guessable from industry conventions. The ideal AGENTS.md is empty — every entry represents a codebase smell that should eventually be fixed at the root cause. Re-runs audit existing entries and flag any that are now discoverable.
 
 ### 6.2 pb-plan
 

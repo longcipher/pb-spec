@@ -53,9 +53,9 @@ Count the words in the requirement description (excluding the `/pb-plan` trigger
 
 ### Step 2: Collect Project Context
 
-Gather context to inform the design. **Do not rely solely on `AGENTS.md`** — always perform live codebase analysis.
+Gather context to inform the design. **Always perform live codebase analysis** — do not rely on any static file.
 
-1. **Read `AGENTS.md`** (if it exists at project root) — use as a starting reference for language, framework, build tool, project structure, and conventions. **Treat as supplementary, not authoritative** — verify against actual project state.
+1. **Read `AGENTS.md`** (if it exists at project root) — check for non-obvious gotchas, hard constraints, and traps that you cannot infer from code. AGENTS.md intentionally omits discoverable info (language, structure, test commands) — you must find those yourself.
 2. **Search the live codebase directly** — this is **mandatory** regardless of whether `AGENTS.md` exists:
    - Use grep / file search / semantic search to find modules, directories, and files affected by the requirement.
    - Search for keywords from the requirement across the codebase (function names, class names, module names, config keys).
@@ -70,7 +70,7 @@ Gather context to inform the design. **Do not rely solely on `AGENTS.md`** — a
 
    **This audit is mandatory.** List reusable components in `design.md` Section 3.3 and reference them in `tasks.md` task context.
 
-If `AGENTS.md` does not exist, scan the project root directly (config files, directory structure) to infer project context. Recommend running `/pb-init` first in your summary.
+If `AGENTS.md` does not exist, that's fine — scan the project root directly (config files, directory structure) to infer project context. You can recommend running `/pb-init` to surface any hidden gotchas, but its absence should not block planning.
 
 **Evidence precedence (highest to lowest):**
 

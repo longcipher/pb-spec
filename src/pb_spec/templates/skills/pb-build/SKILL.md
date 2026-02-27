@@ -71,7 +71,7 @@ Extract the full task block from `tasks.md` — including Context, Steps, and Ve
 #### 3b. Gather Project Context
 
 - Read `specs/<spec-dir>/design.md` for design context.
-- Read `AGENTS.md` (if it exists) for project conventions.
+- Read `AGENTS.md` (if it exists) for non-obvious gotchas and hard constraints.
 - Identify files most relevant to this task.
 - Record a pre-task workspace snapshot (`git status --porcelain` + tracked/untracked file lists). This baseline is used for safe recovery if the task fails.
 
@@ -80,14 +80,14 @@ Extract the full task block from `tasks.md` — including Context, Steps, and Ve
 Create a **fresh subagent** for this task. Pass it the implementer prompt template from `references/implementer_prompt.md`, filled with:
 
 - The full task description from `tasks.md`.
-- Project context from `AGENTS.md` and `design.md`.
+- Non-obvious constraints from `AGENTS.md` and design context from `design.md`.
 - The task number and name.
 
 **Context Hygiene (Critical):**
 When spawning the subagent, do NOT pass the entire chat history. Pass ONLY:
 
 1. The specific Task Description from `tasks.md`.
-2. The `AGENTS.md` (Project Rules & Conventions).
+2. The `AGENTS.md` (non-obvious gotchas and hard constraints — intentionally minimal).
 3. The `design.md` (Feature Spec).
 4. **Summary of previous tasks** — a one-line-per-task summary of what was done (e.g., "Task 1.1 created `models.py` with `User` and `Session` classes which you should now use."). Do NOT pass raw logs or full outputs from previous subagents.
 

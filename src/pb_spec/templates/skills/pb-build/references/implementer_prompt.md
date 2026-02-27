@@ -16,7 +16,7 @@ You are implementing **Task {{TASK_NUMBER}}: {{TASK_NAME}}**.
 
 {{PROJECT_CONTEXT}}
 
-> The above is assembled from `AGENTS.md` (project conventions) and `design.md` (feature design). Use it to understand the tech stack, coding style, project structure, and design decisions.
+> The above is assembled from `AGENTS.md` (non-obvious gotchas and hard constraints) and `design.md` (feature design). AGENTS.md is intentionally minimal — discover tech stack, structure, and conventions directly from the codebase.
 
 ---
 
@@ -104,7 +104,7 @@ Before submitting, answer each question honestly:
 
 - [ ] **Completeness:** Did I implement everything the task requires?
 - [ ] **Nothing extra:** Did I avoid implementing things not in this task?
-- [ ] **Conventions:** Does the code follow project conventions from `AGENTS.md`?
+- [ ] **Conventions:** Does the code follow project conventions (discovered from codebase; `AGENTS.md` for non-obvious constraints)?
 - [ ] **Test coverage:** Do the tests meaningfully verify the task's requirements?
 - [ ] **No regressions:** Do all pre-existing tests still pass?
 - [ ] **YAGNI:** Is there any over-engineering I should remove?

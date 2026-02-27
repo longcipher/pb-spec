@@ -61,12 +61,12 @@ If all tasks are checked (`- [x]`), report:
 For each unfinished task, in order:
 
 1. **Extract** the full task block (Context, Steps, Verification).
-2. **Gather context** — read `design.md` and `AGENTS.md`.
+2. **Gather context** — read `design.md` and `AGENTS.md` (if it exists).
    - Record a pre-task workspace snapshot (`git status --porcelain` + tracked/untracked file lists) for safe rollback.
 3. **Spawn a fresh subagent** with the Implementer Prompt (below), filled in with the task content and project context.
    **Context Hygiene:** Do NOT pass the entire chat history. Pass ONLY:
    - The specific Task Description from `tasks.md`.
-   - The `AGENTS.md` (Project Rules & Conventions).
+   - The `AGENTS.md` (non-obvious gotchas and hard constraints — intentionally minimal).
    - The `design.md` (Feature Spec).
    - **Summary of previous tasks** — a one-line-per-task summary (e.g., "Task 1.1 created `models.py` with `User` class."). Do NOT pass raw logs or full outputs.
 4. **Subagent executes** the TDD cycle (see Implementer Prompt section).
@@ -141,7 +141,7 @@ Summary must be factual and command-backed: do not claim "passed" or "completed"
 ## Subagent Rules
 
 1. **One subagent per task.** Never combine tasks.
-2. **Fresh context per subagent.** Only: task description, project context (AGENTS.md + design.md), summary of completed tasks, files on disk.
+2. **Fresh context per subagent.** Only: task description, non-obvious constraints (AGENTS.md) + design (design.md), summary of completed tasks, files on disk.
 3. **Sequential execution.** Strict `tasks.md` order. No parallelism.
 4. **Independence.** Cross-task state lives in files, not memory.
 5. **Grounding first.** Every subagent verifies workspace state before writing code.
@@ -230,7 +230,7 @@ You are implementing **Task {{TASK_NUMBER}}: {{TASK_NAME}}**.
 
 {{PROJECT_CONTEXT}}
 
-> From `AGENTS.md` and `design.md` — tech stack, conventions, design decisions.
+> From `AGENTS.md` (non-obvious gotchas and constraints) and `design.md` (feature design decisions).
 
 ### Your Job
 
@@ -268,7 +268,7 @@ Before writing any code, verify the current workspace state:
 
 - [ ] Completeness — everything the task requires is implemented
 - [ ] Nothing extra — no work beyond this task
-- [ ] Conventions — code follows project style from `AGENTS.md`
+- [ ] Conventions — code follows project style (discover from codebase; check `AGENTS.md` for non-obvious constraints)
 - [ ] Test coverage — tests meaningfully verify requirements
 - [ ] No regressions — all pre-existing tests pass
 - [ ] YAGNI — no over-engineering
