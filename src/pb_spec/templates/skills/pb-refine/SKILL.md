@@ -39,6 +39,7 @@ The user's feedback may include:
 - **Scope changes** — features added, removed, or deprioritized.
 - **Task adjustments** — tasks too large, too small, wrong order, missing tasks.
 - **Design Change Requests (DCR)** — from a failed `pb-build` run (format: `🔄 Design Change Request`).
+- **Build-block packets** — standardized `🛑 Build Blocked` reports from `pb-build` after 3 consecutive failures.
 - **General feedback** — "this approach won't work because..." or "we should use X instead of Y".
 
 Categorize the feedback into:
@@ -46,6 +47,12 @@ Categorize the feedback into:
 1. **Design changes** — modifications to `design.md`.
 2. **Task changes** — modifications to `tasks.md`.
 3. **Both** — changes that affect design and cascade to tasks.
+
+If feedback includes a standardized `🛑 Build Blocked` packet, treat it as high-priority execution evidence (not a speculative opinion). Extract and preserve:
+
+- Failed attempts summary
+- Exact failing commands / error excerpts
+- Suggested design change and affected tasks
 
 ### Step 3: Update design.md
 
@@ -65,6 +72,7 @@ Apply design changes to `specs/<spec-dir>/design.md`:
 
 - **Preserve unchanged sections** exactly as they are.
 - If the user's feedback contradicts the original design, note the conflict and apply the user's decision.
+- If refinement is triggered by build-block evidence, document the failed-attempt summary in Revision History.
 
 ### Step 4: Cascade to tasks.md
 
@@ -74,6 +82,7 @@ If design changes affect the task breakdown, update `specs/<spec-dir>/tasks.md`:
 - **Remove or mark tasks as obsolete** if they're no longer needed: change Status to `⛔ OBSOLETE`.
 - **Reorder tasks** if dependencies changed.
 - **Update task Context** to reflect new design decisions.
+- **Strengthen Verification** when needed: add runtime observability checks (logs/probe) for runtime-facing tasks, or explicit `N/A` rationale when not applicable.
 - **Do NOT modify completed tasks** (`- [x]` or `🟢 DONE`) unless explicitly requested.
 - **Use precise edits** — do not rewrite the entire file.
 
@@ -118,6 +127,7 @@ Next steps:
 3. **Cascade intentionally.** Design changes must propagate to tasks. Task-only changes should not alter the design.
 4. **Conflict resolution.** When feedback contradicts the original design, apply the user's decision and note why.
 5. **Audit trail.** Every change is logged in the Revision History.
+6. **Execution evidence first.** Repeated build failures (including 3-failure build-block packets) override weak prior assumptions.
 
 ---
 

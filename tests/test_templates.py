@@ -107,3 +107,39 @@ def test_non_init_templates_treat_agents_md_as_read_only():
                 "`AGENTS.md` is read-only in this phase." in content
                 or "modify, delete, or reformat `AGENTS.md`" in content
             ), f"{skill} template must mark AGENTS.md as read-only"
+
+
+def test_pb_plan_templates_require_runtime_observability_verification():
+    """pb-plan templates should require runtime evidence in task verification when applicable."""
+    refs = load_references("pb-plan")
+    for content in (
+        load_skill_content("pb-plan"),
+        load_prompt("pb-plan"),
+        refs["tasks_template.md"],
+    ):
+        assert "tail -n 50 app.log" in content
+        assert "curl http://localhost:8080/health" in content
+
+
+def test_pb_build_templates_escalate_after_three_failures():
+    """pb-build templates should stop thrashing and escalate via DCR after 3 failures."""
+    for content in (load_skill_content("pb-build"), load_prompt("pb-build")):
+        assert "3 consecutive failed attempts" in content
+        assert "Run /pb-refine <feature-name>" in content
+        assert "retry budget" in content
+
+
+def test_pb_build_implementer_templates_require_runtime_evidence():
+    """Implementer guidance should require runtime log/probe evidence when applicable."""
+    build_refs = load_references("pb-build")
+    for content in (build_refs["implementer_prompt.md"], load_prompt("pb-build")):
+        assert "Runtime logs:" in content
+        assert "Runtime probe:" in content
+        assert "Runtime evidence is mandatory when applicable" in content
+
+
+def test_pb_refine_templates_accept_build_block_packets():
+    """pb-refine templates should handle standardized build-block packets from pb-build."""
+    for content in (load_skill_content("pb-refine"), load_prompt("pb-refine")):
+        assert "Build-block packets" in content
+        assert "🛑 Build Blocked" in content

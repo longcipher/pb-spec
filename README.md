@@ -22,6 +22,8 @@ pb-spec follows a **harness-first** philosophy: reliability comes from process d
 | [Plan-and-Solve Prompting](https://arxiv.org/abs/2305.04091) | Plan first to reduce missing-step errors | `design.md` + `tasks.md` are mandatory artifacts |
 | [ReAct](https://arxiv.org/abs/2210.03629) | Interleave reasoning and actions with environment feedback | `/pb-build` executes task-by-task with test/tool feedback loops |
 | [Reflexion](https://arxiv.org/abs/2303.11366) | Learn from failure signals via iterative retries | Retry/skip/abort and DCR flow in `pb-build` |
+| [Harness Engineering (OpenAI, 2026-02-11)](https://openai.com/index/harness-engineering/) | Treat runtime signals and checklists as first-class harness inputs | `pb-plan` requires runtime verification hooks; `pb-build` validates logs/health evidence before task closure |
+| [openai/symphony](https://github.com/openai/symphony) | Long-running agents need explicit observability and deterministic escalation | `pb-build` enforces bounded retries and emits standardized DCR packets for `pb-refine` |
 | [Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) | Grounding, context hygiene, recovery, observability | State checks, minimal context handoff, task-local rollback guidance |
 | [Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) | Prefer simple composable workflows over framework complexity | Small adapter-based CLI + explicit workflow prompts |
 | [Stop Using /init for AGENTS.md](https://addyosmani.com/blog/agents-md/) | Keep AGENTS.md focused and maintainable | `/pb-init` updates a managed snapshot block in `AGENTS.md` while preserving all user-authored constraints outside that block |
@@ -30,7 +32,9 @@ pb-spec follows a **harness-first** philosophy: reliability comes from process d
 
 - **Context Before Code:** `/pb-init` and `/pb-plan` establish project and requirement context before implementation starts.
 - **Verification by Design:** Planning requires explicit verification commands so completion is measurable.
+- **Observability as Context:** Service-facing tasks must capture runtime evidence (log tails and/or health probes), not only test output.
 - **Strict TDD Execution:** `/pb-build` enforces Red → Green → Refactor with per-task status tracking.
+- **Escalation Over Thrashing:** Three consecutive failures suspend the current task and route a standardized DCR packet to `/pb-refine`.
 - **Safe Failure Recovery:** Failed attempts use scoped recovery guidance to avoid polluting unrelated workspace state.
 - **Composable Architecture:** Platform differences stay in adapters; workflow semantics stay in shared templates.
 
@@ -140,11 +144,11 @@ The spec directory follows the naming format `YYYY-MM-DD-NO-feature-name` (e.g.,
 
 ### 3. `/pb-refine <feature-name>` — Design Iteration (Optional)
 
-Reads user feedback or Design Change Requests (from failed builds) and intelligently updates `design.md` and `tasks.md`. It maintains a revision history and cascades design changes to the task list without overwriting completed work. `AGENTS.md` remains read-only in this phase.
+Reads user feedback or Design Change Requests (from failed builds, including standardized 3-failure build-block packets) and intelligently updates `design.md` and `tasks.md`. It maintains a revision history and cascades design changes to the task list without overwriting completed work. `AGENTS.md` remains read-only in this phase.
 
 ### 4. `/pb-build <feature-name>` — Subagent-Driven Implementation
 
-Reads `specs/<YYYY-MM-DD-NO-feature-name>/tasks.md` and implements each task sequentially. Every task is executed by a fresh subagent following strict TDD (Red → Green → Refactor). Supports **Design Change Requests** if the planned design proves infeasible during implementation. Only the `<feature-name>` part is needed when invoking — the agent resolves the full directory automatically. `AGENTS.md` is read-only unless the user explicitly requests an `AGENTS.md` change.
+Reads `specs/<YYYY-MM-DD-NO-feature-name>/tasks.md` and implements each task sequentially. Every task is executed by a fresh subagent following strict TDD (Red → Green → Refactor), then runtime verification (log/health evidence when applicable). Supports **Design Change Requests** if the planned design proves infeasible during implementation, and auto-escalates to DCR after three consecutive task failures. Only the `<feature-name>` part is needed when invoking — the agent resolves the full directory automatically. `AGENTS.md` is read-only unless the user explicitly requests an `AGENTS.md` change.
 
 ## Skills Overview
 
@@ -168,13 +172,15 @@ pb-spec's prompt design is inspired by Anthropic's research on [Effective Harnes
 | **Context Hygiene** | Orchestrator passes only minimal, relevant context to each subagent — preventing context window pollution |
 | **Recovery Loop** | Failed tasks use pre-task snapshots + file-scoped recovery (`git restore` + task-local cleanup), and avoid workspace-wide restore in dirty trees |
 | **Verification Harness** | Design docs define explicit verification commands at planning time — subagents execute, not invent, verification |
+| **Observability as Context** | Task verification includes runtime signals (logs/health) for service-facing work, and build closure requires command-backed evidence |
+| **Escalation Loop** | Three consecutive failures trigger task suspension + standardized DCR handoff to `pb-refine` |
 | **Agent Rules** | `AGENTS.md` is treated as free-form policy context: `pb-init` manages only its marker block; `pb-plan`/`pb-refine`/`pb-build` read it without rewriting |
 
 ### Where Each Principle Lives
 
 - **Worker (Implementer):** `implementer_prompt.md` enforces grounding-first workflow and error quoting
-- **Architect (Planner):** `design_template.md` includes Critical Path Verification table
-- **Orchestrator (Builder):** `pb-build` SKILL enforces context hygiene and task-local recovery with safe rollback rules
+- **Architect (Planner):** `design_template.md` + `tasks_template.md` enforce verification criteria, including runtime signals when applicable
+- **Orchestrator (Builder):** `pb-build` SKILL enforces context hygiene, runtime verification gates, bounded retries, and DCR escalation
 - **Foundation (Init):** `pb-init` updates only the managed marker block in `AGENTS.md`, preserving all external user-authored constraints
 
 ## Development

@@ -173,6 +173,12 @@ Write a **flat task list** to `specs/<spec-dir>/tasks.md`. No phases — just or
 - [ ] Verification: ...
 ```
 
+For lightweight tasks that introduce or change runtime behavior (service startup, UI runtime flow, API availability, performance-critical paths), include runtime observability checks in `Verification`:
+
+- Capture recent runtime logs (for example `tail -n 50 app.log` or project-equivalent command).
+- Capture a live probe result (for example `curl http://localhost:8080/health` or project-equivalent endpoint).
+- If runtime checks are not applicable, explicitly write `N/A` with the reason.
+
 **Skip** phases, Summary & Timeline table, and Definition of Done boilerplate for lightweight specs.
 
 ### Step 5b: Output `tasks.md` — Full Mode (≥ 50 words)
@@ -187,6 +193,10 @@ Read `references/tasks_template.md` and use it to break down the implementation 
 - **Task ID format:** Each task MUST have a unique ID: `Task X.Y` (e.g., `Task 1.1`, `Task 2.3`). This is used for state tracking during `pb-build`.
 - Tasks are ordered by dependency — no task references work from a later task.
 - Every task has a concrete **Verification** criterion (not just "implement X" but "implement X and verify by running Y").
+- For tasks that introduce or change runtime behavior (service startup, UI runtime flow, API/network availability, performance-sensitive code paths), **Verification must include runtime observability checks**:
+  - Recent runtime logs (for example `tail -n 50 app.log` or equivalent).
+  - A live health/probe command (for example `curl http://localhost:8080/health` or equivalent).
+  - If not applicable, explicitly mark `N/A` with a reason.
 - **Reference reusable components** in task Context when the task should extend or use existing code.
 - Include a Summary & Timeline table and a Definition of Done section.
 - Ensure every requirement from the Step 1 checklist is covered by at least one task or explicitly marked out-of-scope.
@@ -218,7 +228,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 3. **Right-sized output (YAGNI).** Match output detail to requirement complexity. Simple changes get compact specs; complex features get full specs. Don't produce ceremony for its own sake.
 4. **Live codebase analysis.** Always search the actual codebase. Use `AGENTS.md` as complementary policy context, not a replacement for code inspection.
 5. **Task granularity: Logical Unit of Work.** Each task is a self-contained, meaningful change. Do not split based on arbitrary time estimates.
-6. **Verification per task.** Every task must define how to prove it is done.
+6. **Verification per task.** Every task must define how to prove it is done; runtime-facing tasks include runtime observability evidence.
 7. **Dependency order.** Phases and tasks flow from foundational to dependent. A developer can execute them top-to-bottom.
 8. **Project-aware.** Use the project's existing conventions, patterns, and tech stack. Reuse existing components — do not reinvent.
 9. **Requirements coverage.** Track every requirement from input to design sections and tasks.

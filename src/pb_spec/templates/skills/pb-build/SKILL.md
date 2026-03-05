@@ -8,8 +8,8 @@ You are the **pb-build** agent. Your job is to read a feature's `tasks.md`, then
 
 - Complete unfinished tasks in `tasks.md` sequentially until done or explicitly blocked.
 - Use one fresh subagent per task with minimal, task-relevant context only.
-- Mark a task as done only after verification passes and task-scoped requirements are satisfied.
-- If blocked, fail clearly with exact task ID, failed command, and concrete next options (retry/skip/abort or DCR).
+- Mark a task as done only after tests pass, task verification passes, and runtime evidence is captured when applicable.
+- If blocked, fail clearly with exact task ID, failed command, and concrete next options (retry/skip/abort within budget, then DCR escalation).
 
 ---
 
@@ -93,7 +93,7 @@ When spawning the subagent, do NOT pass the entire chat history. Pass ONLY:
 
 > **Why Context Hygiene matters:** Passing too much context — especially error logs from previous attempts — can mislead the current subagent. A clean, focused context window leads to better outcomes, following Anthropic's "Fresh Context" strategy.
 
-#### 3d. Subagent Executes (TDD Cycle)
+#### 3d. Subagent Executes (TDD + Runtime Verification Cycle)
 
 The subagent follows this strict process. **Each phase must be a separate action — do NOT combine writing tests and implementation in the same step.**
 
@@ -101,9 +101,10 @@ The subagent follows this strict process. **Each phase must be a separate action
 2. **Confirm RED** — Run the test suite. The new test must fail. Verify it fails for the right reason.
 3. **GREEN** — Write the minimum implementation to make the test pass. **Only proceed after confirming RED.**
 4. **Confirm GREEN** — Run the test suite. All tests must pass.
-5. **REFACTOR** — Clean up if needed. Run tests again to confirm no regressions.
-6. **Self-Review** — Check completeness, conventions, over-engineering, test coverage.
-7. **Report** — Summarize what was implemented, tests added, files changed.
+5. **Runtime Verification (when applicable)** — Run runtime checks from task Verification (for example log tail + health probe) and capture outputs.
+6. **REFACTOR** — Clean up if needed. Run tests again to confirm no regressions.
+7. **Self-Review** — Check completeness, conventions, over-engineering, test coverage.
+8. **Report** — Summarize what was implemented, tests added, files changed, runtime evidence.
 
 **Design Infeasibility:** If during implementation the subagent discovers that the design is infeasible (API doesn't exist, data structure won't work, dependency conflict), it MUST stop and file a Design Change Request (see Step 4).
 
@@ -114,7 +115,7 @@ After the subagent succeeds, update `tasks.md`:
 - Change `- [ ]` to `- [x]` for every step in the completed task.
 - Update the task's Status from `🔴 TODO` to `🟢 DONE`.
 - **Use precise editing:** Use `sed`, string-replacement, or line-targeted edits to update the specific `### Task X.Y` block. Do NOT rewrite the entire `tasks.md` file — this risks truncation and content loss in large files.
-- **Completion gate:** Mark done only when task Verification is satisfied and tests are green.
+- **Completion gate:** Mark done only when task Verification is satisfied, tests are green, and runtime checks (when applicable) are evidence-backed.
 
 > **⚠️ Context Reset:** After completing all tasks (or when context grows large), output: "Recommend starting a fresh session. Run `/pb-build <feature-name>` again to continue from where you left off."
 
@@ -129,10 +130,36 @@ If a subagent fails (tests don't pass, implementation blocked, etc.):
    - If the pre-task workspace was dirty: **do not run any workspace-wide restore command**. Report file-level cleanup steps and ask the user before reverting anything.
 4. **Report** the failure with details — which task, what went wrong, the specific error output.
    - Include the exact failing command and a short quoted error excerpt.
-5. **Prompt the user** to choose:
-   - **Retry** — Spawn a new subagent with fresh context. Pass the previous failure's error message as a "Constraint" hint (e.g., "Previous attempt failed with 'circular import in auth.py'. Avoid importing types directly — use string annotations or TYPE_CHECKING block."). Maximum 2 retries per task.
+5. **Track consecutive failures per task** (same task, same build run).
+   - Allowed budget is **3 consecutive failures total**: initial attempt + up to 2 retries.
+6. **If failure count is 1 or 2**, prompt the user to choose:
+   - **Retry** — Spawn a new subagent with fresh context. Pass the previous failure's error message as a "Constraint" hint (e.g., "Previous attempt failed with 'circular import in auth.py'. Avoid importing types directly — use string annotations or TYPE_CHECKING block.").
    - **Skip** — Mark the task as skipped (`⏭️ SKIPPED`) and continue to the next task.
    - **Abort** — Stop the entire build. Report progress so far.
+7. **If failure count reaches 3**, suspend the task and stop the build loop. Do not continue to later tasks. Output a standardized DCR packet:
+
+   ```text
+   🛑 Build Blocked — Task X.Y: [Task Name]
+   Reason: 3 consecutive failed attempts (initial + 2 retries)
+
+   What We Tried:
+   - Attempt 1: [summary]
+   - Attempt 2: [summary]
+   - Attempt 3: [summary]
+
+   Failure Evidence:
+   - [command] -> "[error excerpt]"
+   - [command] -> "[error excerpt]"
+
+   Suggested Design Change:
+   - [What should change in design.md/tasks.md]
+
+   Impact:
+   - [Which tasks are affected]
+
+   Next Action:
+   - Run /pb-refine <feature-name> with this block, then re-run /pb-build <feature-name>.
+   ```
 
 > **Why file-scoped recovery before retry:** Failed attempts can leave broken partial edits, but global resets can wipe unrelated in-progress work. Task-local rollback preserves harness reliability without destroying user state.
 
@@ -147,12 +174,14 @@ If during implementation a subagent discovers that the design is **infeasible or
    🔄 Design Change Request — Task X.Y: [Task Name]
 
    Problem: [What is infeasible and why]
+   What We Tried: [Attempt summaries and failed commands]
+   Failure Evidence: [Quoted errors from failed attempts]
    Suggested Change: [What should change in design.md]
    Impact: [Which other tasks are affected]
    ```
 
 3. The orchestrator pauses the build, reports the DCR to the user, and awaits a decision:
-   - **Accept** — user updates `design.md` (or approves the suggested change), then retries.
+   - **Accept** — user runs `/pb-refine <feature-name>` (or manually updates `design.md`/`tasks.md`), then retries.
    - **Override** — user provides an alternative approach.
    - **Abort** — stop the build.
 
@@ -237,6 +266,8 @@ While executing, display progress after each task:
 - **NEVER** rewrite the entire `tasks.md` file — use targeted edits only.
 - **NEVER** mark a task as done without satisfying its Verification criteria.
 - **NEVER** claim tests passed without running them.
+- **NEVER** exceed the retry budget (initial attempt + 2 retries) for a single task in one build run.
+- **NEVER** continue to later tasks after the third consecutive failure on the current task.
 
 ### ALWAYS
 
@@ -244,10 +275,12 @@ While executing, display progress after each task:
 - **ALWAYS** capture a pre-task workspace snapshot before spawning a subagent.
 - **ALWAYS** self-review before submitting a task's work.
 - **ALWAYS** run the full test suite after each task to catch regressions.
-- **ALWAYS** report failures clearly with actionable options (retry/skip/abort).
+- **ALWAYS** run runtime verification checks for runtime-facing tasks and capture evidence (logs/probes).
+- **ALWAYS** report failures clearly with actionable options (retry/skip/abort within budget, then DCR escalation).
 - **ALWAYS** follow YAGNI — implement only what the task requires.
 - **ALWAYS** use existing project patterns and conventions.
 - **ALWAYS** file a Design Change Request if the design is infeasible.
+- **ALWAYS** suspend and escalate with a standardized DCR packet after 3 consecutive failures.
 - **ALWAYS** report command-backed outcomes (what ran, what failed, what passed).
 
 ---
@@ -263,6 +296,7 @@ While executing, display progress after each task:
 7. **Fail fast, recover cleanly.** Failures trigger task-local rollback using the pre-task snapshot. Never run workspace-wide reset commands in a dirty tree.
 8. **Context hygiene.** Only pass relevant, minimal context to subagents. Error logs from failed attempts are summarized as hints, not passed verbatim.
 9. **Evidence over assertion.** Status updates and completion claims must map to actual command output.
+10. **Escalate deterministically.** After three consecutive failures, stop thrashing and route to `pb-refine` with a structured DCR.
 
 ---
 

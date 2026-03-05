@@ -8,8 +8,8 @@ Run this when the user invokes `/pb-build <feature-name>`.
 
 - Complete unfinished tasks in `tasks.md` sequentially until done or explicitly blocked.
 - Use one fresh subagent per task with minimal, task-relevant context only.
-- Mark a task as done only after verification passes and task-scoped requirements are satisfied.
-- If blocked, fail clearly with exact task ID, failed command, and concrete next options (retry/skip/abort or DCR).
+- Mark a task as done only after tests pass, task verification passes, and runtime evidence is captured when applicable.
+- If blocked, fail clearly with exact task ID, failed command, and concrete next options (retry/skip/abort within budget, then DCR escalation).
 
 ---
 
@@ -69,10 +69,10 @@ For each unfinished task, in order:
    - The `AGENTS.md` (project constraints and hard rules; do not assume any fixed template layout).
    - The `design.md` (Feature Spec).
    - **Summary of previous tasks** — a one-line-per-task summary (e.g., "Task 1.1 created `models.py` with `User` class."). Do NOT pass raw logs or full outputs.
-4. **Subagent executes** the TDD cycle (see Implementer Prompt section).
+4. **Subagent executes** the TDD + runtime verification cycle (see Implementer Prompt section).
 5. **Mark completed** — update `- [ ]` to `- [x]` and Status to `🟢 DONE` in `tasks.md`.
    - **Use precise editing:** Use `sed`, string-replacement, or line-targeted edits to update the specific Task ID heading and its checkboxes. Do NOT rewrite the entire `tasks.md` file — this risks truncation and content loss in large files.
-   - **Completion gate:** Mark done only when task Verification is satisfied and tests are green.
+   - **Completion gate:** Mark done only when task Verification is satisfied, tests are green, and runtime checks (when applicable) are evidence-backed.
 
 > **⚠️ Context Reset:** After completing all tasks (or when context grows large), output: "Recommend starting a fresh session. Run `/pb-build <feature-name>` again to continue from where you left off."
 
@@ -87,10 +87,36 @@ If a subagent fails:
    - If pre-task workspace was dirty: do NOT run workspace-wide restore commands. Report file-level cleanup options and wait for user choice.
 4. **Report** the failure — which task, what went wrong, specific error output.
    - Include the exact failing command and a short quoted error excerpt.
-5. Prompt the user:
-   - **Retry** — new subagent, fresh context, pass previous error as a hint constraint. Maximum 2 retries per task.
+5. **Track consecutive failures per task** (same task, same build run).
+   - Allowed budget is **3 consecutive failures total**: initial attempt + up to 2 retries.
+6. **If failure count is 1 or 2**, prompt the user:
+   - **Retry** — new subagent, fresh context, pass previous error as a hint constraint.
    - **Skip** — mark as `⏭️ SKIPPED`, move to next task.
    - **Abort** — stop the build, report progress so far.
+7. **If failure count reaches 3**, suspend the task and stop the build loop. Do not continue to later tasks. Output a standardized DCR packet:
+
+   ```text
+   🛑 Build Blocked — Task X.Y: [Task Name]
+   Reason: 3 consecutive failed attempts (initial + 2 retries)
+
+   What We Tried:
+   - Attempt 1: [summary]
+   - Attempt 2: [summary]
+   - Attempt 3: [summary]
+
+   Failure Evidence:
+   - [command] -> "[error excerpt]"
+   - [command] -> "[error excerpt]"
+
+   Suggested Design Change:
+   - [What should change in design.md/tasks.md]
+
+   Impact:
+   - [Which tasks are affected]
+
+   Next Action:
+   - Run /pb-refine <feature-name> with this block, then re-run /pb-build <feature-name>.
+   ```
 
 ### Design Change Requests
 
@@ -103,12 +129,14 @@ If during implementation a subagent discovers that the design is **infeasible or
    🔄 Design Change Request — Task X.Y: [Task Name]
 
    Problem: [What is infeasible and why]
+   What We Tried: [Attempt summaries and failed commands]
+   Failure Evidence: [Quoted errors from failed attempts]
    Suggested Change: [What should change in design.md]
    Impact: [Which other tasks are affected]
    ```
 
 3. The orchestrator pauses the build, reports the DCR to the user, and awaits a decision:
-   - **Accept** — user updates `design.md` (or approves the suggested change), then retries the task.
+   - **Accept** — user runs `/pb-refine <feature-name>` (or manually updates `design.md`/`tasks.md`), then retries the task.
    - **Override** — user provides an alternative approach.
    - **Abort** — stop the build.
 
@@ -184,6 +212,8 @@ Update `tasks.md` in-place after each task using **precise edits** (target the s
 - Rewrite the entire `tasks.md` file — use targeted edits only.
 - Mark a task as done without satisfying its Verification criteria.
 - Claim tests passed without running them.
+- Exceed the retry budget (initial attempt + 2 retries) for a single task in one build run.
+- Continue to later tasks after the third consecutive failure on the current task.
 
 ### ALWAYS
 
@@ -191,10 +221,12 @@ Update `tasks.md` in-place after each task using **precise edits** (target the s
 - Capture a pre-task workspace snapshot before spawning subagents.
 - Self-review before submitting each task.
 - Run full test suite after each task.
-- Report failures with retry/skip/abort options.
+- Run runtime verification checks for runtime-facing tasks and capture evidence (logs/probes).
+- Report failures with retry/skip/abort options within retry budget, then escalate to DCR.
 - Follow YAGNI — only implement what the task requires.
 - Use existing project patterns and conventions.
 - File a Design Change Request if the design is infeasible.
+- Suspend and escalate with a standardized DCR packet after 3 consecutive failures.
 - Report command-backed outcomes (what ran, what failed, what passed).
 
 ---
@@ -210,6 +242,7 @@ Update `tasks.md` in-place after each task using **precise edits** (target the s
 7. **Fail fast, recover cleanly.** Use task-local rollback from the pre-task snapshot. Avoid workspace-wide resets in dirty trees.
 8. **Context hygiene.** Pass minimal, relevant context. Summarize — don't dump.
 9. **Evidence over assertion.** Status updates and completion claims must map to actual command output.
+10. **Escalate deterministically.** After three consecutive failures, stop thrashing and route to `pb-refine` with a structured DCR.
 
 ---
 
@@ -262,6 +295,7 @@ Before writing any code, verify the current workspace state:
 | **Confirm RED** | Run test suite. **Quote the error.** Classify: expected failure (proceed) vs bad failure (fix test first). | Failure confirmed |
 | **GREEN** | Write minimum implementation. Only edit files you read in Step 1. | Only what's needed |
 | **Confirm GREEN** | Run full test suite. If failure: read error, read code, then fix — do not blind-fix. | ALL tests pass |
+| **Runtime Verification (if applicable)** | Run runtime checks from task Verification, capture logs + probe output (or explicit `N/A` reason). | Runtime evidence captured |
 | **REFACTOR** | Clean up if needed | ALL tests still pass |
 | **SCOPE CHECK** | Confirm implemented changes match task contract and nothing extra. | Task scope respected |
 
@@ -293,6 +327,8 @@ Fix any "no" answers before submitting.
 
 ### Verification
 - [How verification criterion was met]
+- Runtime logs: [command + key output, or `N/A` with reason]
+- Runtime probe: [command + key output/status, or `N/A` with reason]
 - Test suite: X passed, 0 failed
 
 ### Commands Run
@@ -311,6 +347,7 @@ Fix any "no" answers before submitting.
 - Do not modify, delete, or reformat `AGENTS.md` unless the user explicitly requests an `AGENTS.md` change.
 - Do not modify unrelated code.
 - Tests are mandatory — never submit without them.
+- Runtime evidence is mandatory when applicable — do not claim completion without logs/probe evidence for runtime-facing tasks.
 - **No Blind Edits:** Always read a file before editing it.
 - **Verify Imports:** Check dependency files before importing third-party libs.
 - **Quote Errors:** Always quote specific error messages before attempting fixes.

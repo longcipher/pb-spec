@@ -79,13 +79,23 @@ Follow the Red → Green → Refactor cycle strictly. **Each phase must be a sep
   2. **Read the failing code** — re-read the relevant source file to understand the current state.
   3. **Then fix** with a targeted change.
 
-#### 2e. REFACTOR (if needed)
+#### 2e. Runtime Verification (When Applicable)
+
+- If the task includes runtime checks in `Verification`, or if your change affects runtime behavior (service startup, request flow, UI runtime state, health endpoints), run the runtime verification commands.
+- At minimum, capture:
+  - Recent runtime logs (for example `tail -n 50 app.log` or project-equivalent command).
+  - A live probe result (for example `curl http://localhost:8080/health` or project-equivalent endpoint).
+- Quote key output in your report.
+- If runtime verification is not applicable, explicitly report `N/A` with the reason.
+- If runtime verification fails, treat it as task failure and stop for orchestrator handling.
+
+#### 2f. REFACTOR (if needed)
 
 - Clean up code if there's obvious duplication or poor naming.
 - Do NOT add architecture or abstractions beyond what the task requires.
 - Run the full test suite again after any refactoring.
 
-#### 2f. Scope Check
+#### 2g. Scope Check
 
 - Confirm implementation matches the task contract and does not include extra scope.
 - If extra scope slipped in, remove it before submitting.
@@ -132,6 +142,8 @@ Report your work in this format:
 
 ### Verification
 - [Describe how the task's Verification criterion was met]
+- Runtime logs: [command + key output, or `N/A` with reason]
+- Runtime probe: [command + key output/status, or `N/A` with reason]
 - Test suite result: X tests passed, 0 failed
 
 ### Commands Run
@@ -154,6 +166,7 @@ Report your work in this format:
 - **Do not modify unrelated code.** Your changes should be scoped to this task only.
 - **Tests are mandatory.** Never submit implementation without tests.
 - **TDD phases are separate actions.** Never write test and implementation in the same step. Write tests first, see them fail, then write implementation.
+- **Runtime evidence is mandatory when applicable.** Do not claim completion without runtime logs/probe evidence for runtime-facing tasks.
 - **File a Design Change Request** if the design is infeasible rather than forcing a broken approach.
 - **No unverified claims.** Do not report success without command output evidence.
 
@@ -168,3 +181,4 @@ These rules act as your safety harness — they prevent common failure modes in 
 5. **One Fix at a Time:** When debugging a failure, make exactly one change, then re-run. Do not stack multiple speculative fixes.
 6. **Path Verification:** Never hardcode or assume file paths. Use `ls`, `find`, or file search to confirm paths before using them.
 7. **Verification-backed status:** Completion claims must be supported by command output from this run.
+8. **Observability as Context:** For runtime-facing tasks, include log/probe outputs in your report instead of relying on test output alone.
