@@ -104,7 +104,7 @@ Write or update `AGENTS.md` at the project root using a **marker-based managed b
 
 This strategy is format-agnostic and prevents accidental loss of user-maintained constraints.
 
-```markdown
+````markdown
 # AGENTS.md
 
 <!-- Existing user-authored constraints can live anywhere in this file. -->
@@ -115,22 +115,22 @@ This strategy is format-agnostic and prevents accidental loss of user-maintained
 
 ### Project Overview
 
-- **Language**: <detected language>
-- **Framework**: <detected framework, or "None detected">
-- **Build Tool**: <detected build tool>
-- **Test Command**: `<detected test command>`
+- **Language**: {{language}}
+- **Framework**: {{framework}}
+- **Build Tool**: {{build_tool}}
+- **Test Command**: `{{test_command}}`
 
 ### Project Structure
-```
 
-<directory tree from adaptive traversal>
+```text
+{{directory_tree}}
 ```
 
 ### Key Files
 
-- Entry point: <path>
-- Config: <path>
-- Tests: <path>
+- Entry point: {{entry_point}}
+- Config: {{config_path}}
+- Tests: {{tests_path}}
 
 ### Suggested Conventions (Optional Defaults)
 
@@ -145,10 +145,10 @@ This strategy is format-agnostic and prevents accidental loss of user-maintained
 
 ### Active Specs
 
-<list of specs/<YYYY-MM-DD-NO-feature-name> directories with dynamic status, or "No active specs found.">
+{{active_specs}}
 <!-- END PB-INIT MANAGED BLOCK -->
 
-```text
+````
 
 Replace `YYYY-MM-DD` with today's date.
 
