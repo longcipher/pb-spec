@@ -153,6 +153,25 @@ def test_pb_plan_templates_require_gherkin_feature_generation():
         assert "Scenario Coverage" in content
 
 
+def test_pb_plan_lightweight_templates_remain_pb_build_compatible():
+    """Lightweight task examples must still satisfy pb-build task parsing rules."""
+    for content in (load_skill_content("pb-plan"), load_prompt("pb-plan")):
+        lightweight_section = content.split("## Step 5b:", maxsplit=1)[0]
+
+        assert "### Task 1.1:" in lightweight_section
+        assert "- **Status:** 🔴 TODO" in lightweight_section
+        assert "### Task 1:" not in lightweight_section
+
+
+def test_pb_build_prompt_template_is_self_contained_for_prompt_platforms():
+    """Prompt-only platforms should not rely on an external implementer reference file."""
+    prompt = load_prompt("pb-build")
+
+    assert "## IMPLEMENTER PROMPT TEMPLATE" in prompt
+    assert "Task {{TASK_NUMBER}}: {{TASK_NAME}}" in prompt
+    assert "Read `references/implementer_prompt.md`" not in prompt
+
+
 def test_pb_build_templates_require_bdd_outer_loop_before_tdd():
     """pb-build templates should enforce BDD outer loop before TDD inner loop."""
     build_refs = load_references("pb-build")

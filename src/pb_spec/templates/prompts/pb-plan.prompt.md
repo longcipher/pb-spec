@@ -166,7 +166,7 @@ Remove all instructional placeholder text (such as bracket examples) in the fina
 
 ## Step 5a: Output tasks.md — Lightweight Mode (< 50 words)
 
-Write a **flat task list** to `specs/<spec-dir>/tasks.md`:
+Write a **flat task list** to `specs/<spec-dir>/tasks.md`. Even in lightweight mode, task IDs must remain in `Task X.Y` format so `pb-build` can track state reliably:
 
 ```markdown
 # [Feature Name] — Tasks
@@ -178,17 +178,19 @@ Write a **flat task list** to `specs/<spec-dir>/tasks.md`:
 
 ## Tasks
 
-### Task 1: [Task Name]
+### Task 1.1: [Task Name]
 
 > **Context:** ...
 > **Verification:** ...
 > **Scenario Coverage:** [Feature/scenario names]
 
 - **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Status:** 🔴 TODO
 - [ ] Step 1: ...
 - [ ] Step 2: ...
 - [ ] BDD Verification: ...
 - [ ] Verification: ...
+- [ ] Runtime Verification (if applicable): [Logs + probe result, or `N/A` with reason]
 ```
 
 For lightweight tasks that introduce or change runtime behavior (service startup, UI runtime flow, API availability, performance-critical paths), include runtime observability checks in `Verification`:

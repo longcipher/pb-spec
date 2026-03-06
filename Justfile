@@ -33,6 +33,15 @@ check: format lint type-check
 test:
     uv run pytest
 
+# Run BDD acceptance tests
+bdd:
+    uv run behave
+
+# Run both pytest and behave suites
+test-all:
+    uv run pytest
+    uv run behave
+
 # Run all checks and tests
 all: format lint type-check test
 
