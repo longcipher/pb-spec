@@ -12,14 +12,14 @@
 
 > Brief implementation strategy.
 
-- **Phase 1: Foundation & Scaffolding** — Setup, config, types
-- **Phase 2: Core Logic** — Primary implementation
+- **Phase 1: BDD Harness & Scaffolding** — Feature files, runner setup, task skeletons
+- **Phase 2: Scenario Implementation** — Primary behavior implemented via TDD
 - **Phase 3: Integration & Features** — Connecting pieces, end-to-end
 - **Phase 4: Polish, QA & Docs** — Tests, cleanup, documentation
 
 ---
 
-## Phase 1: Foundation & Scaffolding
+## Phase 1: BDD Harness & Scaffolding
 
 ### Task 1.1: [Task Name]
 
@@ -28,9 +28,12 @@
 
 - **Priority:** P0 / P1 / P2
 - **Scope:** [Logical Unit of Work — e.g., "Model layer", "API endpoint", "Service integration"]
+- **Scenario Coverage:** `[Feature/scenario names, or N/A for infrastructure-only work]`
+- **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
+- [ ] **BDD Verification:** [Concrete scenario check — e.g., "run `behave features/auth.feature` and confirm Scenario X fails first, then passes"]
 - [ ] **Verification:** [Concrete check — e.g., "run `pytest tests/test_config.py` and all pass"]
 - [ ] **Runtime Verification (if applicable):** [Capture runtime signals — e.g., `tail -n 50 app.log` and `curl http://localhost:8080/health`; if not applicable, write `N/A` with reason]
 
@@ -41,15 +44,18 @@
 
 - **Priority:** P0
 - **Scope:** [Logical Unit of Work]
+- **Scenario Coverage:** `[Feature/scenario names, or N/A]`
+- **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
+- [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
 - [ ] **Verification:** ...
 - [ ] **Runtime Verification (if applicable):** [Logs + probe result, or `N/A` with reason]
 
 ---
 
-## Phase 2: Core Logic
+## Phase 2: Scenario Implementation
 
 ### Task 2.1: [Task Name]
 
@@ -58,10 +64,13 @@
 
 - **Priority:** P0
 - **Scope:** [Logical Unit of Work]
+- **Scenario Coverage:** `[Feature/scenario names, or N/A]`
+- **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
 - [ ] **Step 3:** ...
+- [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
 - [ ] **Verification:** ...
 - [ ] **Runtime Verification (if applicable):** [Logs + probe result, or `N/A` with reason]
 
@@ -72,9 +81,12 @@
 
 - **Priority:** P1
 - **Scope:** [Logical Unit of Work]
+- **Scenario Coverage:** `[Feature/scenario names, or N/A]`
+- **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
+- [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
 - [ ] **Verification:** ...
 - [ ] **Runtime Verification (if applicable):** [Logs + probe result, or `N/A` with reason]
 
@@ -89,9 +101,12 @@
 
 - **Priority:** P1
 - **Scope:** [Logical Unit of Work]
+- **Scenario Coverage:** `[Feature/scenario names, or N/A]`
+- **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
+- [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
 - [ ] **Verification:** ...
 - [ ] **Runtime Verification (if applicable):** [Logs + probe result, or `N/A` with reason]
 
@@ -106,9 +121,12 @@
 
 - **Priority:** P2
 - **Scope:** [Logical Unit of Work]
+- **Scenario Coverage:** `[Feature/scenario names, or N/A]`
+- **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
+- [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
 - [ ] **Verification:** ...
 
 ---

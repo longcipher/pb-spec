@@ -4,16 +4,16 @@
 | :--- | :--- |
 | **Author** | pb-spec maintainers |
 | **Status** | Synced with implementation |
-| **Last Updated** | 2026-02-19 |
+| **Last Updated** | 2026-03-06 |
 
 ## 1. Executive Summary
 
 `pb-spec` is a Python CLI that installs a consistent spec-driven workflow into multiple AI coding tools. It standardizes an end-to-end loop:
 
 1. `/pb-init` builds project context (`AGENTS.md`)
-2. `/pb-plan` generates `design.md` + `tasks.md`
-3. `/pb-refine` iterates plans based on feedback or DCR
-4. `/pb-build` executes tasks through TDD subagent orchestration
+2. `/pb-plan` generates `design.md` + `tasks.md` + `features/*.feature`
+3. `/pb-refine` iterates plans based on feedback or DCR, including Gherkin scenario updates
+4. `/pb-build` executes tasks through a BDD outer loop and a TDD inner loop
 
 The tool is intentionally lightweight: platform-specific behavior is isolated in adapters, while skill/prompt source-of-truth stays in repository templates.
 
@@ -105,23 +105,23 @@ Audits the repository and produces a **minimal** `AGENTS.md` containing only inf
 
 ### 6.2 pb-plan
 
-Creates `specs/<YYYY-MM-DD-NN-feature>/design.md` and `tasks.md` in one shot. It emphasizes live codebase analysis and verification-first planning.
+Creates `specs/<YYYY-MM-DD-NN-feature>/design.md`, `tasks.md`, and `features/*.feature` in one shot. It emphasizes live codebase analysis, Gherkin-first behavior modeling, and verification-first planning.
 
 ### 6.3 pb-refine
 
-Applies incremental changes to existing spec docs without full regeneration. It logs revisions and cascades design updates into tasks.
+Applies incremental changes to existing spec docs without full regeneration. It logs revisions and cascades `.feature`, design, and task updates together.
 
 ### 6.4 pb-build
 
-Implements tasks sequentially with strict TDD and context hygiene. Failure recovery uses task-local rollback semantics to avoid destructive workspace-wide resets.
+Implements tasks sequentially with strict context hygiene and an outside-in double loop. The BDD outer loop proves the scenario fails first and then passes, while the TDD inner loop drives the underlying implementation. Failure recovery uses task-local rollback semantics to avoid destructive workspace-wide resets.
 
 ## 7. Reliability and Safety Rules
 
 1. No blind edits in generated workflows.
-2. Mandatory red-green-refactor sequence for implementation tasks.
+2. Mandatory BDD outer loop for `BDD+TDD` tasks and red-green-refactor inner loop for implementation work.
 3. Minimal context handoff between subagents.
 4. File-scoped rollback guidance for failed task attempts.
-5. Per-task verification criteria and explicit completion status tracking in `tasks.md`.
+5. Per-task verification criteria, scenario coverage mapping, and explicit completion status tracking in `tasks.md`.
 
 ## 8. Testing and Verification
 

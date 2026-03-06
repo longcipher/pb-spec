@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "pb-spec"
-version = "0.6.1"
+version = "0.7.0"
 description = "Plan-Build Spec (pb-spec): A CLI tool for managing AI coding assistant skills"
 readme = "README.md"
 license = "Apache-2.0"
@@ -41,7 +41,7 @@ testpaths = ["tests"]
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
-    "ruff>=0.15.4",
+    "ruff>=0.15.5",
     "ty>=0.0.20",
 ]
 

@@ -1,5 +1,7 @@
 """Tests for the template loading system."""
 
+from pathlib import Path
+
 from pb_spec.templates import load_prompt, load_references, load_skill_content, load_template
 
 
@@ -119,6 +121,72 @@ def test_pb_plan_templates_require_runtime_observability_verification():
     ):
         assert "tail -n 50 app.log" in content
         assert "curl http://localhost:8080/health" in content
+
+
+def test_pb_plan_reference_templates_require_bdd_tdd_fields():
+    """pb-plan reference templates should expose BDD/TDD planning fields."""
+    refs = load_references("pb-plan")
+    design = refs["design_template.md"]
+    tasks = refs["tasks_template.md"]
+
+    assert "BDD/TDD Strategy" in design
+    assert "BDD Scenario Inventory" in design
+    assert "BDD Runner" in design
+    assert "BDD Command" in design
+    assert "Unit Test Command" in design
+
+    assert "Scenario Coverage" in tasks
+    assert "Loop Type" in tasks
+    assert "BDD Verification" in tasks
+
+
+def test_pb_plan_templates_require_gherkin_feature_generation():
+    """pb-plan templates should generate spec-native Gherkin artifacts."""
+    for content in (load_skill_content("pb-plan"), load_prompt("pb-plan")):
+        assert "features/*.feature" in content
+        assert "Gherkin" in content
+        assert "@cucumber/cucumber" in content
+        assert "behave" in content
+        assert "cucumber" in content
+        assert "BDD/TDD Strategy" in content
+        assert "BDD Scenario Inventory" in content
+        assert "Scenario Coverage" in content
+
+
+def test_pb_build_templates_require_bdd_outer_loop_before_tdd():
+    """pb-build templates should enforce BDD outer loop before TDD inner loop."""
+    build_refs = load_references("pb-build")
+    for content in (
+        load_skill_content("pb-build"),
+        load_prompt("pb-build"),
+        build_refs["implementer_prompt.md"],
+    ):
+        assert "Scenario Coverage" in content
+        assert "outer loop is red" in content
+        assert "Re-run the BDD scenario until it passes" in content
+        assert "BDD+TDD" in content
+        assert "scenario name" in content
+
+
+def test_pb_refine_templates_update_feature_files_with_design_changes():
+    """pb-refine templates should refine `.feature` files alongside design and tasks."""
+    for content in (load_skill_content("pb-refine"), load_prompt("pb-refine")):
+        assert "specs/<spec-dir>/features/" in content
+        assert "update `.feature` first" in content
+        assert "Scenario Coverage" in content
+        assert "feature-file changes" in content
+
+
+def test_project_docs_describe_bdd_and_tdd_workflow():
+    """Project docs should describe the Gherkin-driven outer loop."""
+    readme = Path("README.md").read_text(encoding="utf-8")
+    design = Path("docs/design.md").read_text(encoding="utf-8")
+
+    assert "Gherkin" in readme
+    assert "BDD" in readme
+    assert ".feature" in readme
+    assert "outer loop" in design
+    assert "inner loop" in design
 
 
 def test_pb_build_templates_escalate_after_three_failures():

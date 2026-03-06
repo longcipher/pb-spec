@@ -31,16 +31,17 @@ pb-spec follows a **harness-first** philosophy: reliability comes from process d
 ### Practical Principles in pb-spec
 
 - **Context Before Code:** `/pb-init` and `/pb-plan` establish project and requirement context before implementation starts.
+- **Behavior Before Code:** `/pb-plan` turns user-visible requirements into Gherkin `.feature` scenarios before implementation begins.
 - **Verification by Design:** Planning requires explicit verification commands so completion is measurable.
 - **Observability as Context:** Service-facing tasks must capture runtime evidence (log tails and/or health probes), not only test output.
-- **Strict TDD Execution:** `/pb-build` enforces Red → Green → Refactor with per-task status tracking.
+- **Double-Loop Execution:** `/pb-build` enforces a BDD outer loop plus a TDD inner loop with per-task status tracking.
 - **Escalation Over Thrashing:** Three consecutive failures suspend the current task and route a standardized DCR packet to `/pb-refine`.
 - **Safe Failure Recovery:** Failed attempts use scoped recovery guidance to avoid polluting unrelated workspace state.
 - **Composable Architecture:** Platform differences stay in adapters; workflow semantics stay in shared templates.
 
 ## Features
 
-- **4 agent skills**: `pb-init`, `pb-plan`, `pb-refine`, `pb-build` — covering project analysis, design planning, iterative refinement, and TDD implementation
+- **4 agent skills**: `pb-init`, `pb-plan`, `pb-refine`, `pb-build` — covering project analysis, Gherkin-first design planning, iterative refinement, and BDD+TDD implementation
 - **5 platforms**: Claude Code, VS Code Copilot, OpenCode, Gemini CLI, Codex
 - **Zero config**: run `pb-spec init` and start using AI prompts immediately
 - **Idempotent**: safe to re-run; use `--force` to overwrite existing files
@@ -66,9 +67,9 @@ pb-spec init --ai all -g       # install globally to each agent's home/config di
 
 # 2. Open the project in your AI coding assistant and use the installed commands/prompts:
 #    /pb-init                          → Audit repo, append/update a managed AGENTS.md snapshot block (non-destructive)
-#    /pb-plan Add WebSocket auth       → Generate specs/YYYY-MM-DD-01-add-websocket-auth/
+#    /pb-plan Add WebSocket auth       → Generate design/tasks/features spec artifacts
 #    /pb-refine add-websocket-auth     → (Optional) Refine design based on feedback
-#    /pb-build add-websocket-auth      → Implement tasks via TDD subagents
+#    /pb-build add-websocket-auth      → Implement tasks via BDD outer loop + TDD inner loop
 #
 #    Note for Codex: prompts are loaded from .codex/prompts and typically run via /prompts:<name>.
 ```
@@ -137,10 +138,15 @@ Takes a natural-language requirement and produces a complete feature spec:
 ```text
 specs/<YYYY-MM-DD-NO-feature-name>/
 ├── design.md    # Architecture, API contracts, data models
-└── tasks.md     # Ordered implementation tasks (logical units of work)
+├── tasks.md     # Ordered implementation tasks (logical units of work)
+└── features/    # Gherkin acceptance artifacts
 ```
 
-The spec directory follows the naming format `YYYY-MM-DD-NO-feature-name` (e.g., `2026-02-15-01-add-websocket-auth`). The feature-name part must be unique across all specs. During planning, `AGENTS.md` is treated as read-only policy context (free-form, no fixed layout assumptions).
+The spec directory follows the naming format `YYYY-MM-DD-NO-feature-name` (e.g., `2026-02-15-01-add-websocket-auth`). The feature-name part must be unique across all specs. During planning, `AGENTS.md` is treated as read-only policy context (free-form, no fixed layout assumptions). `pb-plan` also maps the primary repo language to a BDD runner:
+
+- TypeScript/JavaScript → `@cucumber/cucumber`
+- Python → `behave`
+- Rust → `cucumber`
 
 ### 3. `/pb-refine <feature-name>` — Design Iteration (Optional)
 
@@ -148,16 +154,16 @@ Reads user feedback or Design Change Requests (from failed builds, including sta
 
 ### 4. `/pb-build <feature-name>` — Subagent-Driven Implementation
 
-Reads `specs/<YYYY-MM-DD-NO-feature-name>/tasks.md` and implements each task sequentially. Every task is executed by a fresh subagent following strict TDD (Red → Green → Refactor), then runtime verification (log/health evidence when applicable). Supports **Design Change Requests** if the planned design proves infeasible during implementation, and auto-escalates to DCR after three consecutive task failures. Only the `<feature-name>` part is needed when invoking — the agent resolves the full directory automatically. `AGENTS.md` is read-only unless the user explicitly requests an `AGENTS.md` change.
+Reads `specs/<YYYY-MM-DD-NO-feature-name>/tasks.md` and implements each task sequentially. Every `BDD+TDD` task is executed by a fresh subagent following an outside-in double loop: run the Gherkin scenario first so the BDD outer loop is red, drive the implementation with TDD (Red → Green → Refactor) in the inner loop, then re-run the scenario until it passes. Runtime verification (log/health evidence when applicable) still applies. Supports **Design Change Requests** if the planned design proves infeasible during implementation, and auto-escalates to DCR after three consecutive task failures. Only the `<feature-name>` part is needed when invoking — the agent resolves the full directory automatically. `AGENTS.md` is read-only unless the user explicitly requests an `AGENTS.md` change.
 
 ## Skills Overview
 
 | Skill | Trigger | Output | Description |
 |---|---|---|---|
 | `pb-init` | `/pb-init` | `AGENTS.md` | Audit repo and safely update/append a managed snapshot block without rewriting user-authored constraints |
-| `pb-plan` | `/pb-plan <requirement>` | `specs/<YYYY-MM-DD-NO-feature-name>/design.md` + `tasks.md` | Design proposal + ordered task breakdown |
+| `pb-plan` | `/pb-plan <requirement>` | `specs/<YYYY-MM-DD-NO-feature-name>/design.md` + `tasks.md` + `features/*.feature` | Design proposal + Gherkin scenarios + ordered task breakdown |
 | `pb-refine` | `/pb-refine <feature>` | Revised spec files | Apply feedback or Design Change Requests |
-| `pb-build` | `/pb-build <feature-name>` | Code + tests | TDD implementation via subagents |
+| `pb-build` | `/pb-build <feature-name>` | Code + tests | BDD outer loop + TDD inner loop via subagents |
 
 ## Design Philosophy: Agent Harness
 

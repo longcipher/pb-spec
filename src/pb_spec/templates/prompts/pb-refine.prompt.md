@@ -25,7 +25,8 @@ Run this when the user invokes `/pb-refine <feature-name>` with feedback or chan
 
 1. `specs/<spec-dir>/design.md` — the current design.
 2. `specs/<spec-dir>/tasks.md` — the current task breakdown.
-3. `AGENTS.md` (if it exists) — read-only source of constraints and gotchas.
+3. `specs/<spec-dir>/features/` — existing `.feature` files and scenario inventory.
+4. `AGENTS.md` (if it exists) — read-only source of constraints and gotchas.
 
 ## Step 2: Parse User Feedback
 
@@ -42,7 +43,8 @@ Categorize the feedback into:
 
 1. **Design changes** — modifications to `design.md`.
 2. **Task changes** — modifications to `tasks.md`.
-3. **Both** — changes that affect design and cascade to tasks.
+3. **Feature changes** — modifications to `specs/<spec-dir>/features/`.
+4. **Both / All** — changes that affect feature files, design, and cascade to tasks.
 
 If feedback includes a standardized `🛑 Build Blocked` packet, treat it as high-priority execution evidence (not a speculative opinion). Extract and preserve:
 
@@ -50,7 +52,14 @@ If feedback includes a standardized `🛑 Build Blocked` packet, treat it as hig
 - Exact failing commands / error excerpts
 - Suggested design change and affected tasks
 
-## Step 3: Update design.md
+## Step 3: Update `.feature` Files and design.md
+
+If feedback changes user-visible behavior, update the relevant files under `specs/<spec-dir>/features/` first.
+
+- Use precise edits. Modify only the affected scenarios and steps.
+- Keep Gherkin in business language.
+- Preserve unaffected scenarios exactly as they are.
+- If the behavior contract is unchanged and the issue is only implementation detail, keep the `.feature` files unchanged and say why.
 
 Apply design changes to `specs/<spec-dir>/design.md`:
 
@@ -78,6 +87,7 @@ If design changes affect the task breakdown, update `specs/<spec-dir>/tasks.md`:
 - **Remove or mark tasks as obsolete** if they're no longer needed: change Status to `⛔ OBSOLETE`.
 - **Reorder tasks** if dependencies changed.
 - **Update task Context** to reflect new design decisions.
+- **Update `Scenario Coverage` and `BDD Verification`** when scenarios were added, removed, renamed, or split.
 - **Strengthen Verification** when needed: add runtime observability checks (logs/probe) for runtime-facing tasks, or explicit `N/A` rationale when not applicable.
 - **Do NOT modify completed tasks** (`- [x]` or `🟢 DONE`) unless explicitly requested.
 - **Use precise edits** — do not rewrite the entire file.
@@ -87,14 +97,21 @@ If design changes affect the task breakdown, update `specs/<spec-dir>/tasks.md`:
 After making changes, verify:
 
 1. **Design ↔ Tasks alignment:** Every section in the Implementation Plan of `design.md` has corresponding tasks in `tasks.md`.
-2. **Dependency order:** No task references work from a later task.
-3. **No orphaned tasks:** Every task in `tasks.md` traces back to a design decision.
-4. **Completed work preserved:** Already-done tasks are not invalidated (if they are, flag this to the user).
+2. **Feature ↔ Design alignment:** Every changed `.feature` scenario is reflected in `design.md`.
+3. **Dependency order:** No task references work from a later task.
+4. **No orphaned tasks:** Every task in `tasks.md` traces back to a design decision or scenario.
+5. **Completed work preserved:** Already-done tasks are not invalidated (if they are, flag this to the user).
 
 ## Step 6: Output Summary
 
 ```text
 🔄 Spec refined: specs/<spec-dir>/
+
+Changes to feature files:
+  - [Feature file]: [scenario or step changes]
+
+feature-file changes:
+  - [Short summary of behavior contract updates]
 
 Changes to design.md:
   - [Section X]: [What changed]
@@ -120,7 +137,7 @@ Next steps:
 
 1. **Minimal, precise edits.** Change only what the feedback requires. Do not re-generate the entire spec.
 2. **Preserve completed work.** Never silently invalidate done tasks or delete progress.
-3. **Cascade intentionally.** Design changes must propagate to tasks. Task-only changes should not alter the design.
+3. **Cascade intentionally.** Behavior changes should update `.feature` first, then `design.md`, then `tasks.md`. Task-only changes should not alter the behavior contract.
 4. **Conflict resolution.** When feedback contradicts the original design, apply the user's decision and note why.
 5. **Audit trail.** Every change is logged in the Revision History.
 6. **Execution evidence first.** Repeated build failures (including 3-failure build-block packets) override weak prior assumptions.
@@ -129,7 +146,7 @@ Next steps:
 
 ## Constraints
 
-- **Only modify `specs/<spec-dir>/design.md` and `specs/<spec-dir>/tasks.md`.**
+- **Only modify `specs/<spec-dir>/design.md`, `specs/<spec-dir>/tasks.md`, and `specs/<spec-dir>/features/`.**
 - **Do not modify project source code.** Refinement is planning only.
 - **Do not re-run the entire planning process.** This is an incremental update, not a fresh plan.
 - **Preserve formatting and structure** of both files.
@@ -142,5 +159,6 @@ Next steps:
 
 - **No feedback provided:** Report: "No feedback detected. Please provide specific changes you'd like to make to the design or tasks."
 - **Feedback invalidates completed tasks:** Flag this in the summary as a warning. Do not automatically undo completed tasks.
+- **Behavior changes require scenario edits:** Update `.feature` first, then cascade the same decision into `design.md` and `tasks.md`.
 - **Feedback requires entirely new design:** Recommend the user run `/pb-plan <feature-name>` instead with the new requirements. Only use `/pb-refine` for incremental changes.
 - **Multiple conflicting feedback items:** Apply them in the order given. Note conflicts in the Revision History.

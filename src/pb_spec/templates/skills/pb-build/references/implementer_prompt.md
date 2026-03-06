@@ -29,6 +29,7 @@ Before coding, define a compact task contract from the provided task block:
 - What must change
 - What must not change
 - How success is verified
+- Which `Scenario Coverage` entries and scenario name apply to this task
 
 ### 1. Grounding & State Verification (Mandatory)
 
@@ -42,18 +43,25 @@ Before coding, define a compact task contract from the provided task block:
 
 > **Why this step is mandatory:** Long-running agents are prone to "path hallucination" — assuming files exist at locations they don't or that code has a structure it doesn't. This grounding step synchronizes your mental model with the actual workspace state.
 
-### 2. TDD Cycle
+### 2. BDD + TDD Cycle
 
-Follow the Red → Green → Refactor cycle strictly. **Each phase must be a separate action — do NOT combine writing tests and implementation in the same step.**
+Follow the outside-in cycle strictly. `BDD+TDD` tasks must first prove the business scenario fails, then pass through TDD, then pass the scenario. **Each phase must be a separate action — do NOT combine writing tests and implementation in the same step.**
 
-#### 2a. RED — Write Failing Test (STOP AFTER THIS)
+#### 2a. BDD OUTER RED — Run the Scenario First
+
+- If `Loop Type` is `BDD+TDD`, run the referenced scenario from `Scenario Coverage` before writing implementation code.
+- The BDD command must fail first so you know the outer loop is red.
+- Quote the failing step and scenario name from the runner output.
+- If the task is `TDD-only`, explicitly report `N/A`.
+
+#### 2b. RED — Write Failing Test (STOP AFTER THIS)
 
 - Write a test (or tests) that capture the task's requirements.
 - The test should assert the expected behavior described in the task.
 - Place tests in the project's test directory, following existing conventions.
 - **⚠️ STOP HERE.** Do not write any implementation code yet.
 
-#### 2b. Confirm RED (Error Analysis Required)
+#### 2c. Confirm RED (Error Analysis Required)
 
 - Run the test suite.
 - **The new test(s) MUST fail.** If they pass without implementation, your test is not testing the right thing — fix the test.
@@ -63,14 +71,14 @@ Follow the Red → Green → Refactor cycle strictly. **Each phase must be a sep
   - ❌ **Bad failure** (e.g., `SyntaxError`, `IndentationError`, file not found) → Fix the test code immediately, then re-run.
 - **Only proceed to GREEN after seeing and quoting the failure output.**
 
-#### 2c. GREEN — Write Minimum Implementation
+#### 2d. GREEN — Write Minimum Implementation
 
 - Write the **minimum code** needed to make the failing test pass.
 - Do not add features, optimizations, or abstractions not required by this task.
 - **Constraint:** Do not edit files you did not read in Step 1. If you need to modify a new file, read it first.
 - Follow existing project patterns and conventions.
 
-#### 2d. Confirm GREEN (Full Suite Required)
+#### 2e. Confirm GREEN (Full Suite Required)
 
 - Run the **full** test suite (not just the new tests).
 - **All tests must pass** — both the new ones and all pre-existing tests.
@@ -79,7 +87,14 @@ Follow the Red → Green → Refactor cycle strictly. **Each phase must be a sep
   2. **Read the failing code** — re-read the relevant source file to understand the current state.
   3. **Then fix** with a targeted change.
 
-#### 2e. Runtime Verification (When Applicable)
+#### 2f. BDD OUTER GREEN — Re-run the BDD Scenario
+
+- If `Loop Type` is `BDD+TDD`, re-run the BDD scenario until it passes.
+- Re-run the BDD scenario until it passes with the expected Given/When/Then behavior.
+- Quote the passing scenario name and key outcome in your report.
+- If the scenario still fails, treat the task as incomplete even if unit tests are green.
+
+#### 2g. Runtime Verification (When Applicable)
 
 - If the task includes runtime checks in `Verification`, or if your change affects runtime behavior (service startup, request flow, UI runtime state, health endpoints), run the runtime verification commands.
 - At minimum, capture:
@@ -89,13 +104,13 @@ Follow the Red → Green → Refactor cycle strictly. **Each phase must be a sep
 - If runtime verification is not applicable, explicitly report `N/A` with the reason.
 - If runtime verification fails, treat it as task failure and stop for orchestrator handling.
 
-#### 2f. REFACTOR (if needed)
+#### 2h. REFACTOR (if needed)
 
 - Clean up code if there's obvious duplication or poor naming.
 - Do NOT add architecture or abstractions beyond what the task requires.
 - Run the full test suite again after any refactoring.
 
-#### 2g. Scope Check
+#### 2i. Scope Check
 
 - Confirm implementation matches the task contract and does not include extra scope.
 - If extra scope slipped in, remove it before submitting.
@@ -117,6 +132,7 @@ Before submitting, answer each question honestly:
 - [ ] **Conventions:** Does the code follow project conventions (discovered from codebase; `AGENTS.md` for non-obvious constraints)?
 - [ ] **Test coverage:** Do the tests meaningfully verify the task's requirements?
 - [ ] **No regressions:** Do all pre-existing tests still pass?
+- [ ] **BDD coverage:** For `BDD+TDD` tasks, did the referenced scenario fail first and then pass?
 - [ ] **YAGNI:** Is there any over-engineering I should remove?
 - [ ] **Verification mapping:** Is the task's stated Verification explicitly satisfied?
 
@@ -141,6 +157,8 @@ Report your work in this format:
 - [file path] — [what changed and why]
 
 ### Verification
+- Scenario name: [Scenario name, or `N/A` for `TDD-only` tasks]
+- BDD Verification: [command + failed-first/passed-later evidence, or `N/A` with reason]
 - [Describe how the task's Verification criterion was met]
 - Runtime logs: [command + key output, or `N/A` with reason]
 - Runtime probe: [command + key output/status, or `N/A` with reason]
@@ -165,6 +183,7 @@ Report your work in this format:
 - **Do not modify, delete, or reformat `AGENTS.md`.** Treat it as read-only unless the user explicitly requests an `AGENTS.md` change.
 - **Do not modify unrelated code.** Your changes should be scoped to this task only.
 - **Tests are mandatory.** Never submit implementation without tests.
+- **`BDD+TDD` tasks must satisfy Scenario Coverage.** Do not skip the outer loop when the task says `BDD+TDD`.
 - **TDD phases are separate actions.** Never write test and implementation in the same step. Write tests first, see them fail, then write implementation.
 - **Runtime evidence is mandatory when applicable.** Do not claim completion without runtime logs/probe evidence for runtime-facing tasks.
 - **File a Design Change Request** if the design is infeasible rather than forcing a broken approach.

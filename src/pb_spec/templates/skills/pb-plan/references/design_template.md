@@ -69,6 +69,25 @@
 
 > If no reusable components exist, state "No existing components identified for reuse" and explain why.
 
+### 3.4 BDD/TDD Strategy
+
+> Describe how this feature will use outside-in development. Define the business-facing Gherkin loop and the supporting TDD loop.
+
+- **BDD Runner:** `[e.g., @cucumber/cucumber | behave | cucumber]`
+- **BDD Command:** `[e.g., npm exec cucumber-js features/auth.feature]`
+- **Unit Test Command:** `[e.g., pytest tests/auth/test_service.py -v]`
+- **Outer Loop:** `[Which`.feature`scenarios prove the behavior works end-to-end]`
+- **Inner Loop:** `[Which unit/component tests will drive the underlying implementation]`
+- **Step Definition Location:** `[e.g., features/steps/, tests/bdd/, crates/app/tests/]`
+
+### 3.5 BDD Scenario Inventory
+
+> List every scenario that should be planned as a first-class acceptance artifact.
+
+| Feature File | Scenario | Business Outcome | Primary Verification | Supporting TDD Focus |
+| :--- | :--- | :--- | :--- | :--- |
+| `features/[feature-name].feature` | `[Scenario Name]` | `[User-visible result]` | `[BDD command or acceptance check]` | `[Unit/component logic to drive with TDD]` |
+
 ---
 
 ## 4. Detailed Design
@@ -138,7 +157,15 @@ class FeatureInterface:
 
 > How modules work together. Mock strategies, sandbox environments.
 
-### 5.3 Critical Path Verification (The "Harness")
+### 5.3 BDD Acceptance Testing
+
+> Which `.feature` files and scenarios must fail first and then pass. Include the exact BDD runner command.
+
+| Scenario ID | Feature File | Command | Success Criteria |
+| :--- | :--- | :--- | :--- |
+| **BDD-01** | `[e.g., features/auth.feature]` | `[e.g., npm exec cucumber-js features/auth.feature]` | `[e.g., Scenario passes with 0 failed steps]` |
+
+### 5.4 Critical Path Verification (The "Harness")
 
 > Define the exact command(s) or script(s) that prove this feature works end-to-end. The `pb-build` agent will use these to verify the final result. This acts as the acceptance test for the entire feature.
 
@@ -150,7 +177,7 @@ class FeatureInterface:
 
 > **Why this matters:** By defining verification commands at design time, the build agent does not need to invent its own verification strategy — it simply executes these commands and checks the criteria. This dramatically improves reliability.
 
-### 5.4 Validation Rules
+### 5.5 Validation Rules
 
 | Test Case ID | Action | Expected Outcome | Verification Method |
 | :--- | :--- | :--- | :--- |

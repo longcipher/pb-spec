@@ -6,7 +6,7 @@ Run this when the user invokes `/pb-plan <requirement description>`. Do not ask 
 
 **Execution contract:**
 
-- Produce both `design.md` and `tasks.md` under `specs/<spec-dir>/`.
+- Produce `design.md`, `tasks.md`, and `features/*.feature` under `specs/<spec-dir>/`.
 - Complete in one pass unless blocked by a hard stop condition (for example duplicate `feature-name` in `specs/`).
 - Ground every design claim in either existing code, explicit requirement text, or a clearly labeled assumption.
 - Do not invent files, modules, APIs, commands, or project conventions.
@@ -22,8 +22,9 @@ Build a compact **requirements coverage checklist** from the input before writin
 - Functional requirements (what must be built)
 - Constraints (tech stack, compatibility, performance, security, etc.)
 - Explicit non-goals or out-of-scope items
+- User-visible behaviors that should become Gherkin scenarios
 
-Every checklist item must be reflected in `design.md` and broken into actionable work in `tasks.md` (or explicitly marked out-of-scope with rationale).
+Every checklist item must be reflected in `design.md`, represented in `features/*.feature` where behavior is user-visible, and broken into actionable work in `tasks.md` (or explicitly marked out-of-scope with rationale).
 
 **feature-name rules:**
 
@@ -57,14 +58,21 @@ Gather context to inform the design. **Always perform live codebase analysis** �
    - Search for keywords from the requirement across the codebase.
    - Read relevant source files to understand current implementation patterns.
    - Verify all referenced file paths and modules actually exist. If uncertain, mark as assumption instead of asserting.
+   - Search for existing BDD assets and commands: `features/`, `*.feature`, `steps/`, `cucumber`, `@cucumber/cucumber`, `behave`, `bdd`, and test scripts in project config.
 3. **Check `specs/`** — see if related feature specs already exist.
 4. **Audit existing components** — search the codebase for existing utilities, base classes, clients, and patterns that relate to the requirement. Specifically look for:
    - Helper/utility modules that overlap with the requirement
    - Existing abstractions (base classes, interfaces, protocols) to extend
    - Shared infrastructure (database connections, HTTP clients, cache layers)
    - Similar prior implementations that establish patterns to follow
-
    **This audit is mandatory.** List reusable components in `design.md` Section 3.3 and reference them in `tasks.md` task context.
+
+5. **Determine the BDD/Test harness** — infer the primary language and recommended BDD runner:
+   - TypeScript/JavaScript → `@cucumber/cucumber`
+   - Python → `behave`
+   - Rust → `cucumber`
+
+   Prefer the repo's existing test and BDD commands if they already exist. Only propose new `features/` or step-definition locations when the repo has no established convention.
 
 If `AGENTS.md` does not exist, that's fine — scan the project root directly (config files, directory structure) to infer project context. You can recommend running `/pb-init` to surface any hidden gotchas, but its absence should not block planning.
 
@@ -95,7 +103,16 @@ If `AGENTS.md` does not exist, that's fine — scan the project root directly (c
 2. Extract the highest sequence number among them.
 3. Set `NO` = highest + 1 (or `01` if none exist for today). Zero-pad to 2 digits.
 
-Create `specs/<spec-dir>/` (e.g., `specs/2026-02-15-01-add-websocket-auth/`).
+Create:
+
+```text
+specs/<spec-dir>/
+├── design.md
+├── tasks.md
+└── features/
+```
+
+(e.g., `specs/2026-02-15-01-add-websocket-auth/`).
 
 ## Step 4a: Output design.md — Lightweight Mode (< 50 words)
 
@@ -117,6 +134,19 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`:
 ## Approach
 
 > How to implement. Reference existing code/patterns to reuse.
+
+## BDD/TDD Strategy
+
+- **Primary Language:** ...
+- **BDD Runner:** `@cucumber/cucumber` / `behave` / `cucumber`
+- **BDD Command:** ...
+- **Unit Test Command:** ...
+- **Feature Files:** `specs/<spec-dir>/features/*.feature`
+- **Outside-in Loop:** Which Gherkin scenarios fail first and then pass
+
+## BDD Scenario Inventory
+
+- `features/[feature-name].feature` — [Scenario Name]: [Business outcome]
 
 ## Existing Components to Reuse
 
@@ -152,9 +182,12 @@ Write a **flat task list** to `specs/<spec-dir>/tasks.md`:
 
 > **Context:** ...
 > **Verification:** ...
+> **Scenario Coverage:** [Feature/scenario names]
 
+- **Loop Type:** `BDD+TDD` / `TDD-only`
 - [ ] Step 1: ...
 - [ ] Step 2: ...
+- [ ] BDD Verification: ...
 - [ ] Verification: ...
 ```
 
@@ -173,12 +206,14 @@ Remove all instructional placeholder text (such as bracket examples) in the fina
 
 **Task requirements:**
 
-- Grouped into Phases (Foundation → Core → Integration → Polish).
-- Each task: **Context**, **Steps** (checkboxes), and **Verification**.
+- Grouped into Phases (BDD Harness → Scenario Implementation → Integration → Polish).
+- Each task: **Context**, **Scenario Coverage**, **Loop Type**, **Steps** (checkboxes), **BDD Verification**, and **Verification**.
 - Each task represents a **Logical Unit of Work** — a self-contained, meaningful change. Do NOT split by time estimates.
 - **Task ID format:** Each task MUST have a unique ID: `Task X.Y` (e.g., `Task 1.1`, `Task 2.3`).
 - Ordered by dependency — no task references work from a later task.
 - Every task has a concrete **Verification** criterion.
+- Tasks that implement user-visible behavior should use `Loop Type: BDD+TDD` and point to one or more scenarios in `Scenario Coverage`. Pure infrastructure tasks may use `Loop Type: TDD-only`.
+- If the repo does not already have a BDD harness, include explicit setup work for the chosen runner and step-definition location.
 - For tasks that introduce or change runtime behavior (service startup, UI runtime flow, API/network availability, performance-sensitive code paths), **Verification must include runtime observability checks**:
   - Recent runtime logs (for example `tail -n 50 app.log` or equivalent).
   - A live health/probe command (for example `curl http://localhost:8080/health` or equivalent).
@@ -186,7 +221,20 @@ Remove all instructional placeholder text (such as bracket examples) in the fina
 - **Reference reusable components** in task Context when the task should extend or use existing code.
 - Ensure every requirement from the Step 1 checklist is covered by at least one task or explicitly marked out-of-scope.
 
-## Step 6: Prompt Developer Review
+## Step 6: Output `features/*.feature`
+
+Write one or more `.feature` files under `specs/<spec-dir>/features/`.
+
+**Feature file requirements:**
+
+- Use standard Gherkin with `Feature`, `Scenario`, `Given`, `When`, and `Then`.
+- Use business language, not implementation detail.
+- Cover the user-visible behavior identified in Step 1.
+- Reuse existing repo conventions if the project already has feature files or step-definition locations.
+- If the repo lacks a BDD runner, reflect the setup work in `tasks.md` rather than pretending it already exists.
+- Every planned scenario must map back to `design.md` and at least one task in `tasks.md`.
+
+## Step 7: Prompt Developer Review
 
 After writing both files, output:
 
@@ -197,6 +245,7 @@ Mode: <Lightweight | Full>
 Files:
   - specs/<spec-dir>/design.md
   - specs/<spec-dir>/tasks.md
+  - specs/<spec-dir>/features/*.feature
 
 Summary: <1-2 sentence description>
 
@@ -212,12 +261,14 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 3. **Right-sized output (YAGNI).** Match output detail to requirement complexity. Simple changes get compact specs; complex features get full specs.
 4. **Live codebase analysis.** Always search the actual codebase. Use `AGENTS.md` as complementary policy context, not a replacement for code inspection.
 5. **Task granularity: Logical Unit of Work.** Each task is a self-contained, meaningful change. Do not split based on arbitrary time estimates.
-6. **Verification per task.** Every task defines how to prove it is done; runtime-facing tasks include runtime observability evidence.
-7. **Dependency order.** Phases and tasks flow foundational → dependent.
-8. **Project-aware.** Use existing conventions, patterns, and tech stack. Reuse existing components — do not reinvent.
-9. **Requirements coverage.** Track every requirement from input to design sections and tasks.
-10. **Truthfulness over fluency.** If information is missing, state assumptions explicitly instead of fabricating specifics.
-11. **Deterministic output quality.** Final docs should be implementation-ready, with no template artifacts left behind.
+6. **Scenario-first planning.** User-visible behavior must become Gherkin artifacts under `features/*.feature`.
+7. **Verification per task.** Every task defines how to prove it is done; runtime-facing tasks include runtime observability evidence.
+8. **Double-loop execution readiness.** `tasks.md` must make it obvious which tasks are `BDD+TDD` versus `TDD-only`.
+9. **Dependency order.** Phases and tasks flow foundational → dependent.
+10. **Project-aware.** Use existing conventions, patterns, and tech stack. Reuse existing components — do not reinvent.
+11. **Requirements coverage.** Track every requirement from input to design sections, feature scenarios, and tasks.
+12. **Truthfulness over fluency.** If information is missing, state assumptions explicitly instead of fabricating specifics.
+13. **Deterministic output quality.** Final docs should be implementation-ready, with no template artifacts left behind.
 
 ---
 
@@ -230,6 +281,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 - **Write only to `specs/<spec-dir>/`.** Do not modify project source code.
 - **`AGENTS.md` is read-only in this phase.** Do not modify, delete, or reformat it unless the user explicitly asks for an `AGENTS.md` update.
 - **No invented references.** Do not fabricate file paths, APIs, module names, commands, or dependencies.
+- **No invented BDD layout.** Prefer existing repo structure; only propose new `features/` or step-definition locations when the codebase has no established convention.
 - **No unresolved placeholders.** Final `design.md` and `tasks.md` must not contain template example markers like `[Goal A]` or `[Task Name]`.
 
 ---
@@ -241,6 +293,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 - **Same feature-name exists:** The uniqueness check in Step 3 prevents creating a spec with a feature-name that already exists in `specs/`. Stop and report the conflict. The developer should choose a different name or use `/pb-refine` to update the existing spec.
 - **No `AGENTS.md`:** Proceed anyway — search codebase directly. Recommend `/pb-init` to surface hidden gotchas.
 - **Bug fix, not feature:** Use same process. Design focuses on root cause + fix approach.
+- **Mostly internal work with an external contract:** Add at least one behavior-preserving Gherkin scenario that captures the boundary behavior.
 - **External systems/APIs:** Document assumptions about external interfaces in design.
 - **Borderline word count (~50 words):** Use lightweight mode. Developer can run `/pb-refine` to expand.
 - **Short requirement but complex domain:** If <50 words but clearly complex (e.g., "refactor the entire auth system"), use full mode. Word count is a heuristic, not a hard rule.

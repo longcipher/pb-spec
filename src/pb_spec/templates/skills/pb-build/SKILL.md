@@ -8,7 +8,7 @@ You are the **pb-build** agent. Your job is to read a feature's `tasks.md`, then
 
 - Complete unfinished tasks in `tasks.md` sequentially until done or explicitly blocked.
 - Use one fresh subagent per task with minimal, task-relevant context only.
-- Mark a task as done only after tests pass, task verification passes, and runtime evidence is captured when applicable.
+- Mark a task as done only after `BDD Verification` passes for `BDD+TDD` tasks, tests pass, task verification passes, and runtime evidence is captured when applicable.
 - If blocked, fail clearly with exact task ID, failed command, and concrete next options (retry/skip/abort within budget, then DCR escalation).
 
 ---
@@ -52,7 +52,7 @@ Scan `tasks.md` for all unchecked task items (`- [ ]`). Build an ordered list of
 - If `tasks.md` has malformed structure (missing task headings, inconsistent checkbox format), report the parsing issue to the user and ask them to fix the format before continuing.
 - If a task is marked `⏭️ SKIPPED`, treat it as unfinished but deprioritize — skip it unless the user explicitly requests a retry.
 
-For execution reliability, represent the queue as explicit task units: `Task ID`, `Task Name`, `Status`, `Verification`.
+For execution reliability, represent the queue as explicit task units: `Task ID`, `Task Name`, `Status`, `Scenario Coverage`, `Loop Type`, `BDD Verification`, `Verification`.
 
 If all tasks are already checked (`- [x]`), report:
 
@@ -66,11 +66,12 @@ For each unfinished task, in order:
 
 #### 3a. Extract Task Content
 
-Extract the full task block from `tasks.md` — including Context, Steps, and Verification.
+Extract the full task block from `tasks.md` — including Context, Scenario Coverage, Loop Type, Steps, BDD Verification, and Verification.
 
 #### 3b. Gather Project Context
 
 - Read `specs/<spec-dir>/design.md` for design context.
+- Read any referenced `.feature` files under `specs/<spec-dir>/features/` for scenario context.
 - Read `AGENTS.md` (if it exists) for project constraints and hard rules. Treat it as read-only policy context.
 - Identify files most relevant to this task.
 - Record a pre-task workspace snapshot (`git status --porcelain` + tracked/untracked file lists). This baseline is used for safe recovery if the task fails.
@@ -81,6 +82,7 @@ Create a **fresh subagent** for this task. Pass it the implementer prompt templa
 
 - The full task description from `tasks.md`.
 - Non-obvious constraints from `AGENTS.md` and design context from `design.md`.
+- The referenced `.feature` file content and scenario name for `BDD+TDD` tasks.
 - The task number and name.
 
 **Context Hygiene (Critical):**
@@ -89,22 +91,25 @@ When spawning the subagent, do NOT pass the entire chat history. Pass ONLY:
 1. The specific Task Description from `tasks.md`.
 2. The `AGENTS.md` (project constraints and hard rules; do not assume any fixed template layout).
 3. The `design.md` (Feature Spec).
-4. **Summary of previous tasks** — a one-line-per-task summary of what was done (e.g., "Task 1.1 created `models.py` with `User` and `Session` classes which you should now use."). Do NOT pass raw logs or full outputs from previous subagents.
+4. The relevant `.feature` file content and scenario name when `Loop Type` is `BDD+TDD`.
+5. **Summary of previous tasks** — a one-line-per-task summary of what was done (e.g., "Task 1.1 created `models.py` with `User` and `Session` classes which you should now use."). Do NOT pass raw logs or full outputs from previous subagents.
 
 > **Why Context Hygiene matters:** Passing too much context — especially error logs from previous attempts — can mislead the current subagent. A clean, focused context window leads to better outcomes, following Anthropic's "Fresh Context" strategy.
 
-#### 3d. Subagent Executes (TDD + Runtime Verification Cycle)
+#### 3d. Subagent Executes (BDD + TDD + Runtime Verification Cycle)
 
 The subagent follows this strict process. **Each phase must be a separate action — do NOT combine writing tests and implementation in the same step.**
 
-1. **RED** — Write a failing test that captures the task's requirements. **STOP after this step.**
-2. **Confirm RED** — Run the test suite. The new test must fail. Verify it fails for the right reason.
-3. **GREEN** — Write the minimum implementation to make the test pass. **Only proceed after confirming RED.**
-4. **Confirm GREEN** — Run the test suite. All tests must pass.
-5. **Runtime Verification (when applicable)** — Run runtime checks from task Verification (for example log tail + health probe) and capture outputs.
-6. **REFACTOR** — Clean up if needed. Run tests again to confirm no regressions.
-7. **Self-Review** — Check completeness, conventions, over-engineering, test coverage.
-8. **Report** — Summarize what was implemented, tests added, files changed, runtime evidence.
+1. **BDD OUTER RED** — If `Loop Type` is `BDD+TDD`, run the referenced scenario from `Scenario Coverage` and confirm the outer loop is red. Quote the failing step and scenario name.
+2. **RED** — Write a failing unit or component test that captures the task's technical requirements. **STOP after this step.**
+3. **Confirm RED** — Run the test suite. The new test must fail. Verify it fails for the right reason.
+4. **GREEN** — Write the minimum implementation to make the test pass. **Only proceed after confirming RED.**
+5. **Confirm GREEN** — Run the test suite. All tests must pass.
+6. **BDD OUTER GREEN** — Re-run the BDD scenario until it passes when `Loop Type` is `BDD+TDD`.
+7. **Runtime Verification (when applicable)** — Run runtime checks from task Verification (for example log tail + health probe) and capture outputs.
+8. **REFACTOR** — Clean up if needed. Run tests again to confirm no regressions.
+9. **Self-Review** — Check completeness, conventions, over-engineering, test coverage.
+10. **Report** — Summarize what was implemented, tests added, files changed, scenario evidence, and runtime evidence.
 
 **Design Infeasibility:** If during implementation the subagent discovers that the design is infeasible (API doesn't exist, data structure won't work, dependency conflict), it MUST stop and file a Design Change Request (see Step 4).
 
@@ -115,7 +120,7 @@ After the subagent succeeds, update `tasks.md`:
 - Change `- [ ]` to `- [x]` for every step in the completed task.
 - Update the task's Status from `🔴 TODO` to `🟢 DONE`.
 - **Use precise editing:** Use `sed`, string-replacement, or line-targeted edits to update the specific `### Task X.Y` block. Do NOT rewrite the entire `tasks.md` file — this risks truncation and content loss in large files.
-- **Completion gate:** Mark done only when task Verification is satisfied, tests are green, and runtime checks (when applicable) are evidence-backed.
+- **Completion gate:** Mark done only when `BDD Verification` is satisfied for `BDD+TDD` tasks, task Verification is satisfied, tests are green, and runtime checks (when applicable) are evidence-backed.
 
 > **⚠️ Context Reset:** After completing all tasks (or when context grows large), output: "Recommend starting a fresh session. Run `/pb-build <feature-name>` again to continue from where you left off."
 
@@ -141,6 +146,8 @@ If a subagent fails (tests don't pass, implementation blocked, etc.):
    ```text
    🛑 Build Blocked — Task X.Y: [Task Name]
    Reason: 3 consecutive failed attempts (initial + 2 retries)
+   Loop Type: [BDD+TDD or TDD-only]
+   Scenario Coverage: [Feature file + scenario name]
 
    What We Tried:
    - Attempt 1: [summary]
@@ -150,6 +157,8 @@ If a subagent fails (tests don't pass, implementation blocked, etc.):
    Failure Evidence:
    - [command] -> "[error excerpt]"
    - [command] -> "[error excerpt]"
+   Failing Step:
+   - [Given/When/Then step text if applicable]
 
    Suggested Design Change:
    - [What should change in design.md/tasks.md]
@@ -172,10 +181,12 @@ If during implementation a subagent discovers that the design is **infeasible or
 
    ```text
    🔄 Design Change Request — Task X.Y: [Task Name]
+   Scenario Coverage: [Feature file + scenario name]
 
    Problem: [What is infeasible and why]
    What We Tried: [Attempt summaries and failed commands]
    Failure Evidence: [Quoted errors from failed attempts]
+   Failing Step: [Given/When/Then step text if applicable]
    Suggested Change: [What should change in design.md]
    Impact: [Which other tasks are affected]
    ```
@@ -222,7 +233,7 @@ Summary must be factual and command-backed: do not claim "passed" or "completed"
 3. **Sequential execution.** Tasks are executed strictly in `tasks.md` order. No parallelism.
 4. **Independence.** A subagent must not depend on in-memory state from a previous subagent. All cross-task communication happens through files on disk.
 5. **Grounding first.** Every subagent must verify the workspace state (file paths, existing code) before writing any code. This is enforced by the implementer prompt.
-6. **Verifiable closure.** A task closes only after explicit verification evidence.
+6. **Verifiable closure.** A task closes only after explicit verification evidence, including `BDD Verification` for `BDD+TDD` tasks.
 
 ---
 
@@ -288,15 +299,16 @@ While executing, display progress after each task:
 ## Key Principles
 
 1. **Small, focused, sequential, independent.** Each task is a self-contained unit of work.
-2. **TDD is non-negotiable.** Every task starts with a failing test. No exceptions.
-3. **Fresh context prevents contamination.** Subagents don't inherit assumptions from previous tasks.
-4. **Grounding before action.** Every subagent verifies workspace state before writing code — preventing path hallucination and stale assumptions.
-5. **Self-review catches over-engineering.** Every subagent audits its own work before submitting.
-6. **State lives on disk.** `tasks.md` checkboxes and committed code are the only persistent state.
-7. **Fail fast, recover cleanly.** Failures trigger task-local rollback using the pre-task snapshot. Never run workspace-wide reset commands in a dirty tree.
-8. **Context hygiene.** Only pass relevant, minimal context to subagents. Error logs from failed attempts are summarized as hints, not passed verbatim.
-9. **Evidence over assertion.** Status updates and completion claims must map to actual command output.
-10. **Escalate deterministically.** After three consecutive failures, stop thrashing and route to `pb-refine` with a structured DCR.
+2. **BDD+TDD is explicit.** `Scenario Coverage` and `Loop Type` define whether the task uses the double loop or `TDD-only`.
+3. **TDD is non-negotiable.** Every task starts with a failing test. No exceptions.
+4. **Fresh context prevents contamination.** Subagents don't inherit assumptions from previous tasks.
+5. **Grounding before action.** Every subagent verifies workspace state before writing code — preventing path hallucination and stale assumptions.
+6. **Self-review catches over-engineering.** Every subagent audits its own work before submitting.
+7. **State lives on disk.** `tasks.md` checkboxes and committed code are the only persistent state.
+8. **Fail fast, recover cleanly.** Failures trigger task-local rollback using the pre-task snapshot. Never run workspace-wide reset commands in a dirty tree.
+9. **Context hygiene.** Only pass relevant, minimal context to subagents. Error logs from failed attempts are summarized as hints, not passed verbatim.
+10. **Evidence over assertion.** Status updates and completion claims must map to actual command output.
+11. **Escalate deterministically.** After three consecutive failures, stop thrashing and route to `pb-refine` with a structured DCR.
 
 ---
 
