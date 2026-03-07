@@ -148,6 +148,11 @@ The spec directory follows the naming format `YYYY-MM-DD-NO-feature-name` (e.g.,
 - Python → `behave`
 - Rust → `cucumber`
 
+It also performs two additional planning audits before implementation starts:
+
+- Template identity alignment: if the repo still contains generic crate/package/module names from a scaffold, `pb-plan` must front-load renaming those identifiers to project-matching names.
+- Risk-based advanced testing: property testing is planned by default for broad input-domain logic, while fuzzing and benchmarks are added only when the feature profile justifies them. Tool selection follows repo language conventions: `Hypothesis` / `fast-check` / `proptest`, `Atheris` / `jazzer.js` / `cargo-fuzz`, and `pytest-benchmark` / `Vitest Bench` / `criterion`.
+
 ### 3. `/pb-refine <feature-name>` — Design Iteration (Optional)
 
 Reads user feedback or Design Change Requests (from failed builds, including standardized 3-failure build-block packets) and intelligently updates `design.md` and `tasks.md`. It maintains a revision history and cascades design changes to the task list without overwriting completed work. `AGENTS.md` remains read-only in this phase.

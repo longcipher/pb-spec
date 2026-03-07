@@ -130,14 +130,23 @@ def test_pb_plan_reference_templates_require_bdd_tdd_fields():
     tasks = refs["tasks_template.md"]
 
     assert "BDD/TDD Strategy" in design
+    assert "Project Identity Alignment" in design
     assert "BDD Scenario Inventory" in design
     assert "BDD Runner" in design
     assert "BDD Command" in design
     assert "Unit Test Command" in design
+    assert "Property Test Tool" in design
+    assert "Hypothesis" in design
+    assert "fast-check" in design
+    assert "proptest" in design
+    assert "cargo-fuzz" in design
+    assert "criterion" in design
 
     assert "Scenario Coverage" in tasks
     assert "Loop Type" in tasks
     assert "BDD Verification" in tasks
+    assert "Advanced Test Coverage" in tasks
+    assert "Advanced Test Verification" in tasks
 
 
 def test_pb_plan_templates_require_gherkin_feature_generation():
@@ -161,6 +170,48 @@ def test_pb_plan_lightweight_templates_remain_pb_build_compatible():
         assert "### Task 1.1:" in lightweight_section
         assert "- **Status:** 🔴 TODO" in lightweight_section
         assert "### Task 1:" not in lightweight_section
+
+
+def test_pb_plan_templates_require_project_identity_alignment_for_template_repos():
+    """pb-plan templates should normalize placeholder module identities in scaffold repos."""
+    refs = load_references("pb-plan")
+    for content in (
+        load_skill_content("pb-plan"),
+        load_prompt("pb-plan"),
+        refs["design_template.md"],
+    ):
+        assert (
+            "generic crate/package/module names" in content
+            or "Project Identity Alignment" in content
+        )
+        assert "project-matching" in content or "current project or product identity" in content
+
+
+def test_pb_plan_templates_require_risk_based_advanced_test_planning():
+    """pb-plan templates should plan property tests by default and fuzz/benchmarks conditionally."""
+    refs = load_references("pb-plan")
+    combined = (
+        load_skill_content("pb-plan"),
+        load_prompt("pb-plan"),
+        refs["design_template.md"],
+        refs["tasks_template.md"],
+    )
+
+    for content in combined:
+        assert "Hypothesis" in content
+        assert "fast-check" in content
+        assert "proptest" in content
+        assert "Atheris" in content
+        assert "jazzer.js" in content
+        assert "cargo-fuzz" in content
+        assert "pytest-benchmark" in content
+        assert "Vitest Bench" in content
+        assert "criterion" in content
+
+    for content in (load_skill_content("pb-plan"), load_prompt("pb-plan")):
+        assert "Add **property tests** by default" in content
+        assert "Add **fuzz testing** only" in content
+        assert "Add **benchmarks** only" in content
 
 
 def test_pb_build_prompt_template_is_self_contained_for_prompt_platforms():

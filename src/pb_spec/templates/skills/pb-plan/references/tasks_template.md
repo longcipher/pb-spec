@@ -12,6 +12,10 @@
 
 > Brief implementation strategy.
 
+- **Property Testing Rule:** Add property-test coverage with `Hypothesis`, `fast-check`, or `proptest` for broad input-domain logic unless the task explicitly justifies why example-based tests are sufficient.
+- **Fuzzing Rule:** Add `Atheris`, `jazzer.js`, or `cargo-fuzz` only for parsers, protocols, unsafe/native boundaries, binary formats, or other untrusted-input crash-safety work.
+- **Benchmark Rule:** Add `pytest-benchmark`, `Vitest Bench`, or `criterion` only when the requirement or codebase defines performance-sensitive behavior.
+- **Identity Alignment Rule:** If the repo still contains generic crate/package/module names from a template, front-load rename work before dependent implementation tasks.
 - **Phase 1: BDD Harness & Scaffolding** — Feature files, runner setup, task skeletons
 - **Phase 2: Scenario Implementation** — Primary behavior implemented via TDD
 - **Phase 3: Integration & Features** — Connecting pieces, end-to-end
@@ -30,11 +34,13 @@
 - **Scope:** [Logical Unit of Work — e.g., "Model layer", "API endpoint", "Service integration"]
 - **Scenario Coverage:** `[Feature/scenario names, or N/A for infrastructure-only work]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
 - [ ] **BDD Verification:** [Concrete scenario check — e.g., "run `behave features/auth.feature` and confirm Scenario X fails first, then passes"]
 - [ ] **Verification:** [Concrete check — e.g., "run `pytest tests/test_config.py` and all pass"]
+- [ ] **Advanced Test Verification:** [Concrete command for `Hypothesis`, `fast-check`, `proptest`, `Atheris`, `jazzer.js`, `cargo-fuzz`, `pytest-benchmark`, `Vitest Bench`, or `criterion`; if not needed, write `N/A` with reason]
 - [ ] **Runtime Verification (if applicable):** [Capture runtime signals — e.g., `tail -n 50 app.log` and `curl http://localhost:8080/health`; if not applicable, write `N/A` with reason]
 
 ### Task 1.2: [Task Name]
@@ -46,11 +52,13 @@
 - **Scope:** [Logical Unit of Work]
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
 - [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
 - [ ] **Verification:** ...
+- [ ] **Advanced Test Verification:** [Command or `N/A` with reason]
 - [ ] **Runtime Verification (if applicable):** [Logs + probe result, or `N/A` with reason]
 
 ---
@@ -66,12 +74,14 @@
 - **Scope:** [Logical Unit of Work]
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
 - [ ] **Step 3:** ...
 - [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
 - [ ] **Verification:** ...
+- [ ] **Advanced Test Verification:** [Command or `N/A` with reason]
 - [ ] **Runtime Verification (if applicable):** [Logs + probe result, or `N/A` with reason]
 
 ### Task 2.2: [Task Name]
@@ -83,11 +93,13 @@
 - **Scope:** [Logical Unit of Work]
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
 - [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
 - [ ] **Verification:** ...
+- [ ] **Advanced Test Verification:** [Command or `N/A` with reason]
 - [ ] **Runtime Verification (if applicable):** [Logs + probe result, or `N/A` with reason]
 
 ---
@@ -123,11 +135,13 @@
 - **Scope:** [Logical Unit of Work]
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
 - [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
 - [ ] **Verification:** ...
+- [ ] **Advanced Test Verification:** [Command or `N/A` with reason]
 
 ---
 
@@ -149,4 +163,5 @@
 2. [ ] **Tested:** Unit tests covering the added logic.
 3. [ ] **Formatted:** Code formatter applied.
 4. [ ] **Verified:** The task's specific Verification criterion is met.
-5. [ ] **Runtime-Evidenced (when applicable):** Runtime logs and health/probe results are captured, or `N/A` is explicitly justified.
+5. [ ] **Advanced-Tested (when applicable):** Property/fuzz/benchmark verification is captured, or `N/A` is explicitly justified.
+6. [ ] **Runtime-Evidenced (when applicable):** Runtime logs and health/probe results are captured, or `N/A` is explicitly justified.

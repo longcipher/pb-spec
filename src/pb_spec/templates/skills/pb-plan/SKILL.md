@@ -10,6 +10,7 @@ You are the **pb-plan** agent. Your job is to receive a requirement description 
 - Complete in one pass unless blocked by a hard stop condition (for example duplicate `feature-name` in `specs/`).
 - Ground every design claim in either existing code, explicit requirement text, or a clearly labeled assumption.
 - Do not invent files, modules, APIs, commands, or project conventions.
+- If the repo appears to be scaffold/template-derived and still exposes generic crate/package/module names, plan the rename work so the resulting spec uses project-matching identities instead of placeholders.
 
 ---
 
@@ -62,6 +63,7 @@ Gather context to inform the design. **Always perform live codebase analysis** �
    - Search for keywords from the requirement across the codebase (function names, class names, module names, config keys).
    - Read relevant source files to understand current implementation patterns.
    - Verify all referenced file paths and modules actually exist. If uncertain, mark as assumption instead of asserting.
+   - Audit identity markers such as `pyproject.toml`, `package.json`, `Cargo.toml`, source roots, and published package names for scaffold placeholders. If generic crate/package/module names do not match the repository or product identity, treat renaming them as required planning scope unless the requirement explicitly preserves them.
    - Search for existing BDD assets and commands: `features/`, `*.feature`, `steps/`, `cucumber`, `@cucumber/cucumber`, `behave`, `bdd`, and test scripts in project config.
 3. **Check `specs/`** — see if related feature specs already exist to avoid overlap or inform dependencies.
 4. **Audit existing components** — search the codebase for existing utilities, base classes, clients, and patterns that relate to the requirement. Specifically look for:
@@ -76,7 +78,18 @@ Gather context to inform the design. **Always perform live codebase analysis** �
    - Python → `behave`
    - Rust → `cucumber`
 
+   Also infer the recommended advanced test tools for the repo's language:
+   - TypeScript/JavaScript → Property: `fast-check`, Fuzz: `jazzer.js`, Benchmark: `Vitest Bench`
+   - Python → Property: `Hypothesis`, Fuzz: `Atheris`, Benchmark: `pytest-benchmark`
+   - Rust → Property: `proptest`, Fuzz: `cargo-fuzz`, Benchmark: `criterion`
+
    Prefer the repo's existing test and BDD commands if they already exist. Only propose new `features/` or step-definition locations when the repo has no established convention.
+
+6. **Choose test depth by risk** — this is mandatory for both `design.md` and `tasks.md`:
+   - Add **property tests** by default for broad input-domain logic such as transformations, normalization, parsers, serializers/deserializers, combinatorial business rules, state transitions, validation, and versioning logic. If property tests are omitted for such logic, explicitly justify why example-based coverage is sufficient.
+   - Add **fuzz testing** only for parser/protocol implementations, binary formats, unsafe/native boundaries, crash-safety work, or untrusted-input robustness. Do not add fuzzing blindly to routine business logic.
+   - Add **benchmarks** only when the requirement or codebase establishes explicit latency/throughput expectations, hot paths, or regression-sensitive performance behavior.
+   - Reflect these decisions in task steps or companion tasks rather than silently assuming them.
 
 If `AGENTS.md` does not exist, that's fine — scan the project root directly (config files, directory structure) to infer project context. You can recommend running `/pb-init` to surface any hidden gotchas, but its absence should not block planning.
 
@@ -145,6 +158,9 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`. Only include sec
 - **BDD Runner:** `@cucumber/cucumber` / `behave` / `cucumber`
 - **BDD Command:** ...
 - **Unit Test Command:** ...
+- **Property Test Tool:** `fast-check` / `Hypothesis` / `proptest` / `N/A` with reason
+- **Fuzz Test Tool:** `jazzer.js` / `Atheris` / `cargo-fuzz` / `N/A` with reason
+- **Benchmark Tool:** `Vitest Bench` / `pytest-benchmark` / `criterion` / `N/A` with reason
 - **Feature Files:** `specs/<spec-dir>/features/*.feature`
 - **Outside-in Loop:** Which Gherkin scenarios fail first and then pass
 
@@ -158,7 +174,7 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`. Only include sec
 
 ## Verification
 
-> How to verify the change works. Test commands, expected behavior.
+> How to verify the change works. Include advanced test commands when property/fuzz/benchmark coverage is required.
 ```
 
 **Skip** these sections in lightweight mode: Architecture Overview, Detailed Design (module structure, data types, interfaces), Non-Functional Goals, Out of Scope, Cross-Functional Concerns.
@@ -172,10 +188,11 @@ Read `references/design_template.md` and fill every section fully. Write the res
 - **Executive Summary**: 2-3 sentences — problem + proposed solution.
 - **Requirements & Goals**: Functional goals, non-functional goals, and explicit out-of-scope items.
 - **Architecture Overview**: System context, key design principles. Include diagrams (Mermaid) where they add clarity.
-- **BDD/TDD Strategy**: Define the outside-in loop, BDD runner, BDD command, unit test command, and planned step-definition location.
+- **BDD/TDD Strategy**: Define the outside-in loop, BDD runner, BDD command, unit test command, planned step-definition location, and advanced-test tool choices.
+- **Project Identity Alignment**: If the repo looks templated, document the generic crate/package/module names to replace and the target project-matching names.
 - **BDD Scenario Inventory**: Enumerate the feature files and scenarios that act as business acceptance contracts.
-- **Detailed Design**: Module structure, data structures/types, interface definitions, logic flows, configuration, error handling. Include code sketches or pseudo-code.
-- **Verification & Testing Strategy**: Unit tests, integration tests, validation rules table.
+- **Detailed Design**: Module structure, data structures/types, interface definitions, logic flows, configuration, error handling. Include code sketches or pseudo-code. Do not propagate placeholder module names from a template repo.
+- **Verification & Testing Strategy**: Unit tests, property tests, integration tests, BDD acceptance tests, and conditional fuzz/benchmark plans with explicit applicability rules.
 - **Implementation Plan**: Phase checklist derived from the task breakdown.
 
 Every section must be substantive — no empty placeholders or "TBD".
@@ -202,11 +219,13 @@ Write a **flat task list** to `specs/<spec-dir>/tasks.md`. No phases — just or
 > **Scenario Coverage:** [Feature/scenario names]
 
 - **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 - [ ] Step 1: ...
 - [ ] Step 2: ...
 - [ ] BDD Verification: ...
 - [ ] Verification: ...
+- [ ] Advanced Test Verification: [Command for `Hypothesis` / `fast-check` / `proptest` / `Atheris` / `jazzer.js` / `cargo-fuzz` / `pytest-benchmark` / `Vitest Bench` / `criterion`, or `N/A` with reason]
 - [ ] Runtime Verification (if applicable): [Logs + probe result, or `N/A` with reason]
 ```
 
@@ -232,11 +251,15 @@ Read `references/tasks_template.md` and use it to break down the implementation 
 - Every task has a concrete **Verification** criterion (not just "implement X" but "implement X and verify by running Y").
 - Tasks that implement user-visible behavior should use `Loop Type: BDD+TDD` and point to one or more scenarios in `Scenario Coverage`. Pure infrastructure tasks may use `Loop Type: TDD-only`.
 - If the repo does not already have a BDD harness, include explicit setup work for the chosen runner and step-definition location.
+- If a task touches broad input-domain logic, append dedicated property-test work using the repo-appropriate tool (`Hypothesis`, `fast-check`, or `proptest`) unless you explicitly justify why it is unnecessary.
+- If a task touches parsers, protocol implementations, binary formats, unsafe/native boundaries, or other crash-sensitive untrusted-input paths, append conditional fuzz-test work using `Atheris`, `jazzer.js`, or `cargo-fuzz`.
+- If a task has explicit performance goals or hot-path risk, append conditional benchmark work using `pytest-benchmark`, `Vitest Bench`, or `criterion`.
 - For tasks that introduce or change runtime behavior (service startup, UI runtime flow, API/network availability, performance-sensitive code paths), **Verification must include runtime observability checks**:
   - Recent runtime logs (for example `tail -n 50 app.log` or equivalent).
   - A live health/probe command (for example `curl http://localhost:8080/health` or equivalent).
   - If not applicable, explicitly mark `N/A` with a reason.
 - **Reference reusable components** in task Context when the task should extend or use existing code.
+- If project identity alignment is required, include an early task that renames generic crate/package/module names to names that match the current project before feature-specific work proceeds.
 - Include a Summary & Timeline table and a Definition of Done section.
 - Ensure every requirement from the Step 1 checklist is covered by at least one task or explicitly marked out-of-scope.
 - Remove all instructional placeholder text (such as bracket examples) in the final file.
@@ -286,9 +309,11 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 8. **Double-loop execution readiness.** `tasks.md` must make it obvious which tasks are `BDD+TDD` versus `TDD-only`.
 9. **Dependency order.** Phases and tasks flow from foundational to dependent. A developer can execute them top-to-bottom.
 10. **Project-aware.** Use the project's existing conventions, patterns, and tech stack. Reuse existing components — do not reinvent.
-11. **Requirements coverage.** Track every requirement from input to design sections, feature scenarios, and tasks.
-12. **Truthfulness over fluency.** If information is missing, state assumptions explicitly instead of fabricating specifics.
-13. **Deterministic output quality.** Final docs should be implementation-ready, with no template artifacts left behind.
+11. **Identity-aware.** Template placeholder crate/package/module names should be normalized to project-matching names when the repo has not been fully customized yet.
+12. **Risk-based test depth.** Example-based tests are the baseline; property tests are the default extension for broad input domains, while fuzzing and benchmarks remain conditional.
+13. **Requirements coverage.** Track every requirement from input to design sections, feature scenarios, and tasks.
+14. **Truthfulness over fluency.** If information is missing, state assumptions explicitly instead of fabricating specifics.
+15. **Deterministic output quality.** Final docs should be implementation-ready, with no template artifacts left behind.
 
 ---
 
@@ -302,6 +327,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 - **`AGENTS.md` is read-only in this phase.** Do not modify, delete, or reformat it unless the user explicitly asks for an `AGENTS.md` update.
 - **No invented references.** Do not fabricate file paths, APIs, module names, commands, or dependencies.
 - **No invented BDD layout.** Prefer existing repo structure; only propose new `features/` or step-definition locations when the codebase has no established convention.
+- **No placeholder identities.** If the repo still contains generic crate/package/module names, plan their replacement with project-matching names instead of propagating them into the spec.
 - **No unresolved placeholders.** Final `design.md` and `tasks.md` must not contain template example markers like `[Goal A]` or `[Task Name]`.
 
 ---
@@ -318,3 +344,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 - **Borderline word count (~50 words):** Use lightweight mode. When in doubt, produce less — the developer can run `/pb-refine` to expand.
 - **Short requirement but complex domain:** If the requirement is <50 words but clearly involves complex changes (e.g., "refactor the entire auth system"), use full mode. The word count is a heuristic, not a hard rule.
 - **Conflicting signals between docs and code:** Trust current codebase state first; document any mismatch in Assumptions or Risks.
+- **Template repository detected:** If manifests or source roots still use generic crate/package/module names, include a project identity alignment section in the design and front-load the rename work in `tasks.md`.
+- **High-variance logic with small example space:** Add property-test planning rather than relying only on hand-written examples.
+- **Parser/protocol/unsafe work:** Treat fuzz planning as required unless you can justify why crash-safety risk is absent.
+- **Performance-sensitive work:** Add benchmark planning only when the requirement or codebase indicates performance is part of the contract.

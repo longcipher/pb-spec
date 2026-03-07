@@ -105,7 +105,7 @@ Audits the repository and produces a **minimal** `AGENTS.md` containing only inf
 
 ### 6.2 pb-plan
 
-Creates `specs/<YYYY-MM-DD-NN-feature>/design.md`, `tasks.md`, and `features/*.feature` in one shot. It emphasizes live codebase analysis, Gherkin-first behavior modeling, and verification-first planning.
+Creates `specs/<YYYY-MM-DD-NN-feature>/design.md`, `tasks.md`, and `features/*.feature` in one shot. It emphasizes live codebase analysis, Gherkin-first behavior modeling, verification-first planning, template-identity cleanup for scaffolded repos, and risk-based advanced test planning.
 
 ### 6.3 pb-refine
 

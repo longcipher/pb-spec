@@ -69,18 +69,33 @@
 
 > If no reusable components exist, state "No existing components identified for reuse" and explain why.
 
-### 3.4 BDD/TDD Strategy
+### 3.4 Project Identity Alignment
+
+> If the repository appears to come from a template/scaffold, identify any generic crate/package/module names that must be renamed to match the current project or product identity before feature work is complete.
+
+| Current Identifier | Location | Why It Is Generic or Misaligned | Planned Name / Action |
+| :--- | :--- | :--- | :--- |
+| `[e.g., template_app]` | `[e.g., pyproject.toml, src/template_app/]` | `[Placeholder copied from scaffold]` | `[Rename to current project package]` |
+
+> If no identity cleanup is needed, state "No template identity mismatches detected.".
+
+### 3.5 BDD/TDD Strategy
 
 > Describe how this feature will use outside-in development. Define the business-facing Gherkin loop and the supporting TDD loop.
 
 - **BDD Runner:** `[e.g., @cucumber/cucumber | behave | cucumber]`
 - **BDD Command:** `[e.g., npm exec cucumber-js features/auth.feature]`
 - **Unit Test Command:** `[e.g., pytest tests/auth/test_service.py -v]`
+- **Property Test Tool:** `[e.g., fast-check | Hypothesis | proptest | N/A with reason]`
+- **Fuzz Test Tool:** `[e.g., jazzer.js | Atheris | cargo-fuzz | N/A with reason]`
+- **Benchmark Tool:** `[e.g., Vitest Bench | pytest-benchmark | criterion | N/A with reason]`
 - **Outer Loop:** `[Which`.feature`scenarios prove the behavior works end-to-end]`
 - **Inner Loop:** `[Which unit/component tests will drive the underlying implementation]`
 - **Step Definition Location:** `[e.g., features/steps/, tests/bdd/, crates/app/tests/]`
 
-### 3.5 BDD Scenario Inventory
+> Property testing should be planned by default for large input domains such as parsers, serializers, normalization, versioning rules, combinatorial business logic, or boundary-heavy validation. Fuzzing is conditional for parser/protocol/unsafe/untrusted-input crash-safety work. Benchmarks are conditional for explicit performance-sensitive paths.
+
+### 3.6 BDD Scenario Inventory
 
 > List every scenario that should be planned as a first-class acceptance artifact.
 
@@ -94,7 +109,7 @@
 
 ### 4.1 Module Structure
 
-> File/directory layout for the new or modified code.
+> File/directory layout for the new or modified code. If the repo still exposes scaffold placeholders, show the project-matching module/package/crate names after the planned rename.
 
 ```text
 src/
@@ -153,11 +168,19 @@ class FeatureInterface:
 
 > What pure logic to test. Scope and tooling.
 
-### 5.2 Integration Testing
+### 5.2 Property Testing
+
+> Identify where example-based tests leave too much input space uncovered. Use the language-appropriate property-testing tool (`Hypothesis`, `fast-check`, or `proptest`) unless you can justify that the logic is too trivial or already fully covered by a smaller deterministic domain.
+
+| Target Behavior | Why Property Testing Helps | Tool / Command | Planned Invariants |
+| :--- | :--- | :--- | :--- |
+| `[e.g., version string normalization]` | `[Large combinatorial input space]` | `[e.g., uv run pytest tests/test_version_properties.py -q]` | `[Round-trip, idempotence, monotonicity, etc.]` |
+
+### 5.3 Integration Testing
 
 > How modules work together. Mock strategies, sandbox environments.
 
-### 5.3 BDD Acceptance Testing
+### 5.4 BDD Acceptance Testing
 
 > Which `.feature` files and scenarios must fail first and then pass. Include the exact BDD runner command.
 
@@ -165,7 +188,16 @@ class FeatureInterface:
 | :--- | :--- | :--- | :--- |
 | **BDD-01** | `[e.g., features/auth.feature]` | `[e.g., npm exec cucumber-js features/auth.feature]` | `[e.g., Scenario passes with 0 failed steps]` |
 
-### 5.4 Critical Path Verification (The "Harness")
+### 5.5 Robustness & Performance Testing
+
+> Plan these only when the task profile requires them.
+
+| Test Type | When It Is Required | Tool / Command | Planned Coverage or Reason Not Needed |
+| :--- | :--- | :--- | :--- |
+| **Fuzz** | `[Parser/protocol/unsafe/untrusted-input paths only]` | `[e.g., cargo fuzz run parser]` | `[Crash-safety target, or N/A with reason]` |
+| **Benchmark** | `[Explicit latency/throughput/hot-path requirements only]` | `[e.g., uv run pytest tests/benchmarks/test_cli.py --benchmark-only]` | `[Regression budget, or N/A with reason]` |
+
+### 5.6 Critical Path Verification (The "Harness")
 
 > Define the exact command(s) or script(s) that prove this feature works end-to-end. The `pb-build` agent will use these to verify the final result. This acts as the acceptance test for the entire feature.
 
@@ -177,7 +209,7 @@ class FeatureInterface:
 
 > **Why this matters:** By defining verification commands at design time, the build agent does not need to invent its own verification strategy — it simply executes these commands and checks the criteria. This dramatically improves reliability.
 
-### 5.5 Validation Rules
+### 5.7 Validation Rules
 
 | Test Case ID | Action | Expected Outcome | Verification Method |
 | :--- | :--- | :--- | :--- |

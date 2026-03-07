@@ -10,6 +10,7 @@ Run this when the user invokes `/pb-plan <requirement description>`. Do not ask 
 - Complete in one pass unless blocked by a hard stop condition (for example duplicate `feature-name` in `specs/`).
 - Ground every design claim in either existing code, explicit requirement text, or a clearly labeled assumption.
 - Do not invent files, modules, APIs, commands, or project conventions.
+- If the repo appears to be scaffold/template-derived and still exposes generic crate/package/module names, plan the rename work so the resulting spec uses project-matching identities instead of placeholders.
 
 ---
 
@@ -58,6 +59,7 @@ Gather context to inform the design. **Always perform live codebase analysis** �
    - Search for keywords from the requirement across the codebase.
    - Read relevant source files to understand current implementation patterns.
    - Verify all referenced file paths and modules actually exist. If uncertain, mark as assumption instead of asserting.
+   - Audit identity markers such as `pyproject.toml`, `package.json`, `Cargo.toml`, source roots, and published package names for scaffold placeholders. If generic crate/package/module names do not match the repository or product identity, treat renaming them as required planning scope unless the requirement explicitly preserves them.
    - Search for existing BDD assets and commands: `features/`, `*.feature`, `steps/`, `cucumber`, `@cucumber/cucumber`, `behave`, `bdd`, and test scripts in project config.
 3. **Check `specs/`** — see if related feature specs already exist.
 4. **Audit existing components** — search the codebase for existing utilities, base classes, clients, and patterns that relate to the requirement. Specifically look for:
@@ -72,7 +74,18 @@ Gather context to inform the design. **Always perform live codebase analysis** �
    - Python → `behave`
    - Rust → `cucumber`
 
+   Also infer the recommended advanced test tools for the repo's language:
+   - TypeScript/JavaScript → Property: `fast-check`, Fuzz: `jazzer.js`, Benchmark: `Vitest Bench`
+   - Python → Property: `Hypothesis`, Fuzz: `Atheris`, Benchmark: `pytest-benchmark`
+   - Rust → Property: `proptest`, Fuzz: `cargo-fuzz`, Benchmark: `criterion`
+
    Prefer the repo's existing test and BDD commands if they already exist. Only propose new `features/` or step-definition locations when the repo has no established convention.
+
+6. **Choose test depth by risk** — this is mandatory for both `design.md` and `tasks.md`:
+   - Add **property tests** by default for broad input-domain logic such as transformations, normalization, parsers, serializers/deserializers, combinatorial business rules, state transitions, validation, and versioning logic. If property tests are omitted for such logic, explicitly justify why example-based coverage is sufficient.
+   - Add **fuzz testing** only for parser/protocol implementations, binary formats, unsafe/native boundaries, crash-safety work, or untrusted-input robustness. Do not add fuzzing blindly to routine business logic.
+   - Add **benchmarks** only when the requirement or codebase establishes explicit latency/throughput expectations, hot paths, or regression-sensitive performance behavior.
+   - Reflect these decisions in task steps or companion tasks rather than silently assuming them.
 
 If `AGENTS.md` does not exist, that's fine — scan the project root directly (config files, directory structure) to infer project context. You can recommend running `/pb-init` to surface any hidden gotchas, but its absence should not block planning.
 
@@ -141,6 +154,9 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`:
 - **BDD Runner:** `@cucumber/cucumber` / `behave` / `cucumber`
 - **BDD Command:** ...
 - **Unit Test Command:** ...
+- **Property Test Tool:** `fast-check` / `Hypothesis` / `proptest` / `N/A` with reason
+- **Fuzz Test Tool:** `jazzer.js` / `Atheris` / `cargo-fuzz` / `N/A` with reason
+- **Benchmark Tool:** `Vitest Bench` / `pytest-benchmark` / `criterion` / `N/A` with reason
 - **Feature Files:** `specs/<spec-dir>/features/*.feature`
 - **Outside-in Loop:** Which Gherkin scenarios fail first and then pass
 
@@ -154,7 +170,7 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`:
 
 ## Verification
 
-> How to verify the change works. Test commands, expected behavior.
+> How to verify the change works. Include advanced test commands when property/fuzz/benchmark coverage is required.
 ```
 
 **Skip** these sections in lightweight mode: Architecture Overview, Detailed Design, Non-Functional Goals, Out of Scope, Cross-Functional Concerns.
@@ -216,11 +232,15 @@ Remove all instructional placeholder text (such as bracket examples) in the fina
 - Every task has a concrete **Verification** criterion.
 - Tasks that implement user-visible behavior should use `Loop Type: BDD+TDD` and point to one or more scenarios in `Scenario Coverage`. Pure infrastructure tasks may use `Loop Type: TDD-only`.
 - If the repo does not already have a BDD harness, include explicit setup work for the chosen runner and step-definition location.
+- If a task touches broad input-domain logic, append dedicated property-test work using the repo-appropriate tool (`Hypothesis`, `fast-check`, or `proptest`) unless you explicitly justify why it is unnecessary.
+- If a task touches parsers, protocol implementations, binary formats, unsafe/native boundaries, or other crash-sensitive untrusted-input paths, append conditional fuzz-test work using `Atheris`, `jazzer.js`, or `cargo-fuzz`.
+- If a task has explicit performance goals or hot-path risk, append conditional benchmark work using `pytest-benchmark`, `Vitest Bench`, or `criterion`.
 - For tasks that introduce or change runtime behavior (service startup, UI runtime flow, API/network availability, performance-sensitive code paths), **Verification must include runtime observability checks**:
   - Recent runtime logs (for example `tail -n 50 app.log` or equivalent).
   - A live health/probe command (for example `curl http://localhost:8080/health` or equivalent).
   - If not applicable, explicitly mark `N/A` with a reason.
 - **Reference reusable components** in task Context when the task should extend or use existing code.
+- If project identity alignment is required, include an early task that renames generic crate/package/module names to names that match the current project before feature-specific work proceeds.
 - Ensure every requirement from the Step 1 checklist is covered by at least one task or explicitly marked out-of-scope.
 
 ## Step 6: Output `features/*.feature`
@@ -268,9 +288,11 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 8. **Double-loop execution readiness.** `tasks.md` must make it obvious which tasks are `BDD+TDD` versus `TDD-only`.
 9. **Dependency order.** Phases and tasks flow foundational → dependent.
 10. **Project-aware.** Use existing conventions, patterns, and tech stack. Reuse existing components — do not reinvent.
-11. **Requirements coverage.** Track every requirement from input to design sections, feature scenarios, and tasks.
-12. **Truthfulness over fluency.** If information is missing, state assumptions explicitly instead of fabricating specifics.
-13. **Deterministic output quality.** Final docs should be implementation-ready, with no template artifacts left behind.
+11. **Identity-aware.** Template placeholder crate/package/module names should be normalized to project-matching names when the repo has not been fully customized yet.
+12. **Risk-based test depth.** Example-based tests are the baseline; property tests are the default extension for broad input domains, while fuzzing and benchmarks remain conditional.
+13. **Requirements coverage.** Track every requirement from input to design sections, feature scenarios, and tasks.
+14. **Truthfulness over fluency.** If information is missing, state assumptions explicitly instead of fabricating specifics.
+15. **Deterministic output quality.** Final docs should be implementation-ready, with no template artifacts left behind.
 
 ---
 
@@ -284,6 +306,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 - **`AGENTS.md` is read-only in this phase.** Do not modify, delete, or reformat it unless the user explicitly asks for an `AGENTS.md` update.
 - **No invented references.** Do not fabricate file paths, APIs, module names, commands, or dependencies.
 - **No invented BDD layout.** Prefer existing repo structure; only propose new `features/` or step-definition locations when the codebase has no established convention.
+- **No placeholder identities.** If the repo still contains generic crate/package/module names, plan their replacement with project-matching names instead of propagating them into the spec.
 - **No unresolved placeholders.** Final `design.md` and `tasks.md` must not contain template example markers like `[Goal A]` or `[Task Name]`.
 
 ---
@@ -300,6 +323,10 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 - **Borderline word count (~50 words):** Use lightweight mode. Developer can run `/pb-refine` to expand.
 - **Short requirement but complex domain:** If <50 words but clearly complex (e.g., "refactor the entire auth system"), use full mode. Word count is a heuristic, not a hard rule.
 - **Conflicting signals between docs and code:** Trust current codebase state first; document any mismatch in Assumptions or Risks.
+- **Template repository detected:** If manifests or source roots still use generic crate/package/module names, include a project identity alignment section in the design and front-load the rename work in `tasks.md`.
+- **High-variance logic with small example space:** Add property-test planning rather than relying only on hand-written examples.
+- **Parser/protocol/unsafe work:** Treat fuzz planning as required unless you can justify why crash-safety risk is absent.
+- **Performance-sensitive work:** Add benchmark planning only when the requirement or codebase indicates performance is part of the contract.
 
 ---
 
@@ -381,13 +408,47 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 > If no reusable components exist, state "No existing components identified for reuse" and explain why.
 
+### 3.4 Project Identity Alignment
+
+> If the repository appears to come from a template/scaffold, identify any generic crate/package/module names that must be renamed to match the current project or product identity before feature work is complete.
+
+| Current Identifier | Location | Why It Is Generic or Misaligned | Planned Name / Action |
+| :--- | :--- | :--- | :--- |
+| `[e.g., template_app]` | `[e.g., pyproject.toml, src/template_app/]` | `[Placeholder copied from scaffold]` | `[Rename to current project package]` |
+
+> If no identity cleanup is needed, state "No template identity mismatches detected.".
+
+### 3.5 BDD/TDD Strategy
+
+> Describe how this feature will use outside-in development. Define the business-facing Gherkin loop and the supporting TDD loop.
+
+- **BDD Runner:** `[e.g., @cucumber/cucumber | behave | cucumber]`
+- **BDD Command:** `[e.g., npm exec cucumber-js features/auth.feature]`
+- **Unit Test Command:** `[e.g., pytest tests/auth/test_service.py -v]`
+- **Property Test Tool:** `[e.g., fast-check | Hypothesis | proptest | N/A with reason]`
+- **Fuzz Test Tool:** `[e.g., jazzer.js | Atheris | cargo-fuzz | N/A with reason]`
+- **Benchmark Tool:** `[e.g., Vitest Bench | pytest-benchmark | criterion | N/A with reason]`
+- **Outer Loop:** `[Which`.feature`scenarios prove the behavior works end-to-end]`
+- **Inner Loop:** `[Which unit/component tests will drive the underlying implementation]`
+- **Step Definition Location:** `[e.g., features/steps/, tests/bdd/, crates/app/tests/]`
+
+> Property testing should be planned by default for large input domains such as parsers, serializers, normalization, versioning rules, combinatorial business logic, or boundary-heavy validation. Fuzzing is conditional for parser/protocol/unsafe/untrusted-input crash-safety work. Benchmarks are conditional for explicit performance-sensitive paths.
+
+### 3.6 BDD Scenario Inventory
+
+> List every scenario that should be planned as a first-class acceptance artifact.
+
+| Feature File | Scenario | Business Outcome | Primary Verification | Supporting TDD Focus |
+| :--- | :--- | :--- | :--- | :--- |
+| `features/[feature-name].feature` | `[Scenario Name]` | `[User-visible result]` | `[BDD command or acceptance check]` | `[Unit/component logic to drive with TDD]` |
+
 ---
 
 ## 4. Detailed Design
 
 ### 4.1 Module Structure
 
-> File/directory layout for new or modified code.
+> File/directory layout for new or modified code. If the repo still exposes scaffold placeholders, show the project-matching module/package/crate names after the planned rename.
 
 ### 4.2 Data Structures & Types
 
@@ -417,11 +478,28 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 > What pure logic to test. Scope and tooling.
 
-### 5.2 Integration Testing
+### 5.2 Property Testing
+
+> Identify where example-based tests leave too much input space uncovered. Use the language-appropriate property-testing tool (`Hypothesis`, `fast-check`, or `proptest`) unless you can justify that the logic is too trivial or already fully covered by a smaller deterministic domain.
+
+| Target Behavior | Why Property Testing Helps | Tool / Command | Planned Invariants |
+| :--- | :--- | :--- | :--- |
+| `[e.g., version string normalization]` | `[Large combinatorial input space]` | `[e.g., uv run pytest tests/test_version_properties.py -q]` | `[Round-trip, idempotence, monotonicity, etc.]` |
+
+### 5.3 Integration Testing
 
 > How modules work together. Mock strategies.
 
-### 5.3 Critical Path Verification (The "Harness")
+### 5.4 Robustness & Performance Testing
+
+> Plan these only when the task profile requires them.
+
+| Test Type | When It Is Required | Tool / Command | Planned Coverage or Reason Not Needed |
+| :--- | :--- | :--- | :--- |
+| **Fuzz** | `[Parser/protocol/unsafe/untrusted-input paths only]` | `[e.g., cargo fuzz run parser]` | `[Crash-safety target, or N/A with reason]` |
+| **Benchmark** | `[Explicit latency/throughput/hot-path requirements only]` | `[e.g., uv run pytest tests/benchmarks/test_cli.py --benchmark-only]` | `[Regression budget, or N/A with reason]` |
+
+### 5.5 Critical Path Verification (The "Harness")
 
 > Define the exact command(s) or script(s) that prove this feature works end-to-end. The pb-build agent will use these to verify the final result.
 
@@ -430,7 +508,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 | **VP-01** | `[e.g., pytest tests/ -v]` | `[e.g., "All tests pass"]` |
 | **VP-02** | `[e.g., curl http://localhost:8000/health]` | `[e.g., "Response code 200"]` |
 
-### 5.4 Validation Rules
+### 5.6 Validation Rules
 
 | Test Case ID | Action | Expected Outcome | Verification Method |
 | :--- | :--- | :--- | :--- |
@@ -476,6 +554,11 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 > Brief implementation strategy.
 
+- **Property Testing Rule:** Add property-test coverage with `Hypothesis`, `fast-check`, or `proptest` for broad input-domain logic unless the task explicitly justifies why example-based tests are sufficient.
+- **Fuzzing Rule:** Add `Atheris`, `jazzer.js`, or `cargo-fuzz` only for parsers, protocols, unsafe/native boundaries, binary formats, or other untrusted-input crash-safety work.
+- **Benchmark Rule:** Add `pytest-benchmark`, `Vitest Bench`, or `criterion` only when the requirement or codebase defines performance-sensitive behavior.
+- **Identity Alignment Rule:** If the repo still contains generic crate/package/module names from a template, front-load rename work before dependent implementation tasks.
+
 - **Phase 1: Foundation & Scaffolding** — Setup, config, types
 - **Phase 2: Core Logic** — Primary implementation
 - **Phase 3: Integration & Features** — Connecting pieces, end-to-end
@@ -492,11 +575,16 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 - **Priority:** P0 / P1 / P2
 - **Scope:** [Logical Unit of Work — e.g., "Model layer", "API endpoint", "Service integration"]
+- **Scenario Coverage:** `[Feature/scenario names, or N/A]`
+- **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
+- [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome, or `N/A` with reason]
 - [ ] **Verification:** [Concrete check]
+- [ ] **Advanced Test Verification:** [Command for `Hypothesis`, `fast-check`, `proptest`, `Atheris`, `jazzer.js`, `cargo-fuzz`, `pytest-benchmark`, `Vitest Bench`, or `criterion`; if not needed, write `N/A` with reason]
 - [ ] **Runtime Verification (if applicable):** [Capture runtime signals — e.g., `tail -n 50 app.log` and `curl http://localhost:8080/health`; if not applicable, write `N/A` with reason]
 
 ---
@@ -510,11 +598,16 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 - **Priority:** P0
 - **Scope:** [Logical Unit of Work]
+- **Scenario Coverage:** `[Feature/scenario names, or N/A]`
+- **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
+- [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome, or `N/A` with reason]
 - [ ] **Verification:** ...
+- [ ] **Advanced Test Verification:** [Command or `N/A` with reason]
 - [ ] **Runtime Verification (if applicable):** [Logs + probe result, or `N/A` with reason]
 
 ---
@@ -528,11 +621,16 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 - **Priority:** P1
 - **Scope:** [Logical Unit of Work]
+- **Scenario Coverage:** `[Feature/scenario names, or N/A]`
+- **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
+- [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome, or `N/A` with reason]
 - [ ] **Verification:** ...
+- [ ] **Advanced Test Verification:** [Command or `N/A` with reason]
 - [ ] **Runtime Verification (if applicable):** [Logs + probe result, or `N/A` with reason]
 
 ---
@@ -546,11 +644,16 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 - **Priority:** P2
 - **Scope:** [Logical Unit of Work]
+- **Scenario Coverage:** `[Feature/scenario names, or N/A]`
+- **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
+- [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome, or `N/A` with reason]
 - [ ] **Verification:** ...
+- [ ] **Advanced Test Verification:** [Command or `N/A` with reason]
 - [ ] **Runtime Verification (if applicable):** [Logs + probe result, or `N/A` with reason]
 
 ---
@@ -571,5 +674,6 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 2. [ ] **Tested:** Unit tests covering added logic.
 3. [ ] **Formatted:** Code formatter applied.
 4. [ ] **Verified:** Task's specific Verification criterion met.
-5. [ ] **Runtime-Evidenced (when applicable):** Runtime logs and health/probe results are captured, or `N/A` is explicitly justified.
+5. [ ] **Advanced-Tested (when applicable):** Property/fuzz/benchmark verification captured, or `N/A` is explicitly justified.
+6. [ ] **Runtime-Evidenced (when applicable):** Runtime logs and health/probe results are captured, or `N/A` is explicitly justified.
 ```
