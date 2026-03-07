@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from pb_spec.platforms import get_platform, resolve_targets
+from pb_spec.platforms.base import SKILL_METADATA
 from pb_spec.platforms.claude import ClaudePlatform
 from pb_spec.platforms.codex import CodexPlatform
 from pb_spec.platforms.copilot import CopilotPlatform
@@ -17,6 +18,11 @@ from pb_spec.platforms.opencode import OpenCodePlatform
 def test_skill_names_returns_four_skills():
     platform = ClaudePlatform()
     assert platform.skill_names == ["pb-init", "pb-plan", "pb-refine", "pb-build"]
+
+
+def test_skill_metadata_descriptions_match_current_workflow():
+    assert "managed AGENTS.md snapshot" in SKILL_METADATA["pb-init"]
+    assert "BDD+TDD" in SKILL_METADATA["pb-build"]
 
 
 # --- get_skill_path ---

@@ -24,7 +24,7 @@ You are implementing **Task {{TASK_NUMBER}}: {{TASK_NAME}}**.
 
 ## Your Job
 
-Execute the following steps in strict order. **You must output your reasoning for each step.** Do not skip or reorder any step.
+Execute the following steps in strict order. Report concise decisions and evidence for each step. Do not skip or reorder any step.
 
 Before coding, define a compact task contract from the provided task block:
 

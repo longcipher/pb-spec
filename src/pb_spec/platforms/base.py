@@ -6,8 +6,8 @@ from pathlib import Path
 # Skill metadata: name -> description
 SKILL_METADATA: dict[str, str] = {
     "pb-init": (
-        "Use to audit the repo and produce a minimal AGENTS.md containing only "
-        "undiscoverable gotchas, hard constraints, and non-obvious conventions."
+        "Use to audit the repo and update a managed AGENTS.md snapshot with "
+        "project context, architecture decisions, and non-obvious conventions."
     ),
     "pb-plan": (
         "Use when converting a requirement into a design proposal and executable tasks before coding."
@@ -17,7 +17,7 @@ SKILL_METADATA: dict[str, str] = {
         "and tasks.md."
     ),
     "pb-build": (
-        "Use when tasks.md is ready and you need sequential TDD implementation with recovery loops."
+        "Use when tasks.md is ready and you need sequential BDD+TDD implementation with recovery loops."
     ),
 }
 

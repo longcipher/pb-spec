@@ -364,6 +364,21 @@ def test_pb_build_templates_escalate_after_three_failures():
         assert "retry budget" in content
 
 
+def test_pb_build_templates_parse_task_blocks_instead_of_raw_checkboxes():
+    """pb-build should treat Task X.Y blocks as the execution unit, not each checkbox line."""
+    for content in (load_skill_content("pb-build"), load_prompt("pb-build")):
+        assert "Determine unfinished tasks from each `### Task X.Y:` block" in content
+        assert "Do not treat every `- [ ]` step as a separate task." in content
+
+
+def test_pb_build_implementer_templates_require_concise_evidence_not_reasoning_dump():
+    """Implementer templates should ask for concise evidence, not full reasoning traces."""
+    build_refs = load_references("pb-build")
+    for content in (build_refs["implementer_prompt.md"], load_prompt("pb-build")):
+        assert "output your reasoning for each step" not in content
+        assert "Report concise decisions and evidence for each step" in content
+
+
 def test_pb_build_implementer_templates_require_runtime_evidence():
     """Implementer guidance should require runtime log/probe evidence when applicable."""
     build_refs = load_references("pb-build")
@@ -378,3 +393,13 @@ def test_pb_refine_templates_accept_build_block_packets():
     for content in (load_skill_content("pb-refine"), load_prompt("pb-refine")):
         assert "Build-block packets" in content
         assert "🛑 Build Blocked" in content
+
+
+def test_project_design_doc_matches_current_snapshot_workflow():
+    """docs/design.md should describe the same managed-snapshot workflow implemented by templates."""
+    design = Path("docs/design.md").read_text(encoding="utf-8")
+
+    assert "managed snapshot block" in design
+    assert "Architecture Decision Snapshot" in design
+    assert "BDD outer loop" in design
+    assert "parity is guarded by regression tests" in design

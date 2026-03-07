@@ -40,7 +40,7 @@ Never guess `<spec-dir>` from memory. Always resolve from actual directory names
 
 ## Step 2: Parse Unfinished Tasks
 
-Scan for all unchecked items (`- [ ]`). Build an ordered list preserving Phase → Task number order.
+Determine unfinished tasks from each `### Task X.Y:` block in `tasks.md`, then inspect the status and checkbox lines inside that block. Do not treat every `- [ ]` step as a separate task. Build an ordered list of task blocks preserving Phase → Task number order.
 
 **Use Task IDs for state tracking.** Each task has a unique ID in the format `Task X.Y` (e.g., `Task 1.1`, `Task 2.3`). When locating tasks, match on the `### Task X.Y:` heading pattern, not just bare checkboxes.
 
@@ -49,7 +49,7 @@ Scan for all unchecked items (`- [ ]`). Build an ordered list preserving Phase �
 - If `tasks.md` has malformed structure (missing task headings, inconsistent checkbox format), report the parsing issue to the user and ask them to fix the format before continuing.
 - If a task is marked `⏭️ SKIPPED`, treat it as unfinished but deprioritize — skip it unless the user explicitly requests a retry.
 
-For execution reliability, represent the queue as explicit task units: `Task ID`, `Task Name`, `Status`, `Scenario Coverage`, `Loop Type`, `BDD Verification`, `Verification`.
+For execution reliability, represent the queue as explicit task-block units: `Task ID`, `Task Name`, `Status`, `Scenario Coverage`, `Loop Type`, `BDD Verification`, and `Verification`.
 
 If all tasks are checked (`- [x]`), report:
 
@@ -282,7 +282,7 @@ You are implementing **Task {{TASK_NUMBER}}: {{TASK_NAME}}**.
 
 ### Your Job
 
-Execute in strict order:
+Execute in strict order. Report concise decisions and evidence for each step:
 
 Before coding, define a compact task contract from the provided task block:
 

@@ -101,7 +101,7 @@ Behavior guarantees:
 
 ### 6.1 pb-init
 
-Audits the repository and produces a **minimal** `AGENTS.md` containing only information that agents cannot discover from the codebase itself. Applies a strict three-part filter: each entry must be (1) not inferrable from code, (2) operationally decisive, and (3) not guessable from industry conventions. The ideal AGENTS.md is empty — every entry represents a codebase smell that should eventually be fixed at the root cause. Re-runs audit existing entries and flag any that are now discoverable.
+Audits the repository and updates a **managed snapshot block** inside `AGENTS.md`. The generated block captures current project context, key file locations, active specs, and an `Architecture Decision Snapshot` that later agents inherit. Re-runs replace only the managed block and preserve all user-authored content outside it.
 
 ### 6.2 pb-plan
 
@@ -122,6 +122,7 @@ Implements tasks sequentially with strict context hygiene and an outside-in doub
 3. Minimal context handoff between subagents.
 4. File-scoped rollback guidance for failed task attempts.
 5. Per-task verification criteria, scenario coverage mapping, and explicit completion status tracking in `tasks.md`.
+6. Managed `AGENTS.md` snapshot updates instead of whole-file rewrites.
 
 ## 8. Testing and Verification
 
@@ -131,6 +132,7 @@ Current automated coverage validates:
 2. Platform path/render behavior across all supported platforms.
 3. End-to-end structure generation for `--ai all`.
 4. Template loading and safety regressions (e.g., malformed wrappers, destructive command checks).
+5. Prompt/skill parity checks for workflow-critical instructions and architecture constraints.
 
 Primary verification commands:
 
@@ -142,5 +144,5 @@ uv run ruff check .
 ## 9. Known Constraints and Follow-ups
 
 1. Platform-specific runtime semantics can evolve; adapter paths/formats should be periodically re-validated against official tool docs.
-2. Prompt/skill content parity is maintained by template discipline, not code generation.
+2. Prompt/skill content parity is maintained by template discipline, and parity is guarded by regression tests for workflow-critical instructions.
 3. Additional platforms should be added only through new adapter classes and test expansion, not conditional sprawl in shared install logic.
