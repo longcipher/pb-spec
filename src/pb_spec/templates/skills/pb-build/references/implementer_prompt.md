@@ -17,6 +17,8 @@ You are implementing **Task {{TASK_NUMBER}}: {{TASK_NAME}}**.
 {{PROJECT_CONTEXT}}
 
 > The above is assembled from `AGENTS.md` (project constraints and hard rules) and `design.md` (feature design). `AGENTS.md` may be free-form and user-maintained; do not assume any fixed section layout.
+>
+> This context also includes the repo's `Architecture Decision Snapshot` and the feature's `Architecture Decisions`. These are binding implementation constraints.
 
 ---
 
@@ -30,6 +32,7 @@ Before coding, define a compact task contract from the provided task block:
 - What must not change
 - How success is verified
 - Which `Scenario Coverage` entries and scenario name apply to this task
+- Which `Architecture Decisions` are binding for this task, including any SRP, DIP, Factory, Strategy, Observer, Adapter, or Decorator choice
 
 ### 1. Grounding & State Verification (Mandatory)
 
@@ -40,6 +43,7 @@ Before coding, define a compact task contract from the provided task block:
 3. **Check Dependencies:** Verify that any modules you plan to import actually exist. Check `pyproject.toml`, `package.json`, `Cargo.toml`, or equivalent before importing third-party libraries.
 4. **Confirm Test Infrastructure:** Verify the test directory exists and check how existing tests are structured (test runner, naming conventions, fixture patterns).
 5. **Confirm Task Boundaries:** Ensure your plan stays within the current task and does not absorb work from later tasks.
+6. **Restate Architecture Contract:** Read the relevant `Architecture Decisions` plus any `Architecture Decision Snapshot` guidance and state what pattern and dependency-boundary rules you must preserve. External dependencies must remain behind interfaces or abstract classes when the design requires it.
 
 > **Why this step is mandatory:** Long-running agents are prone to "path hallucination" — assuming files exist at locations they don't or that code has a structure it doesn't. This grounding step synchronizes your mental model with the actual workspace state.
 
@@ -110,7 +114,15 @@ Follow the outside-in cycle strictly. `BDD+TDD` tasks must first prove the busin
 - Do NOT add architecture or abstractions beyond what the task requires.
 - Run the full test suite again after any refactoring.
 
-#### 2i. Scope Check
+#### 2i. Architecture Check
+
+- Confirm the implementation still follows the planned `Architecture Decisions`.
+- Verify the change does not violate **SRP** or **DIP**.
+- If the design selected **Factory**, **Strategy**, **Observer**, **Adapter**, or **Decorator**, confirm the implementation still matches that choice.
+- Confirm external dependencies still flow through interfaces or abstract classes when required.
+- If you discover the planned architecture no longer fits, stop and raise a Design Change Request instead of improvising a new pattern mid-build.
+
+#### 2j. Scope Check
 
 - Confirm implementation matches the task contract and does not include extra scope.
 - If extra scope slipped in, remove it before submitting.
@@ -133,6 +145,7 @@ Before submitting, answer each question honestly:
 - [ ] **Test coverage:** Do the tests meaningfully verify the task's requirements?
 - [ ] **No regressions:** Do all pre-existing tests still pass?
 - [ ] **BDD coverage:** For `BDD+TDD` tasks, did the referenced scenario fail first and then pass?
+- [ ] **Architecture conformance:** Does the change still match the selected `Architecture Decisions` without introducing a conflicting pattern?
 - [ ] **YAGNI:** Is there any over-engineering I should remove?
 - [ ] **Verification mapping:** Is the task's stated Verification explicitly satisfied?
 
@@ -179,6 +192,8 @@ Report your work in this format:
 - **Only implement the current task.** Do not work on other tasks, even if you notice they're needed.
 - **Follow YAGNI.** No speculative features, premature abstractions, or "while I'm here" changes.
 - **Use existing patterns.** Match the project's coding style, naming conventions, and architecture.
+- **Follow approved architecture decisions.** Respect the task's `Architecture Decisions` and the repo's `Architecture Decision Snapshot`; do not improvise a different pattern mid-build.
+- **do not improvise a new pattern mid-build.** If the planned architecture no longer fits, raise a Design Change Request instead of silently switching patterns.
 - **Do not modify `design.md` or `tasks.md`.** Those are managed by the orchestrator.
 - **Do not modify, delete, or reformat `AGENTS.md`.** Treat it as read-only unless the user explicitly requests an `AGENTS.md` change.
 - **Do not modify unrelated code.** Your changes should be scoped to this task only.

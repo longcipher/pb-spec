@@ -62,7 +62,22 @@ Locate and list:
 - **CI**: `.github/workflows/`, `.gitlab-ci.yml`, `Jenkinsfile`
 - **Docs**: `README.md`, `docs/`, `CHANGELOG.md`
 
-## Step 4: Detect Active Specs
+## Step 4: Capture Architecture Decision Snapshot
+
+Search the project for explicit architecture decisions that later agents must inherit instead of reinventing:
+
+1. Read `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/`, active `specs/`, and nearby source modules for stated or strongly evidenced conventions.
+2. Record only decisions grounded in explicit evidence. **Only record decisions grounded in explicit evidence** — do not speculate from vague naming alone.
+3. Capture the current project position for:
+   - **Established Patterns** — e.g. Strategy, Adapter, typestate, repository, command objects
+   - **Dependency Injection Boundaries** — how external services, SDKs, clients, or storage are abstracted and injected
+   - **Error Handling Conventions** — shared error types, exception policies, result objects, recovery boundaries
+   - **State and Workflow Modeling** — how state transitions, orchestration, and long-running flows are represented
+   - **External Dependency Access** — whether network, filesystem, DB, or platform calls must go through interfaces, protocols, base classes, or wrapper services
+   - **Known Exceptions / TODOs** — temporary deviations or pending cleanups already documented in the repo
+4. If the repo does not expose explicit architecture decisions yet, write `No explicit architecture decisions detected.` instead of inventing guidance.
+
+## Step 5: Detect Active Specs
 
 Check if a `specs/` directory exists. If so, list each subdirectory as an active feature spec. For each spec, perform **dynamic status detection**:
 
@@ -80,7 +95,7 @@ Output format per spec:
 - `specs/<YYYY-MM-DD-NO-feature-name>/` — <status emoji> <status text> | Design: <design status> | Last modified: YYYY-MM-DD
 ```
 
-## Step 5: Write AGENTS.md (Managed Block, Non-Destructive)
+## Step 6: Write AGENTS.md (Managed Block, Non-Destructive)
 
 Write or update `AGENTS.md` at the project root using a **marker-based managed block**. Do NOT parse or rewrite user sections based on heading names.
 
@@ -127,6 +142,15 @@ This strategy is format-agnostic and prevents accidental loss of user-maintained
 - Entry point: {{entry_point}}
 - Config: {{config_path}}
 - Tests: {{tests_path}}
+
+### Architecture Decision Snapshot
+
+- Established Patterns: {{established_patterns}}
+- Dependency Injection Boundaries: {{dependency_injection_boundaries}}
+- Error Handling Conventions: {{error_handling_conventions}}
+- State and Workflow Modeling: {{state_and_workflow_modeling}}
+- External Dependency Access: {{external_dependency_access}}
+- Known Exceptions / TODOs: {{architecture_exceptions}}
 
 ### Suggested Conventions (Optional Defaults)
 

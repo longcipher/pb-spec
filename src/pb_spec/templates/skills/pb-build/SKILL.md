@@ -9,6 +9,7 @@ You are the **pb-build** agent. Your job is to read a feature's `tasks.md`, then
 - Complete unfinished tasks in `tasks.md` sequentially until done or explicitly blocked.
 - Use one fresh subagent per task with minimal, task-relevant context only.
 - Mark a task as done only after `BDD Verification` passes for `BDD+TDD` tasks, tests pass, task verification passes, and runtime evidence is captured when applicable.
+- Treat `design.md` as the approved architecture contract: follow its `Architecture Decisions`, inherit any `Architecture Decision Snapshot` constraints from `AGENTS.md`, and do not improvise a new pattern mid-build.
 - If blocked, fail clearly with exact task ID, failed command, and concrete next options (retry/skip/abort within budget, then DCR escalation).
 
 ---
@@ -73,6 +74,7 @@ Extract the full task block from `tasks.md` — including Context, Scenario Cove
 - Read `specs/<spec-dir>/design.md` for design context.
 - Read any referenced `.feature` files under `specs/<spec-dir>/features/` for scenario context.
 - Read `AGENTS.md` (if it exists) for project constraints and hard rules. Treat it as read-only policy context.
+- Extract the relevant `Architecture Decisions` from `design.md` and any `Architecture Decision Snapshot` constraints from `AGENTS.md` that apply to this task.
 - Identify files most relevant to this task.
 - Record a pre-task workspace snapshot (`git status --porcelain` + tracked/untracked file lists). This baseline is used for safe recovery if the task fails.
 
@@ -82,6 +84,7 @@ Create a **fresh subagent** for this task. Pass it the implementer prompt templa
 
 - The full task description from `tasks.md`.
 - Non-obvious constraints from `AGENTS.md` and design context from `design.md`.
+- The task-relevant architecture constraints: selected patterns, SRP/DIP decisions, and any requirement that external dependencies go through interfaces or abstract classes.
 - The referenced `.feature` file content and scenario name for `BDD+TDD` tasks.
 - The task number and name.
 
@@ -92,7 +95,8 @@ When spawning the subagent, do NOT pass the entire chat history. Pass ONLY:
 2. The `AGENTS.md` (project constraints and hard rules; do not assume any fixed template layout).
 3. The `design.md` (Feature Spec).
 4. The relevant `.feature` file content and scenario name when `Loop Type` is `BDD+TDD`.
-5. **Summary of previous tasks** — a one-line-per-task summary of what was done (e.g., "Task 1.1 created `models.py` with `User` and `Session` classes which you should now use."). Do NOT pass raw logs or full outputs from previous subagents.
+5. The task-relevant `Architecture Decisions` and `Architecture Decision Snapshot` excerpts.
+6. **Summary of previous tasks** — a one-line-per-task summary of what was done (e.g., "Task 1.1 created `models.py` with `User` and `Session` classes which you should now use."). Do NOT pass raw logs or full outputs from previous subagents.
 
 > **Why Context Hygiene matters:** Passing too much context — especially error logs from previous attempts — can mislead the current subagent. A clean, focused context window leads to better outcomes, following Anthropic's "Fresh Context" strategy.
 
@@ -108,8 +112,9 @@ The subagent follows this strict process. **Each phase must be a separate action
 6. **BDD OUTER GREEN** — Re-run the BDD scenario until it passes when `Loop Type` is `BDD+TDD`.
 7. **Runtime Verification (when applicable)** — Run runtime checks from task Verification (for example log tail + health probe) and capture outputs.
 8. **REFACTOR** — Clean up if needed. Run tests again to confirm no regressions.
-9. **Self-Review** — Check completeness, conventions, over-engineering, test coverage.
-10. **Report** — Summarize what was implemented, tests added, files changed, scenario evidence, and runtime evidence.
+9. **Architecture Conformance Check** — Confirm the implementation still matches the selected `Architecture Decisions`, including SRP, DIP, and any Factory / Strategy / Observer / Adapter / Decorator choice documented for the task. External dependencies must still flow through interfaces or abstract classes when the design requires it.
+10. **Self-Review** — Check completeness, conventions, over-engineering, test coverage.
+11. **Report** — Summarize what was implemented, tests added, files changed, scenario evidence, runtime evidence, and architecture conformance evidence.
 
 **Design Infeasibility:** If during implementation the subagent discovers that the design is infeasible (API doesn't exist, data structure won't work, dependency conflict), it MUST stop and file a Design Change Request (see Step 4).
 
@@ -229,10 +234,10 @@ Summary must be factual and command-backed: do not claim "passed" or "completed"
 ## Subagent Assignment Rules
 
 1. **One subagent per task.** Never combine multiple tasks into one subagent.
-2. **Fresh context per subagent.** Each subagent starts with only: the task description, project context (AGENTS.md + design.md), a summary of completed tasks, and the current state of files on disk.
+2. **Fresh context per subagent.** Each subagent starts with only: the task description, project context (AGENTS.md + design.md), the relevant `Architecture Decisions`, a summary of completed tasks, and the current state of files on disk.
 3. **Sequential execution.** Tasks are executed strictly in `tasks.md` order. No parallelism.
 4. **Independence.** A subagent must not depend on in-memory state from a previous subagent. All cross-task communication happens through files on disk.
-5. **Grounding first.** Every subagent must verify the workspace state (file paths, existing code) before writing any code. This is enforced by the implementer prompt.
+5. **Grounding first.** Every subagent must verify the workspace state (file paths, existing code) before writing any code, then restate the architecture contract it is bound to follow. This is enforced by the implementer prompt.
 6. **Verifiable closure.** A task closes only after explicit verification evidence, including `BDD Verification` for `BDD+TDD` tasks.
 
 ---
@@ -309,6 +314,7 @@ While executing, display progress after each task:
 9. **Context hygiene.** Only pass relevant, minimal context to subagents. Error logs from failed attempts are summarized as hints, not passed verbatim.
 10. **Evidence over assertion.** Status updates and completion claims must map to actual command output.
 11. **Escalate deterministically.** After three consecutive failures, stop thrashing and route to `pb-refine` with a structured DCR.
+12. **Architecture decisions are binding.** `pb-build` executes the approved design; it does not invent a different architecture during implementation.
 
 ---
 

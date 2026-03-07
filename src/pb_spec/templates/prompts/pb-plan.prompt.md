@@ -11,6 +11,7 @@ Run this when the user invokes `/pb-plan <requirement description>`. Do not ask 
 - Ground every design claim in either existing code, explicit requirement text, or a clearly labeled assumption.
 - Do not invent files, modules, APIs, commands, or project conventions.
 - If the repo appears to be scaffold/template-derived and still exposes generic crate/package/module names, plan the rename work so the resulting spec uses project-matching identities instead of placeholders.
+- Make architecture consistency explicit: inherit the repo's `Architecture Decision Snapshot`, choose new patterns in `design.md` before implementation, and do not leave architectural choices for `/pb-build` to improvise.
 - Plan implementation with a code-simplification lens: preserve existing behavior unless the requirement explicitly changes it, prefer explicit readable solutions over clever compact ones, and keep cleanup scoped to touched code unless broader refactoring is justified.
 
 ---
@@ -23,6 +24,7 @@ Build a compact **requirements coverage checklist** from the input before writin
 
 - Functional requirements (what must be built)
 - Constraints (tech stack, compatibility, performance, security, etc.)
+- Architecture and dependency-boundary requirements (patterns to preserve, external integrations that must remain injectable, state/error conventions to inherit)
 - Maintainability and simplification constraints (behavior-preserving refactors, readability requirements, cleanup scope)
 - Explicit non-goals or out-of-scope items
 - User-visible behaviors that should become Gherkin scenarios
@@ -72,14 +74,21 @@ Gather context to inform the design. **Always perform live codebase analysis** �
    - Similar prior implementations that establish patterns to follow
    **This audit is mandatory.** List reusable components in `design.md` Section 3.3 and reference them in `tasks.md` task context.
 
-6. **Audit coding standards and simplification boundaries** — determine which style and maintainability rules the eventual implementation must follow:
+6. **Extract the `Architecture Decision Snapshot`** — this is mandatory whenever the repo has `AGENTS.md` or architecture-oriented docs:
+   - Separate **existing decisions to preserve** from **new decisions this feature must add**.
+   - Before planning any change likely to exceed **200 lines** of implementation or introduce a new architectural boundary, explicitly evaluate **SRP**, **DIP**, and the classic patterns **Factory**, **Strategy**, **Observer**, **Adapter**, and **Decorator**.
+   - State which pattern or principle is selected, why it fits better than the alternatives, and how it keeps the code simpler instead of merely more abstract.
+   - All external dependencies must be routed **through interfaces or abstract classes** in the plan unless the existing repo explicitly establishes a different seam.
+   - Reuse existing repo decisions when available; add new decisions only when the requirement creates a genuine gap.
+
+7. **Audit coding standards and simplification boundaries** — determine which style and maintainability rules the eventual implementation must follow:
    - Infer language- and framework-specific standards from `AGENTS.md`, `CLAUDE.md`, and the live codebase. Only apply standards that are relevant to the current repo; do not copy unrelated JavaScript or React rules into Python work.
    - Identify whether the requirement changes behavior or only restructures existing logic. Record the behavior-preservation boundary explicitly in the design.
    - Prefer plans that reduce unnecessary complexity, nesting, and redundant abstractions, improve naming, and consolidate related logic when that improves clarity.
    - Avoid planning dense one-liners, clever rewrites, or abstraction collapses that would make the code harder to debug or extend.
    - For languages where it applies, call out readability guardrails such as avoiding nested ternary operators in favor of clearer branching.
 
-7. **Determine the BDD/Test harness** — infer the primary language and recommended BDD runner:
+8. **Determine the BDD/Test harness** — infer the primary language and recommended BDD runner:
    - TypeScript/JavaScript → `@cucumber/cucumber`
    - Python → `behave`
    - Rust → `cucumber`
@@ -91,7 +100,7 @@ Gather context to inform the design. **Always perform live codebase analysis** �
 
    Prefer the repo's existing test and BDD commands if they already exist. Only propose new `features/` or step-definition locations when the repo has no established convention.
 
-8. **Choose test depth by risk** — this is mandatory for both `design.md` and `tasks.md`:
+9. **Choose test depth by risk** — this is mandatory for both `design.md` and `tasks.md`:
    - Add **property tests** by default for broad input-domain logic such as transformations, normalization, parsers, serializers/deserializers, combinatorial business rules, state transitions, validation, and versioning logic. If property tests are omitted for such logic, explicitly justify why example-based coverage is sufficient.
    - Add **fuzz testing** only for parser/protocol implementations, binary formats, unsafe/native boundaries, crash-safety work, or untrusted-input robustness. Do not add fuzzing blindly to routine business logic.
    - Add **benchmarks** only when the requirement or codebase establishes explicit latency/throughput expectations, hot paths, or regression-sensitive performance behavior.
@@ -158,6 +167,14 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`:
 
 > How to implement. Reference existing code/patterns to reuse.
 
+## Architecture Decisions
+
+- **Inherited Decisions:** Which items from the `Architecture Decision Snapshot` this change must preserve.
+- **Pattern Selection:** `Factory` / `Strategy` / `Observer` / `Adapter` / `Decorator` / `SRP-only split` / `DIP-only seam` / `N/A` with rationale.
+- **SRP / DIP Check:** Explain how responsibilities stay focused and where dependency inversion is required.
+- **Dependency Injection Plan:** All external dependencies must be routed through interfaces or abstract classes unless the repo already defines a different stable seam.
+- **Code Simplifier Alignment:** Explain why the chosen pattern reduces complexity, clarifies control flow, or limits coupling rather than adding ceremony.
+
 ## BDD/TDD Strategy
 
 - **Primary Language:** ...
@@ -199,6 +216,7 @@ Fill the **Design Template** below fully and write to `specs/<spec-dir>/design.m
 Remove all instructional placeholder text (such as bracket examples) in the final file.
 
 The full design must explicitly document code simplification constraints: the behavior-preservation boundary, repo-specific coding standards to follow, readability priorities, and non-goals for unrelated cleanup.
+The full design must also include an explicit **Architecture Decisions** section that records inherited repo decisions, selected patterns, rejected alternatives, and the SRP/DIP reasoning behind those choices.
 
 ## Step 5a: Output tasks.md — Lightweight Mode (< 50 words)
 
@@ -253,6 +271,7 @@ Remove all instructional placeholder text (such as bracket examples) in the fina
 - Ordered by dependency — no task references work from a later task.
 - Every task has a concrete **Verification** criterion.
 - Each task must state its **Behavioral Contract** (`Preserve existing behavior` or the intentional user-visible change) and its **Simplification Focus** so the implementation stays readable and scoped.
+- Add task context that references the relevant `Architecture Decisions` when a task depends on a chosen pattern, boundary, or injection seam.
 - Tasks that implement user-visible behavior should use `Loop Type: BDD+TDD` and point to one or more scenarios in `Scenario Coverage`. Pure infrastructure tasks may use `Loop Type: TDD-only`.
 - If the repo does not already have a BDD harness, include explicit setup work for the chosen runner and step-definition location.
 - If a task touches broad input-domain logic, append dedicated property-test work using the repo-appropriate tool (`Hypothesis`, `fast-check`, or `proptest`) unless you explicitly justify why it is unnecessary.

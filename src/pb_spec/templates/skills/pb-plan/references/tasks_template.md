@@ -16,6 +16,8 @@
 - **Fuzzing Rule:** Add `Atheris`, `jazzer.js`, or `cargo-fuzz` only for parsers, protocols, unsafe/native boundaries, binary formats, or other untrusted-input crash-safety work.
 - **Benchmark Rule:** Add `pytest-benchmark`, `Vitest Bench`, or `criterion` only when the requirement or codebase defines performance-sensitive behavior.
 - **Identity Alignment Rule:** If the repo still contains generic crate/package/module names from a template, front-load rename work before dependent implementation tasks.
+- **Architecture Decisions Rule:** Follow the approved `Architecture Decisions` from `design.md`. For work likely to exceed 200 lines or introduce new boundaries, state the relevant **SRP**, **DIP**, **Factory**, **Strategy**, **Observer**, **Adapter**, or **Decorator** decision in task context and do not improvise a new pattern mid-build.
+- **Dependency Injection Rule:** External dependencies should be introduced or refactored through interfaces or abstract classes unless the design explicitly documents a different repo-native seam.
 - **Behavior Preservation Rule:** State whether each task preserves existing behavior or intentionally changes it; validate that with scenario and regression coverage.
 - **Simplification Rule:** Prefer explicit, readable implementation steps that reduce unnecessary nesting, redundancy, or naming ambiguity without broadening scope.
 - **Clarity Guardrail:** Avoid planning dense or clever rewrites; where relevant, avoid nested ternary operators in favor of clearer branching.

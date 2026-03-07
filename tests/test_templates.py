@@ -101,6 +101,16 @@ def test_pb_init_templates_use_non_destructive_marker_merge_for_agents_md():
         )
 
 
+def test_pb_init_templates_capture_architecture_decision_snapshot():
+    """pb-init templates should snapshot repo-level architecture decisions for later agents."""
+    for content in (load_skill_content("pb-init"), load_prompt("pb-init")):
+        assert "Architecture Decision Snapshot" in content
+        assert "Established Patterns" in content
+        assert "Dependency Injection Boundaries" in content
+        assert "Error Handling Conventions" in content
+        assert "Only record decisions grounded in explicit evidence" in content
+
+
 def test_non_init_templates_treat_agents_md_as_read_only():
     """pb-plan/pb-refine/pb-build should not modify AGENTS.md unless explicitly asked."""
     for skill in ("pb-plan", "pb-refine", "pb-build"):
@@ -236,6 +246,31 @@ def test_pb_plan_templates_require_code_simplification_constraints():
         assert "Read `CLAUDE.md`" in content
 
 
+def test_pb_plan_templates_require_explicit_architecture_decisions():
+    """pb-plan templates should require upfront architecture decisions before implementation."""
+    refs = load_references("pb-plan")
+
+    for content in (
+        load_skill_content("pb-plan"),
+        load_prompt("pb-plan"),
+        refs["design_template.md"],
+        refs["tasks_template.md"],
+    ):
+        assert "Architecture Decisions" in content
+        assert "SRP" in content
+        assert "DIP" in content
+        assert "Factory" in content
+        assert "Strategy" in content
+        assert "Observer" in content
+        assert "Adapter" in content
+        assert "Decorator" in content
+
+    for content in (load_skill_content("pb-plan"), load_prompt("pb-plan")):
+        assert "200 lines" in content
+        assert "through interfaces or abstract classes" in content
+        assert "Architecture Decision Snapshot" in content
+
+
 def test_pb_build_prompt_template_is_self_contained_for_prompt_platforms():
     """Prompt-only platforms should not rely on an external implementer reference file."""
     prompt = load_prompt("pb-build")
@@ -258,6 +293,46 @@ def test_pb_build_templates_require_bdd_outer_loop_before_tdd():
         assert "Re-run the BDD scenario until it passes" in content
         assert "BDD+TDD" in content
         assert "scenario name" in content
+
+
+def test_pb_build_templates_require_architecture_decision_adherence():
+    """pb-build templates should force implementers to follow planned architecture decisions."""
+    build_refs = load_references("pb-build")
+    for content in (
+        load_skill_content("pb-build"),
+        load_prompt("pb-build"),
+        build_refs["implementer_prompt.md"],
+    ):
+        assert "Architecture Decisions" in content
+        assert "Architecture Decision Snapshot" in content
+        assert "SRP" in content
+        assert "DIP" in content
+        assert "Factory" in content
+        assert "Strategy" in content
+        assert "Observer" in content
+        assert "Adapter" in content
+        assert "Decorator" in content
+        assert "interfaces or abstract classes" in content
+        assert (
+            "do not improvise a new pattern mid-build" in content
+            or "Do not add architecture or abstractions beyond what the task requires" in content
+        )
+
+
+def test_readme_documents_architecture_decision_workflow():
+    """README should explain the architecture snapshot and decision flow across pb-init/pb-plan/pb-build."""
+    readme = Path(__file__).resolve().parents[1].joinpath("README.md").read_text(encoding="utf-8")
+
+    assert "Architecture Decision Snapshot" in readme
+    assert "Architecture Decisions" in readme
+    assert "SRP" in readme
+    assert "DIP" in readme
+    assert "Factory" in readme
+    assert "Strategy" in readme
+    assert "Observer" in readme
+    assert "Adapter" in readme
+    assert "Decorator" in readme
+    assert "code-simplification lens" in readme or "code simplifier" in readme
 
 
 def test_pb_refine_templates_update_feature_files_with_design_changes():

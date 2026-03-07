@@ -79,7 +79,21 @@
 
 > If no reusable components exist, state "No existing components identified for reuse" and explain why.
 
-### 3.4 Project Identity Alignment
+### 3.4 Architecture Decisions
+
+> Explicitly decide which architectural patterns or principles this feature will use before implementation begins. For any change likely to exceed **200 lines** of implementation or introduce a new module boundary, this section is mandatory and must be specific.
+
+| Decision ID | Status | Selected Pattern / Principle | Why It Fits Here | Alternatives Rejected | Simplification Impact |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `AD-01` | `Inherited` / `New` | `[SRP / DIP / Factory / Strategy / Observer / Adapter / Decorator / N/A]` | `[Why this matches the requirement and existing repo shape]` | `[Why competing patterns were not chosen]` | `[How this reduces complexity or coupling without adding ceremony]` |
+
+- **Architecture Decision Snapshot Inputs:** List which repo-level decisions from `AGENTS.md`, docs, or existing code this design is inheriting.
+- **SRP Check:** Explain how responsibilities stay isolated and which modules should not absorb new concerns.
+- **DIP Check:** Identify the seams where dependencies must be inverted.
+- **Dependency Injection Plan:** All external dependencies should flow through interfaces or abstract classes unless the repo already has a documented alternative seam.
+- **Code Simplifier Alignment:** Explain how these decisions keep the implementation explicit and maintainable rather than clever.
+
+### 3.5 Project Identity Alignment
 
 > If the repository appears to come from a template/scaffold, identify any generic crate/package/module names that must be renamed to match the current project or product identity before feature work is complete.
 
@@ -89,7 +103,7 @@
 
 > If no identity cleanup is needed, state "No template identity mismatches detected.".
 
-### 3.5 BDD/TDD Strategy
+### 3.6 BDD/TDD Strategy
 
 > Describe how this feature will use outside-in development. Define the business-facing Gherkin loop and the supporting TDD loop.
 
@@ -105,7 +119,7 @@
 
 > Property testing should be planned by default for large input domains such as parsers, serializers, normalization, versioning rules, combinatorial business logic, or boundary-heavy validation. Fuzzing is conditional for parser/protocol/unsafe/untrusted-input crash-safety work. Benchmarks are conditional for explicit performance-sensitive paths.
 
-### 3.6 BDD Scenario Inventory
+### 3.7 BDD Scenario Inventory
 
 > List every scenario that should be planned as a first-class acceptance artifact.
 
@@ -113,7 +127,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | `features/[feature-name].feature` | `[Scenario Name]` | `[User-visible result]` | `[BDD command or acceptance check]` | `[Unit/component logic to drive with TDD]` |
 
-### 3.7 Simplification Opportunities in Touched Code
+### 3.8 Simplification Opportunities in Touched Code
 
 > Identify the specific cleanup that should happen alongside the feature without broadening scope.
 

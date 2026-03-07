@@ -9,6 +9,7 @@ Run this when the user invokes `/pb-build <feature-name>`.
 - Complete unfinished tasks in `tasks.md` sequentially until done or explicitly blocked.
 - Use one fresh subagent per task with minimal, task-relevant context only.
 - Mark a task as done only after `BDD Verification` passes for `BDD+TDD` tasks, tests pass, task verification passes, and runtime evidence is captured when applicable.
+- Treat `design.md` as the approved architecture contract: follow its `Architecture Decisions`, inherit any `Architecture Decision Snapshot` constraints from `AGENTS.md`, and do not improvise a new pattern mid-build.
 - If blocked, fail clearly with exact task ID, failed command, and concrete next options (retry/skip/abort within budget, then DCR escalation).
 
 ---
@@ -63,6 +64,7 @@ For each unfinished task, in order:
 1. **Extract** the full task block (Context, Scenario Coverage, Loop Type, Steps, BDD Verification, Verification).
 2. **Gather context** — read `design.md` and `AGENTS.md` (if it exists). Treat `AGENTS.md` as read-only policy context.
    - Read any referenced `.feature` files under `specs/<spec-dir>/features/`.
+   - Extract the relevant `Architecture Decisions` from `design.md` and any `Architecture Decision Snapshot` constraints from `AGENTS.md` that apply to this task.
    - Record a pre-task workspace snapshot (`git status --porcelain` + tracked/untracked file lists) for safe rollback.
 3. **Spawn a fresh subagent** with the Implementer Prompt (below), filled in with the task content and project context.
    **Context Hygiene:** Do NOT pass the entire chat history. Pass ONLY:
@@ -70,8 +72,10 @@ For each unfinished task, in order:
    - The `AGENTS.md` (project constraints and hard rules; do not assume any fixed template layout).
    - The `design.md` (Feature Spec).
    - The relevant `.feature` file content and scenario name when `Loop Type` is `BDD+TDD`.
+   - The task-relevant `Architecture Decisions` and `Architecture Decision Snapshot` excerpts, including any SRP, DIP, Factory, Strategy, Observer, Adapter, or Decorator choice and any requirement to route external dependencies through interfaces or abstract classes.
    - **Summary of previous tasks** — a one-line-per-task summary (e.g., "Task 1.1 created `models.py` with `User` class."). Do NOT pass raw logs or full outputs.
 4. **Subagent executes** the BDD + TDD + runtime verification cycle (see Implementer Prompt section).
+   - The subagent must restate the architecture contract before coding and verify it still conforms after implementation.
 5. **Mark completed** — update `- [ ]` to `- [x]` and Status to `🟢 DONE` in `tasks.md`.
    - **Use precise editing:** Use `sed`, string-replacement, or line-targeted edits to update the specific Task ID heading and its checkboxes. Do NOT rewrite the entire `tasks.md` file — this risks truncation and content loss in large files.
    - **Completion gate:** Mark done only when `BDD Verification` is satisfied for `BDD+TDD` tasks, task Verification is satisfied, tests are green, and runtime checks (when applicable) are evidence-backed.
@@ -177,10 +181,10 @@ Summary must be factual and command-backed: do not claim "passed" or "completed"
 ## Subagent Rules
 
 1. **One subagent per task.** Never combine tasks.
-2. **Fresh context per subagent.** Only: task description, non-obvious constraints (AGENTS.md) + design (design.md), summary of completed tasks, files on disk.
+2. **Fresh context per subagent.** Only: task description, non-obvious constraints (AGENTS.md) + design (design.md), relevant `Architecture Decisions`, summary of completed tasks, files on disk.
 3. **Sequential execution.** Strict `tasks.md` order. No parallelism.
 4. **Independence.** Cross-task state lives in files, not memory.
-5. **Grounding first.** Every subagent verifies workspace state before writing code.
+5. **Grounding first.** Every subagent verifies workspace state before writing code and restates the architecture contract it must preserve.
 6. **Verifiable closure.** A task closes only after explicit verification evidence.
 
 ---
@@ -252,6 +256,7 @@ Update `tasks.md` in-place after each task using **precise edits** (target the s
 9. **Context hygiene.** Pass minimal, relevant context. Summarize — don't dump.
 10. **Evidence over assertion.** Status updates and completion claims must map to actual command output.
 11. **Escalate deterministically.** After three consecutive failures, stop thrashing and route to `pb-refine` with a structured DCR.
+12. **Architecture decisions are binding.** `pb-build` executes the approved design; it does not invent a different architecture during implementation.
 
 ---
 
@@ -273,7 +278,7 @@ You are implementing **Task {{TASK_NUMBER}}: {{TASK_NAME}}**.
 
 {{PROJECT_CONTEXT}}
 
-> From `AGENTS.md` (project constraints and rules) and `design.md` (feature design decisions).
+> From `AGENTS.md` (project constraints and rules), the repo's `Architecture Decision Snapshot`, and `design.md` (feature `Architecture Decisions`).
 
 ### Your Job
 
@@ -285,6 +290,7 @@ Before coding, define a compact task contract from the provided task block:
 - What must not change
 - How success is verified
 - Which `Scenario Coverage` entries and scenario name apply to this task
+- Which `Architecture Decisions` are binding for this task, including any SRP, DIP, Factory, Strategy, Observer, Adapter, or Decorator choice
 
 **1. Grounding & State Verification (Mandatory)**
 
@@ -294,6 +300,8 @@ Before writing any code, verify the current workspace state:
 - **Read Context:** Read target files to understand surrounding code and current state.
 - **Check Dependencies:** Verify modules you plan to import actually exist.
 - **Read `design.md`** for overall design context.
+- **Read the `Architecture Decisions` section** and restate the specific architecture contract for this task before coding.
+- **Read the `Architecture Decision Snapshot`** from `AGENTS.md` when present and preserve any repo-level constraints it establishes.
 - Identify existing patterns to follow.
 - Confirm task boundaries to avoid scope bleed.
 
@@ -309,6 +317,7 @@ Before writing any code, verify the current workspace state:
 | **BDD OUTER GREEN** | Re-run the BDD scenario until it passes for `BDD+TDD` tasks. | BDD scenario passes |
 | **Runtime Verification (if applicable)** | Run runtime checks from task Verification, capture logs + probe output (or explicit `N/A` reason). | Runtime evidence captured |
 | **REFACTOR** | Clean up if needed | ALL tests still pass |
+| **ARCHITECTURE CHECK** | Confirm the implementation still follows the selected `Architecture Decisions`, preserves SRP and DIP, and keeps external dependencies behind interfaces or abstract classes when required. | Architecture contract preserved |
 | **SCOPE CHECK** | Confirm implemented changes match task contract and nothing extra. | Task scope respected |
 
 **3. Self-Review Checklist**
@@ -319,6 +328,7 @@ Before writing any code, verify the current workspace state:
 - [ ] Test coverage — tests meaningfully verify requirements
 - [ ] No regressions — all pre-existing tests pass
 - [ ] BDD coverage — for `BDD+TDD` tasks, the referenced scenario failed first and then passed
+- [ ] Architecture conformance — the change still matches the selected `Architecture Decisions` and does not introduce a conflicting pattern
 - [ ] YAGNI — no over-engineering
 - [ ] Verification mapping — task's stated Verification is explicitly satisfied
 
@@ -358,6 +368,8 @@ Fix any "no" answers before submitting.
 - Only implement the current task.
 - Follow YAGNI — no speculative features.
 - Use existing patterns — match project style.
+- Follow approved architecture decisions — respect the task's `Architecture Decisions` and the repo's `Architecture Decision Snapshot`; do not improvise a different pattern mid-build.
+- do not improvise a new pattern mid-build. If the planned architecture no longer fits, raise a Design Change Request instead of silently switching patterns.
 - Do not modify `design.md` or `tasks.md`.
 - Do not modify, delete, or reformat `AGENTS.md` unless the user explicitly requests an `AGENTS.md` change.
 - Do not modify unrelated code.

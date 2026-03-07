@@ -34,6 +34,7 @@ pb-spec follows a **harness-first** philosophy: reliability comes from process d
 - **Behavior Before Code:** `/pb-plan` turns user-visible requirements into Gherkin `.feature` scenarios before implementation begins.
 - **Verification by Design:** Planning requires explicit verification commands so completion is measurable.
 - **Observability as Context:** Service-facing tasks must capture runtime evidence (log tails and/or health probes), not only test output.
+- **Architecture Before Implementation:** `/pb-init` snapshots established architecture decisions, `/pb-plan` records explicit `Architecture Decisions`, and `/pb-build` executes against that contract instead of inventing a new one.
 - **Double-Loop Execution:** `/pb-build` enforces a BDD outer loop plus a TDD inner loop with per-task status tracking.
 - **Escalation Over Thrashing:** Three consecutive failures suspend the current task and route a standardized DCR packet to `/pb-refine`.
 - **Safe Failure Recovery:** Failed attempts use scoped recovery guidance to avoid polluting unrelated workspace state.
@@ -131,6 +132,8 @@ Merge behavior is non-destructive:
 
 This design avoids relying on any fixed `AGENTS.md` section layout and protects user-maintained constraints across re-runs.
 
+The managed snapshot now also includes an **Architecture Decision Snapshot** so later agents inherit repo-level conventions instead of re-deciding them every run. Typical entries include established patterns, dependency-injection boundaries, error-handling conventions, and workflow/state-modeling rules.
+
 ### 2. `/pb-plan <requirement>` — Design & Task Planning
 
 Takes a natural-language requirement and produces a complete feature spec:
@@ -153,6 +156,8 @@ It also performs two additional planning audits before implementation starts:
 - Template identity alignment: if the repo still contains generic crate/package/module names from a scaffold, `pb-plan` must front-load renaming those identifiers to project-matching names.
 - Risk-based advanced testing: property testing is planned by default for broad input-domain logic, while fuzzing and benchmarks are added only when the feature profile justifies them. Tool selection follows repo language conventions: `Hypothesis` / `fast-check` / `proptest`, `Atheris` / `jazzer.js` / `cargo-fuzz`, and `pytest-benchmark` / `Vitest Bench` / `criterion`.
 
+It also adds an explicit **Architecture Decisions** section to `design.md`. For work that introduces a new boundary or is likely to exceed 200 lines, planning must evaluate **SRP**, **DIP**, and the classic patterns **Factory**, **Strategy**, **Observer**, **Adapter**, and **Decorator**. The chosen pattern must be justified against alternatives and checked against the code-simplification lens so the design stays simpler, not just more abstract.
+
 ### 3. `/pb-refine <feature-name>` — Design Iteration (Optional)
 
 Reads user feedback or Design Change Requests (from failed builds, including standardized 3-failure build-block packets) and intelligently updates `design.md` and `tasks.md`. It maintains a revision history and cascades design changes to the task list without overwriting completed work. `AGENTS.md` remains read-only in this phase.
@@ -160,6 +165,8 @@ Reads user feedback or Design Change Requests (from failed builds, including sta
 ### 4. `/pb-build <feature-name>` — Subagent-Driven Implementation
 
 Reads `specs/<YYYY-MM-DD-NO-feature-name>/tasks.md` and implements each task sequentially. Every `BDD+TDD` task is executed by a fresh subagent following an outside-in double loop: run the Gherkin scenario first so the BDD outer loop is red, drive the implementation with TDD (Red → Green → Refactor) in the inner loop, then re-run the scenario until it passes. Runtime verification (log/health evidence when applicable) still applies. Supports **Design Change Requests** if the planned design proves infeasible during implementation, and auto-escalates to DCR after three consecutive task failures. Only the `<feature-name>` part is needed when invoking — the agent resolves the full directory automatically. `AGENTS.md` is read-only unless the user explicitly requests an `AGENTS.md` change.
+
+`/pb-build` is now explicitly architecture-bound: it reads the repo's **Architecture Decision Snapshot**, follows the feature's **Architecture Decisions**, re-checks **SRP** and **DIP** during execution, and keeps external dependencies behind interfaces or abstract classes when the design requires that seam. It should not improvise a different Factory, Strategy, Observer, Adapter, or Decorator choice mid-build.
 
 ## Skills Overview
 
@@ -179,6 +186,7 @@ pb-spec's prompt design is inspired by Anthropic's research on [Effective Harnes
 | Principle | How pb-spec Implements It |
 |---|---|
 | **State Grounding** | Subagents must verify workspace state (`ls`, `find`, `read_file`) before writing any code — preventing path hallucination |
+| **Architecture Continuity** | `pb-init` records an Architecture Decision Snapshot, `pb-plan` makes Architecture Decisions explicit, and `pb-build` verifies implementation still conforms to that contract |
 | **Error Quoting** | Subagents must quote specific error messages before attempting fixes — preventing blind debugging |
 | **Context Hygiene** | Orchestrator passes only minimal, relevant context to each subagent — preventing context window pollution |
 | **Recovery Loop** | Failed tasks use pre-task snapshots + file-scoped recovery (`git restore` + task-local cleanup), and avoid workspace-wide restore in dirty trees |
