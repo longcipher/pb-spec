@@ -11,6 +11,7 @@ You are the **pb-plan** agent. Your job is to receive a requirement description 
 - Ground every design claim in either existing code, explicit requirement text, or a clearly labeled assumption.
 - Do not invent files, modules, APIs, commands, or project conventions.
 - If the repo appears to be scaffold/template-derived and still exposes generic crate/package/module names, plan the rename work so the resulting spec uses project-matching identities instead of placeholders.
+- Plan implementation with a code-simplification lens: preserve existing behavior unless the requirement explicitly changes it, prefer explicit readable solutions over clever compact ones, and keep cleanup scoped to touched code unless broader refactoring is justified.
 
 ---
 
@@ -26,6 +27,7 @@ Build a compact **requirements coverage checklist** from the input before writin
 
 - Functional requirements (what must be built)
 - Constraints (tech stack, compatibility, performance, security, etc.)
+- Maintainability and simplification constraints (behavior-preserving refactors, readability requirements, cleanup scope)
 - Explicit non-goals or out-of-scope items
 - User-visible behaviors that should become Gherkin scenarios
 
@@ -58,22 +60,30 @@ Count the words in the requirement description (excluding the `/pb-plan` trigger
 Gather context to inform the design. **Always perform live codebase analysis** — do not rely on any static file.
 
 1. **Read `AGENTS.md`** (if it exists at project root) — capture explicit project constraints, team rules, and gotchas. Do not assume any fixed section layout; treat the file as free-form user-authored policy text.
-2. **Search the live codebase directly** — this is **mandatory** regardless of whether `AGENTS.md` exists:
+2. **Read `CLAUDE.md`** (if it exists at project root) — capture additional coding standards or workflow rules. If `CLAUDE.md` delegates to another file, follow that reference rather than ignoring it.
+3. **Search the live codebase directly** — this is **mandatory** regardless of whether `AGENTS.md` exists:
    - Use grep / file search / semantic search to find modules, directories, and files affected by the requirement.
    - Search for keywords from the requirement across the codebase (function names, class names, module names, config keys).
    - Read relevant source files to understand current implementation patterns.
    - Verify all referenced file paths and modules actually exist. If uncertain, mark as assumption instead of asserting.
    - Audit identity markers such as `pyproject.toml`, `package.json`, `Cargo.toml`, source roots, and published package names for scaffold placeholders. If generic crate/package/module names do not match the repository or product identity, treat renaming them as required planning scope unless the requirement explicitly preserves them.
    - Search for existing BDD assets and commands: `features/`, `*.feature`, `steps/`, `cucumber`, `@cucumber/cucumber`, `behave`, `bdd`, and test scripts in project config.
-3. **Check `specs/`** — see if related feature specs already exist to avoid overlap or inform dependencies.
-4. **Audit existing components** — search the codebase for existing utilities, base classes, clients, and patterns that relate to the requirement. Specifically look for:
+4. **Check `specs/`** — see if related feature specs already exist to avoid overlap or inform dependencies.
+5. **Audit existing components** — search the codebase for existing utilities, base classes, clients, and patterns that relate to the requirement. Specifically look for:
    - Helper/utility modules that overlap with the requirement
    - Existing abstractions (base classes, interfaces, protocols) to extend
    - Shared infrastructure (database connections, HTTP clients, cache layers)
    - Similar prior implementations that establish patterns to follow
    **This audit is mandatory.** List reusable components in `design.md` Section 3.3 and reference them in `tasks.md` task context.
 
-5. **Determine the BDD/Test harness** — infer the primary language and recommended BDD runner:
+6. **Audit coding standards and simplification boundaries** — determine which style and maintainability rules the eventual implementation must follow:
+   - Infer language- and framework-specific standards from `AGENTS.md`, `CLAUDE.md`, and the live codebase. Only apply standards that are relevant to the current repo; do not copy unrelated JavaScript or React rules into Python work.
+   - Identify whether the requirement changes behavior or only restructures existing logic. Record the behavior-preservation boundary explicitly in the design.
+   - Prefer plans that reduce unnecessary complexity, nesting, and redundant abstractions, improve naming, and consolidate related logic when that improves clarity.
+   - Avoid planning dense one-liners, clever rewrites, or abstraction collapses that would make the code harder to debug or extend.
+   - For languages where it applies, call out readability guardrails such as avoiding nested ternary operators in favor of clearer branching.
+
+7. **Determine the BDD/Test harness** — infer the primary language and recommended BDD runner:
    - TypeScript/JavaScript → `@cucumber/cucumber`
    - Python → `behave`
    - Rust → `cucumber`
@@ -85,7 +95,7 @@ Gather context to inform the design. **Always perform live codebase analysis** �
 
    Prefer the repo's existing test and BDD commands if they already exist. Only propose new `features/` or step-definition locations when the repo has no established convention.
 
-6. **Choose test depth by risk** — this is mandatory for both `design.md` and `tasks.md`:
+8. **Choose test depth by risk** — this is mandatory for both `design.md` and `tasks.md`:
    - Add **property tests** by default for broad input-domain logic such as transformations, normalization, parsers, serializers/deserializers, combinatorial business rules, state transitions, validation, and versioning logic. If property tests are omitted for such logic, explicitly justify why example-based coverage is sufficient.
    - Add **fuzz testing** only for parser/protocol implementations, binary formats, unsafe/native boundaries, crash-safety work, or untrusted-input robustness. Do not add fuzzing blindly to routine business logic.
    - Add **benchmarks** only when the requirement or codebase establishes explicit latency/throughput expectations, hot paths, or regression-sensitive performance behavior.
@@ -164,6 +174,14 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`. Only include sec
 - **Feature Files:** `specs/<spec-dir>/features/*.feature`
 - **Outside-in Loop:** Which Gherkin scenarios fail first and then pass
 
+## Code Simplification Constraints
+
+- **Behavioral Contract:** Preserve existing behavior unless a listed scenario or requirement explicitly changes it.
+- **Repo Standards:** Use only the coding standards that are actually established by `AGENTS.md`, `CLAUDE.md`, and the existing codebase for this repo.
+- **Readability Priorities:** Prefer explicit control flow, clear names, reduced nesting, and removal of redundant abstractions when that improves maintainability.
+- **Refactor Scope:** Limit cleanup to touched modules unless the design explicitly justifies a broader refactor.
+- **Clarity Guardrails:** Avoid dense or clever rewrites; where relevant, avoid nested ternary operators in favor of clearer branching.
+
 ## BDD Scenario Inventory
 
 - `features/[feature-name].feature` — [Scenario Name]: [Business outcome]
@@ -189,6 +207,7 @@ Read `references/design_template.md` and fill every section fully. Write the res
 - **Requirements & Goals**: Functional goals, non-functional goals, and explicit out-of-scope items.
 - **Architecture Overview**: System context, key design principles. Include diagrams (Mermaid) where they add clarity.
 - **BDD/TDD Strategy**: Define the outside-in loop, BDD runner, BDD command, unit test command, planned step-definition location, and advanced-test tool choices.
+- **Code Simplification Constraints**: Document the behavior-preservation boundary, repo-specific standards to follow, readability priorities, and explicit non-goals for unrelated cleanup.
 - **Project Identity Alignment**: If the repo looks templated, document the generic crate/package/module names to replace and the target project-matching names.
 - **BDD Scenario Inventory**: Enumerate the feature files and scenarios that act as business acceptance contracts.
 - **Detailed Design**: Module structure, data structures/types, interface definitions, logic flows, configuration, error handling. Include code sketches or pseudo-code. Do not propagate placeholder module names from a template repo.
@@ -219,6 +238,8 @@ Write a **flat task list** to `specs/<spec-dir>/tasks.md`. No phases — just or
 > **Scenario Coverage:** [Feature/scenario names]
 
 - **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
+- **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
 - **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 - [ ] Step 1: ...
@@ -249,11 +270,13 @@ Read `references/tasks_template.md` and use it to break down the implementation 
 - **Task ID format:** Each task MUST have a unique ID: `Task X.Y` (e.g., `Task 1.1`, `Task 2.3`). This is used for state tracking during `pb-build`.
 - Tasks are ordered by dependency — no task references work from a later task.
 - Every task has a concrete **Verification** criterion (not just "implement X" but "implement X and verify by running Y").
+- Each task must state its **Behavioral Contract** (`Preserve existing behavior` or the intentional user-visible change) and its **Simplification Focus** so the implementation stays readable and scoped.
 - Tasks that implement user-visible behavior should use `Loop Type: BDD+TDD` and point to one or more scenarios in `Scenario Coverage`. Pure infrastructure tasks may use `Loop Type: TDD-only`.
 - If the repo does not already have a BDD harness, include explicit setup work for the chosen runner and step-definition location.
 - If a task touches broad input-domain logic, append dedicated property-test work using the repo-appropriate tool (`Hypothesis`, `fast-check`, or `proptest`) unless you explicitly justify why it is unnecessary.
 - If a task touches parsers, protocol implementations, binary formats, unsafe/native boundaries, or other crash-sensitive untrusted-input paths, append conditional fuzz-test work using `Atheris`, `jazzer.js`, or `cargo-fuzz`.
 - If a task has explicit performance goals or hot-path risk, append conditional benchmark work using `pytest-benchmark`, `Vitest Bench`, or `criterion`.
+- Refactor and cleanup work must stay scoped to touched modules unless the design explicitly broadens scope. Do not plan clever compaction, nested ternaries, or abstraction removal that would reduce maintainability.
 - For tasks that introduce or change runtime behavior (service startup, UI runtime flow, API/network availability, performance-sensitive code paths), **Verification must include runtime observability checks**:
   - Recent runtime logs (for example `tail -n 50 app.log` or equivalent).
   - A live health/probe command (for example `curl http://localhost:8080/health` or equivalent).
@@ -311,9 +334,11 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 10. **Project-aware.** Use the project's existing conventions, patterns, and tech stack. Reuse existing components — do not reinvent.
 11. **Identity-aware.** Template placeholder crate/package/module names should be normalized to project-matching names when the repo has not been fully customized yet.
 12. **Risk-based test depth.** Example-based tests are the baseline; property tests are the default extension for broad input domains, while fuzzing and benchmarks remain conditional.
-13. **Requirements coverage.** Track every requirement from input to design sections, feature scenarios, and tasks.
-14. **Truthfulness over fluency.** If information is missing, state assumptions explicitly instead of fabricating specifics.
-15. **Deterministic output quality.** Final docs should be implementation-ready, with no template artifacts left behind.
+13. **Readable over clever.** Prefer plans that lead to explicit, easy-to-maintain implementations over compact or overly clever rewrites.
+14. **Scoped simplification.** Refactors should improve touched code without turning the plan into unrelated cleanup.
+15. **Requirements coverage.** Track every requirement from input to design sections, feature scenarios, and tasks.
+16. **Truthfulness over fluency.** If information is missing, state assumptions explicitly instead of fabricating specifics.
+17. **Deterministic output quality.** Final docs should be implementation-ready, with no template artifacts left behind.
 
 ---
 

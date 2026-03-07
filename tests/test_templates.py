@@ -214,6 +214,28 @@ def test_pb_plan_templates_require_risk_based_advanced_test_planning():
         assert "Add **benchmarks** only" in content
 
 
+def test_pb_plan_templates_require_code_simplification_constraints():
+    """pb-plan templates should plan for behavior-preserving simplification and clarity."""
+    refs = load_references("pb-plan")
+
+    for content in (
+        load_skill_content("pb-plan"),
+        load_prompt("pb-plan"),
+        refs["design_template.md"],
+        refs["tasks_template.md"],
+    ):
+        assert (
+            "Preserve existing behavior" in content or "Behavior Preservation Boundary" in content
+        )
+        assert "Reduce nesting" in content or "reduced nesting" in content
+        assert "nested ternary" in content
+
+    for content in (load_skill_content("pb-plan"), load_prompt("pb-plan")):
+        assert "keep cleanup scoped to touched code" in content
+        assert "explicit readable solutions over clever compact ones" in content
+        assert "Read `CLAUDE.md`" in content
+
+
 def test_pb_build_prompt_template_is_self_contained_for_prompt_platforms():
     """Prompt-only platforms should not rely on an external implementer reference file."""
     prompt = load_prompt("pb-build")

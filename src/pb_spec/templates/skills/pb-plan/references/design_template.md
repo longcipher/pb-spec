@@ -46,6 +46,16 @@
 
 > Any assumptions or constraints. List decisions made when requirements were ambiguous.
 
+### 2.6 Code Simplification Constraints
+
+> Document the maintainability rules that should shape implementation decisions.
+
+- **Behavior Preservation Boundary:** What must remain unchanged unless an acceptance scenario or explicit requirement says otherwise.
+- **Repo Standards To Follow:** Language- and framework-specific coding standards inferred from `AGENTS.md`, `CLAUDE.md`, and the live codebase. Only include standards that are actually relevant to this repo.
+- **Readability Priorities:** Prefer explicit control flow, clear naming, reduced nesting, and removal of redundant abstractions when that improves maintainability.
+- **Refactoring Non-Goals:** Unrelated cleanup stays out of scope unless the design explicitly justifies a broader refactor.
+- **Clarity Guardrails:** Avoid dense or clever rewrites. In languages where it applies, avoid nested ternary operators in favor of clearer branching.
+
 ---
 
 ## 3. Architecture Overview
@@ -103,6 +113,14 @@
 | :--- | :--- | :--- | :--- | :--- |
 | `features/[feature-name].feature` | `[Scenario Name]` | `[User-visible result]` | `[BDD command or acceptance check]` | `[Unit/component logic to drive with TDD]` |
 
+### 3.7 Simplification Opportunities in Touched Code
+
+> Identify the specific cleanup that should happen alongside the feature without broadening scope.
+
+| Area | Current Complexity or Smell | Planned Simplification | Why It Preserves or Clarifies Behavior |
+| :--- | :--- | :--- | :--- |
+| `[e.g., version parser]` | `[Nested branching and duplicate normalization paths]` | `[Flatten control flow and centralize normalization]` | `[Keeps existing outputs while making the logic easier to reason about]` |
+
 ---
 
 ## 4. Detailed Design
@@ -151,6 +169,8 @@ class FeatureInterface:
 ### 4.4 Logic Flow
 
 > Describe key workflows, state transitions, or processing pipelines. Use step-by-step descriptions or diagrams.
+>
+> Keep the proposed flow explicit and easy to follow. Prefer straightforward branching and cohesive helper boundaries over compact but opaque control flow.
 
 ### 4.5 Configuration
 
@@ -160,6 +180,14 @@ class FeatureInterface:
 
 > Error types, failure modes, and recovery strategy.
 
+### 4.7 Maintainability Notes
+
+> Call out any implementation guardrails that keep the change readable and easy to extend.
+
+- Prefer focused helpers over oversized multi-purpose functions when a split improves clarity.
+- Do not remove abstractions that the codebase already uses effectively for separation of concerns.
+- Keep refactor scope limited to touched modules unless the design explicitly expands it.
+
 ---
 
 ## 5. Verification & Testing Strategy
@@ -167,6 +195,8 @@ class FeatureInterface:
 ### 5.1 Unit Testing
 
 > What pure logic to test. Scope and tooling.
+>
+> Include regression checks that prove any planned simplification preserves behavior, not just happy-path outcomes.
 
 ### 5.2 Property Testing
 

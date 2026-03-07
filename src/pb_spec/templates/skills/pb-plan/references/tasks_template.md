@@ -16,6 +16,9 @@
 - **Fuzzing Rule:** Add `Atheris`, `jazzer.js`, or `cargo-fuzz` only for parsers, protocols, unsafe/native boundaries, binary formats, or other untrusted-input crash-safety work.
 - **Benchmark Rule:** Add `pytest-benchmark`, `Vitest Bench`, or `criterion` only when the requirement or codebase defines performance-sensitive behavior.
 - **Identity Alignment Rule:** If the repo still contains generic crate/package/module names from a template, front-load rename work before dependent implementation tasks.
+- **Behavior Preservation Rule:** State whether each task preserves existing behavior or intentionally changes it; validate that with scenario and regression coverage.
+- **Simplification Rule:** Prefer explicit, readable implementation steps that reduce unnecessary nesting, redundancy, or naming ambiguity without broadening scope.
+- **Clarity Guardrail:** Avoid planning dense or clever rewrites; where relevant, avoid nested ternary operators in favor of clearer branching.
 - **Phase 1: BDD Harness & Scaffolding** — Feature files, runner setup, task skeletons
 - **Phase 2: Scenario Implementation** — Primary behavior implemented via TDD
 - **Phase 3: Integration & Features** — Connecting pieces, end-to-end
@@ -34,6 +37,8 @@
 - **Scope:** [Logical Unit of Work — e.g., "Model layer", "API endpoint", "Service integration"]
 - **Scenario Coverage:** `[Feature/scenario names, or N/A for infrastructure-only work]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
+- **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
 - **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
@@ -52,6 +57,8 @@
 - **Scope:** [Logical Unit of Work]
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
+- **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
 - **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
@@ -74,6 +81,8 @@
 - **Scope:** [Logical Unit of Work]
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
+- **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
 - **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
@@ -93,6 +102,8 @@
 - **Scope:** [Logical Unit of Work]
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
+- **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
 - **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
@@ -115,6 +126,8 @@
 - **Scope:** [Logical Unit of Work]
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
+- **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
@@ -135,6 +148,8 @@
 - **Scope:** [Logical Unit of Work]
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
+- **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
+- **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
 - **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
@@ -165,3 +180,5 @@
 4. [ ] **Verified:** The task's specific Verification criterion is met.
 5. [ ] **Advanced-Tested (when applicable):** Property/fuzz/benchmark verification is captured, or `N/A` is explicitly justified.
 6. [ ] **Runtime-Evidenced (when applicable):** Runtime logs and health/probe results are captured, or `N/A` is explicitly justified.
+7. [ ] **Behavior-Preserved or Documented:** The task confirms behavior preservation or documents the intentional behavior change.
+8. [ ] **Simplified Responsibly:** Cleanup stayed within the planned scope and improved readability rather than introducing clever compaction.
