@@ -12,6 +12,9 @@
 
 > Brief implementation strategy.
 
+- **Planner Contract Rule:** Emit a contract-complete, build-eligible spec in the existing markdown artifacts. Do not introduce a sidecar schema or a new command.
+- **Packet Contract Rule:** Carry blocked-build and DCR expectations as markdown-carried packet sections in the existing task/design workflow.
+- **State Contract Rule:** Use allowed status markers and transitions: `🔴 TODO` -> `🟡 IN PROGRESS` -> `🟢 DONE`, with `⏭️ SKIPPED`, `🔄 DCR`, and `⛔ OBSOLETE` for explicit exceptional states. Preserve compatibility with legacy `TODO`-only specs: if a task still uses legacy `TODO`, treat it as `🔴 TODO` before it can move to `🟡 IN PROGRESS`.
 - **Property Testing Rule:** Add property-test coverage with `Hypothesis`, `fast-check`, or `proptest` for broad input-domain logic unless the task explicitly justifies why example-based tests are sufficient.
 - **Fuzzing Rule:** Add `Atheris`, `jazzer.js`, or `cargo-fuzz` only for parsers, protocols, unsafe/native boundaries, binary formats, or other untrusted-input crash-safety work.
 - **Benchmark Rule:** Add `pytest-benchmark`, `Vitest Bench`, or `criterion` only when the requirement or codebase defines performance-sensitive behavior.
@@ -42,6 +45,7 @@
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
 - **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
 - **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
+- **Allowed Task States:** `🔴 TODO` -> `🟡 IN PROGRESS` -> `🟢 DONE`; exceptional states: `⏭️ SKIPPED`, `🔄 DCR`, `⛔ OBSOLETE`; if a task still uses legacy `TODO`, treat it as `🔴 TODO` before it can move to `🟡 IN PROGRESS`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...

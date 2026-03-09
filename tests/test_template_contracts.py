@@ -10,6 +10,7 @@ from pb_spec.cli import main
 
 SKILL_NAMES = ("pb-init", "pb-plan", "pb-refine", "pb-build")
 TEMPLATES_ROOT = Path(__file__).resolve().parents[1] / "src" / "pb_spec" / "templates"
+FEATURES_ROOT = Path(__file__).resolve().parents[1] / "features"
 FENCE_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})(.*)$")
 BARE_ANGLE_PLACEHOLDER_RE = re.compile(r'^\s*<[^!/?][^>="\'`]*>\s*$')
 
@@ -186,3 +187,39 @@ def test_codex_rendered_prompts_frontmatter_contract(tmp_path, monkeypatch, runn
         frontmatter, body = _parse_frontmatter(content)
         assert frontmatter.get("description"), f"missing description for {skill}"
         assert body, f"empty body for {skill}"
+
+
+def test_workflow_contract_feature_covers_builder_and_refiner_scenarios():
+    feature = (FEATURES_ROOT / "workflow_type_contracts.feature").read_text(encoding="utf-8")
+
+    assert "Scenario: Planner emits a build-eligible spec contract" in feature
+    assert "Scenario: Builder rejects an incomplete spec before execution" in feature
+    assert "Scenario: Builder uses allowed task state transitions only" in feature
+    assert "Scenario: Refiner accepts only complete blocked-build packets" in feature
+
+
+def test_workflow_contract_steps_cover_all_business_facing_scenarios():
+    steps = (FEATURES_ROOT / "steps" / "template_steps.py").read_text(encoding="utf-8")
+
+    assert "a planned spec is missing a required contract field" in steps
+    assert "the builder evaluates the spec" in steps
+    assert "the builder reports the missing field before spawning implementation work" in steps
+    assert "the builder does not continue to later tasks" in steps
+    assert "a pending task in a build-eligible spec" in steps
+    assert "the builder starts work on the task" in steps
+    assert "the task enters the allowed in-progress path before completion" in steps
+    assert (
+        "the task cannot be marked done until scenario, test, and verification evidence are satisfied"
+        in steps
+    )
+    assert "a blocked build handoff for a feature" in steps
+    assert "the handoff omits required failure evidence or impact details" in steps
+    assert "the refiner rejects the handoff as incomplete" in steps
+    assert "the handoff includes the required packet sections" in steps
+    assert "the refiner updates only the affected spec artifacts" in steps
+    assert "Incomplete 🛑 Build Blocked packet. Missing required section(s):" in steps
+    assert "Incomplete 🔄 Design Change Request packet. Missing required section(s):" in steps
+    assert (
+        "Only after packet validation passes may you update the affected `.feature`, `design.md`, and `tasks.md` files."
+        in steps
+    )

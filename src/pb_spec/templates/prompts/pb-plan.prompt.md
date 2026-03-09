@@ -7,9 +7,11 @@ Run this when the user invokes `/pb-plan <requirement description>`. Do not ask 
 **Execution contract:**
 
 - Produce `design.md`, `tasks.md`, and `features/*.feature` under `specs/<spec-dir>/`.
+- Emit a contract-complete spec whose existing markdown artifacts together form a build-eligible spec contract for `/pb-build`.
 - Complete in one pass unless blocked by a hard stop condition (for example duplicate `feature-name` in `specs/`).
 - Ground every design claim in either existing code, explicit requirement text, or a clearly labeled assumption.
 - Do not invent files, modules, APIs, commands, or project conventions.
+- Do not introduce a new schema or command surface; keep the planner contract in the existing markdown artifacts and markdown-carried packet sections.
 - If the repo appears to be scaffold/template-derived and still exposes generic crate/package/module names, plan the rename work so the resulting spec uses project-matching identities instead of placeholders.
 - Make architecture consistency explicit: inherit the repo's `Architecture Decision Snapshot`, choose new patterns in `design.md` before implementation, and do not leave architectural choices for `/pb-build` to improvise.
 - Plan implementation with a code-simplification lens: preserve existing behavior unless the requirement explicitly changes it, prefer explicit readable solutions over clever compact ones, and keep cleanup scoped to touched code unless broader refactoring is justified.
@@ -217,6 +219,7 @@ Remove all instructional placeholder text (such as bracket examples) in the fina
 
 The full design must explicitly document code simplification constraints: the behavior-preservation boundary, repo-specific coding standards to follow, readability priorities, and non-goals for unrelated cleanup.
 The full design must also include an explicit **Architecture Decisions** section that records inherited repo decisions, selected patterns, rejected alternatives, and the SRP/DIP reasoning behind those choices.
+The full design must define the planner contract surface in markdown terms: `PlannedSpecContract`, `TaskContract`, `BuildBlockedPacket`, and `DesignChangeRequestPacket`, so the resulting artifact set is a build-eligible spec rather than prose that `/pb-build` must reinterpret.
 
 ## Step 5a: Output tasks.md — Lightweight Mode (< 50 words)
 
@@ -271,6 +274,7 @@ Remove all instructional placeholder text (such as bracket examples) in the fina
 - Ordered by dependency — no task references work from a later task.
 - Every task has a concrete **Verification** criterion.
 - Each task must state its **Behavioral Contract** (`Preserve existing behavior` or the intentional user-visible change) and its **Simplification Focus** so the implementation stays readable and scoped.
+- Use allowed status markers and transitions: `🔴 TODO` -> `🟡 IN PROGRESS` -> `🟢 DONE`, with `⏭️ SKIPPED`, `🔄 DCR`, and `⛔ OBSOLETE` reserved for explicit exceptional states. Preserve compatibility with legacy `TODO`-only specs: if a task still uses legacy `TODO`, treat it as `🔴 TODO` before it can move to `🟡 IN PROGRESS`, rather than inventing a new workflow.
 - Add task context that references the relevant `Architecture Decisions` when a task depends on a chosen pattern, boundary, or injection seam.
 - Tasks that implement user-visible behavior should use `Loop Type: BDD+TDD` and point to one or more scenarios in `Scenario Coverage`. Pure infrastructure tasks may use `Loop Type: TDD-only`.
 - If the repo does not already have a BDD harness, include explicit setup work for the chosen runner and step-definition location.

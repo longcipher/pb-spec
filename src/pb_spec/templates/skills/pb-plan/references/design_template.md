@@ -155,6 +155,7 @@ src/
 ### 4.2 Data Structures & Types
 
 > Define core data models, classes, enums, or schemas.
+> The planner contract must stay in markdown. Define the contract types that make the planned artifact set build-eligible without inventing a parallel YAML or JSON schema.
 
 ```text
 # Example pseudo-code — adapt to project language
@@ -167,6 +168,31 @@ class FeatureState:
     IDLE = "idle"
     RUNNING = "running"
     ERROR = "error"
+
+PlannedSpecContract
+    - `design.md` contains the required sections for architecture, BDD/TDD strategy,
+        detailed design, verification, and implementation plan
+    - `tasks.md` contains one or more `TaskContract` blocks
+    - `features/` contains at least one `.feature` file with at least one `Scenario`
+
+TaskContract
+    - heading: `### Task X.Y: <name>`
+    - required fields: Context, Verification, Scenario Coverage, Loop Type,
+        Behavioral Contract, Simplification Focus, Status, Step checkboxes,
+        BDD Verification, Advanced Test Verification, Runtime Verification
+    - allowed task states: `🔴 TODO`, `🟡 IN PROGRESS`, `🟢 DONE`, `⏭️ SKIPPED`,
+        `🔄 DCR`, `⛔ OBSOLETE`
+
+BuildBlockedPacket
+    - header: `🛑 Build Blocked — Task X.Y: <name>`
+    - required sections: Reason, Loop Type, Scenario Coverage, What We Tried,
+        Failure Evidence, Failing Step (or `N/A`), Suggested Design Change, Impact,
+        Next Action
+
+DesignChangeRequestPacket
+    - header: `🔄 Design Change Request — Task X.Y: <name>`
+    - required sections: Scenario Coverage, Problem, What We Tried,
+        Failure Evidence, Failing Step (or `N/A`), Suggested Change, Impact
 ```
 
 ### 4.3 Interface Design

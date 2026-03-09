@@ -42,6 +42,24 @@ Read `specs/<spec-dir>/tasks.md`. If the file does not exist, stop and report:
 
 Never guess `<spec-dir>` from memory. Always resolve from actual directory names under `specs/`.
 
+### Step 1a: Phase 0 — Validate Spec Contract
+
+Before parsing unfinished tasks or spawning a subagent, validate the planned spec against the repo's real markdown contract.
+
+- `design.md` must contain these required sections: `Architecture Overview`, `BDD/TDD Strategy`, `Detailed Design`, `Verification & Testing Strategy`, and `Implementation Plan`.
+- `tasks.md` must contain one or more `### Task X.Y:` blocks, and each task block must include these required fields: `Context`, `Verification`, `Scenario Coverage`, `Loop Type`, `Behavioral Contract`, `Simplification Focus`, `Status`, `BDD Verification`, `Advanced Test Verification`, and `Runtime Verification`.
+- `specs/<spec-dir>/features/` must contain at least one `.feature` file with at least one `Scenario`.
+- Validate the markdown headings and field names exactly as written in the repo templates. Do not invent a new schema or alternate field names.
+- If any required contract item is missing, stop immediately and report the missing field instead of spawning a subagent.
+
+Report validation failures with precise output:
+
+```text
+❌ Missing required design section in specs/<spec-dir>/design.md: [Section Name]
+❌ Missing required task field in specs/<spec-dir>/tasks.md for Task X.Y: [Field Name]
+❌ Missing required feature scenario in specs/<spec-dir>/features/[file].feature: [Missing scenario detail]
+```
+
 ### Step 2: Parse Unfinished Tasks
 
 Determine unfinished tasks from each `### Task X.Y:` block in `tasks.md`, then inspect the status and checkbox lines inside that block. Do not treat every `- [ ]` step as a separate task. Build an ordered list of task blocks preserving their original Phase → Task number order (e.g., Task 1.1, Task 1.2, Task 2.1, …).
@@ -64,6 +82,8 @@ If all tasks are already checked (`- [x]`), report:
 ### Step 3: Execute Tasks Sequentially
 
 For each unfinished task, in order:
+
+- **When the builder starts a task,** treat legacy `TODO` as `🔴 TODO`, update the task Status to `🟡 IN PROGRESS`, and only then enter the BDD/TDD loop. `⏭️ SKIPPED` and `🔄 DCR` remain explicit exceptional states.
 
 #### 3a. Extract Task Content
 
@@ -125,6 +145,8 @@ After the subagent succeeds, update `tasks.md`:
 - Change `- [ ]` to `- [x]` for every step in the completed task.
 - Update the task's Status from `🔴 TODO` to `🟢 DONE`.
 - **Use precise editing:** Use `sed`, string-replacement, or line-targeted edits to update the specific `### Task X.Y` block. Do NOT rewrite the entire `tasks.md` file — this risks truncation and content loss in large files.
+- Do not move a task directly from `🔴 TODO` or legacy `TODO` to `🟢 DONE`; `🟢 DONE` is only reachable from `🟡 IN PROGRESS`.
+- Mark `🟢 DONE` only when every required evidence checkbox in that task block is either `- [x]` or explicitly marked `N/A`.
 - **Completion gate:** Mark done only when `BDD Verification` is satisfied for `BDD+TDD` tasks, task Verification is satisfied, tests are green, and runtime checks (when applicable) are evidence-backed.
 
 > **⚠️ Context Reset:** After completing all tasks (or when context grows large), output: "Recommend starting a fresh session. Run `/pb-build <feature-name>` again to continue from where you left off."
@@ -244,14 +266,17 @@ Summary must be factual and command-backed: do not claim "passed" or "completed"
 
 ## Task State Tracking
 
-Tasks in `tasks.md` use checkbox state for progress:
+Tasks in `tasks.md` use explicit Status markers plus checkbox evidence for progress:
 
 | State | Marker | Meaning |
 |-------|--------|---------|
-| Pending | `- [ ]` | Not yet started |
-| Done | `- [x]` | Completed and verified |
+| Pending | `🔴 TODO` | Not yet started; treat legacy `TODO` as this state |
+| In Progress | `🟡 IN PROGRESS` | Active implementation after work has started |
+| Done | `🟢 DONE` | Completed and verified after all required evidence is checked |
 | Skipped | `⏭️ SKIPPED` | Skipped due to failure |
 | Design Block | `🔄 DCR` | Blocked — awaiting design change |
+
+Use `- [ ]` and `- [x]` inside the task block as evidence checkboxes, not as a substitute for the task Status line.
 
 Update `tasks.md` in-place after each task completes using **precise edits** (target the specific `### Task X.Y` block). Do not rewrite the entire file. This is the single source of truth for build progress.
 

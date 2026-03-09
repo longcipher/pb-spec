@@ -271,6 +271,44 @@ def test_pb_plan_templates_require_explicit_architecture_decisions():
         assert "Architecture Decision Snapshot" in content
 
 
+def test_pb_plan_templates_require_build_eligible_contract_language():
+    """pb-plan templates should describe a contract-complete, build-eligible spec."""
+    for content in (load_skill_content("pb-plan"), load_prompt("pb-plan")):
+        assert "contract-complete spec" in content
+        assert "build-eligible spec" in content
+        assert "markdown-carried packet" in content
+
+
+def test_pb_plan_reference_templates_define_contract_types_and_task_states():
+    """pb-plan reference templates should expose explicit planner contract types and states."""
+    refs = load_references("pb-plan")
+    design = refs["design_template.md"]
+    tasks = refs["tasks_template.md"]
+
+    assert "PlannedSpecContract" in design
+    assert "TaskContract" in design
+    assert "BuildBlockedPacket" in design
+    assert "DesignChangeRequestPacket" in design
+
+    assert "🟡 IN PROGRESS" in tasks
+    assert "⛔ OBSOLETE" in tasks
+    assert "allowed status markers and transitions" in tasks
+
+
+def test_pb_plan_templates_define_legacy_todo_compatibility_for_task_states():
+    """pb-plan templates should explain how legacy TODO-only specs map into the explicit state machine."""
+    refs = load_references("pb-plan")
+
+    for content in (
+        load_skill_content("pb-plan"),
+        load_prompt("pb-plan"),
+        refs["tasks_template.md"],
+    ):
+        assert "legacy `TODO`" in content
+        assert "treat it as `🔴 TODO`" in content
+        assert "before it can move to `🟡 IN PROGRESS`" in content
+
+
 def test_pb_build_prompt_template_is_self_contained_for_prompt_platforms():
     """Prompt-only platforms should not rely on an external implementer reference file."""
     prompt = load_prompt("pb-build")
@@ -293,6 +331,136 @@ def test_pb_build_templates_require_bdd_outer_loop_before_tdd():
         assert "Re-run the BDD scenario until it passes" in content
         assert "BDD+TDD" in content
         assert "scenario name" in content
+
+
+def test_pb_build_templates_require_phase_zero_validation_gate():
+    """pb-build templates should validate spec contracts before task execution begins."""
+    required_design_sections = (
+        "Architecture Overview",
+        "BDD/TDD Strategy",
+        "Detailed Design",
+        "Verification & Testing Strategy",
+        "Implementation Plan",
+    )
+    required_task_fields = (
+        "Context",
+        "Verification",
+        "Scenario Coverage",
+        "Loop Type",
+        "Behavioral Contract",
+        "Simplification Focus",
+        "BDD Verification",
+        "Advanced Test Verification",
+        "Runtime Verification",
+    )
+
+    for content in (load_skill_content("pb-build"), load_prompt("pb-build")):
+        assert "Phase 0 — Validate Spec Contract" in content
+        for section in required_design_sections:
+            assert section in content
+        for field in required_task_fields:
+            assert field in content
+        assert "at least one `.feature` file with at least one `Scenario`" in content
+        assert "❌ Missing required design section in specs/<spec-dir>/design.md:" in content
+        assert (
+            "❌ Missing required task field in specs/<spec-dir>/tasks.md for Task X.Y:" in content
+        )
+        assert "❌ Missing required feature scenario in specs/<spec-dir>/features/" in content
+        assert "stop immediately and report the missing field instead of spawning a subagent" in (
+            content
+        )
+
+    skill = load_skill_content("pb-build")
+    prompt = load_prompt("pb-build")
+    assert skill.index("Phase 0 — Validate Spec Contract") < skill.index(
+        "Create a **fresh subagent** for this task"
+    )
+    assert prompt.index("Phase 0 — Validate Spec Contract") < prompt.index("Spawn a fresh subagent")
+
+
+def test_pb_build_implementer_templates_fail_fast_on_incomplete_contract_context():
+    """Implementer guidance should stop immediately if the orchestrator passed malformed spec context."""
+    build_refs = load_references("pb-build")
+    for content in (build_refs["implementer_prompt.md"], load_prompt("pb-build")):
+        assert (
+            "If the provided task block or project context is missing any required contract field, stop immediately."
+            in content
+        )
+        assert "❌ Missing required design section in specs/<spec-dir>/design.md:" in content
+        assert (
+            "❌ Missing required task field in specs/<spec-dir>/tasks.md for Task X.Y:" in content
+        )
+
+
+def test_pb_build_templates_require_completion_gates_and_failure_packets():
+    """pb-build templates should require evidence-backed completion and blocked-build packets."""
+    build_refs = load_references("pb-build")
+    for content in (
+        load_skill_content("pb-build"),
+        load_prompt("pb-build"),
+        build_refs["implementer_prompt.md"],
+    ):
+        assert "Scenario Coverage" in content
+        assert "BDD Verification" in content
+        assert "Completion gate" in content or "completion" in content
+
+    for content in (load_skill_content("pb-build"), load_prompt("pb-build")):
+        assert "Failure Evidence" in content
+        assert "Impact:" in content
+        assert "stop the build loop" in content
+
+
+def test_pb_build_templates_define_allowed_task_transitions_and_legacy_todo_handling():
+    """pb-build templates should require TODO -> IN PROGRESS -> DONE and ban direct closeout."""
+    for content in (load_skill_content("pb-build"), load_prompt("pb-build")):
+        assert "When the builder starts a task" in content
+        assert "legacy `TODO`" in content
+        assert "update the task Status to `🟡 IN PROGRESS`" in content
+        assert "Do not move a task directly from `🔴 TODO` or legacy `TODO` to `🟢 DONE`" in content
+        assert "`⏭️ SKIPPED` and `🔄 DCR` remain explicit exceptional states" in content
+        assert (
+            "| In Progress | `🟡 IN PROGRESS` | Active implementation after work has started |"
+            in content
+        )
+        assert (
+            "every required evidence checkbox in that task block is either `- [x]` or explicitly marked `N/A`"
+            in content
+        )
+
+
+def test_pb_refine_templates_require_complete_blocked_build_and_dcr_packets():
+    """pb-refine templates should define complete required sections for both packet families."""
+    for content in (load_skill_content("pb-refine"), load_prompt("pb-refine")):
+        assert "🛑 Build Blocked" in content
+        assert "🔄 Design Change Request" in content
+        assert "high-priority execution evidence" in content
+        assert "Required `🛑 Build Blocked` sections:" in content
+        assert "Required `🔄 Design Change Request` sections:" in content
+        assert "Reason" in content
+        assert "Loop Type" in content
+        assert "Scenario Coverage" in content
+        assert "What We Tried" in content
+        assert "Failure Evidence" in content
+        assert "Failing Step" in content
+        assert "Suggested Design Change" in content
+        assert "Next Action" in content
+        assert "Problem" in content
+        assert "Suggested Change" in content
+        assert "Do NOT modify completed tasks" in content
+        assert "specs/<spec-dir>/features/" in content
+
+
+def test_pb_refine_templates_report_missing_packet_sections_instead_of_guessing():
+    """pb-refine templates should reject malformed packets with explicit missing-section output."""
+    for content in (load_skill_content("pb-refine"), load_prompt("pb-refine")):
+        assert "❌ Incomplete 🛑 Build Blocked packet. Missing required section(s):" in content
+        assert (
+            "❌ Incomplete 🔄 Design Change Request packet. Missing required section(s):" in content
+        )
+        assert (
+            "Do not guess or reconstruct missing failure evidence, impact, or suggested changes."
+            in content
+        )
 
 
 def test_pb_build_templates_require_architecture_decision_adherence():
@@ -393,6 +561,20 @@ def test_pb_refine_templates_accept_build_block_packets():
     for content in (load_skill_content("pb-refine"), load_prompt("pb-refine")):
         assert "Build-block packets" in content
         assert "🛑 Build Blocked" in content
+        assert "🔄 Design Change Request" in content
+
+
+def test_pb_refine_templates_validate_packets_before_touching_spec_files():
+    """pb-refine templates should validate structured packets before editing spec artifacts."""
+    for content in (load_skill_content("pb-refine"), load_prompt("pb-refine")):
+        assert "Validate the packet before modifying any spec file." in content
+        assert (
+            "Only after packet validation passes may you update the affected `.feature`, `design.md`, and `tasks.md` files."
+            in content
+        )
+        assert content.index("Validate the packet before modifying any spec file.") < content.index(
+            "If feedback changes user-visible behavior, update the relevant files under `specs/<spec-dir>/features/` first."
+        )
 
 
 def test_project_design_doc_matches_current_snapshot_workflow():

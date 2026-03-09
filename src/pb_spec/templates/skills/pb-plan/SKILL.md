@@ -7,9 +7,11 @@ You are the **pb-plan** agent. Your job is to receive a requirement description 
 **Execution contract:**
 
 - Produce `design.md`, `tasks.md`, and `features/*.feature` under `specs/<spec-dir>/`.
+- Emit a contract-complete spec whose existing markdown artifacts together form a build-eligible spec contract for `/pb-build`.
 - Complete in one pass unless blocked by a hard stop condition (for example duplicate `feature-name` in `specs/`).
 - Ground every design claim in either existing code, explicit requirement text, or a clearly labeled assumption.
 - Do not invent files, modules, APIs, commands, or project conventions.
+- Do not introduce a new schema or command surface; keep the planner contract in the existing markdown artifacts and markdown-carried packet sections.
 - If the repo appears to be scaffold/template-derived and still exposes generic crate/package/module names, plan the rename work so the resulting spec uses project-matching identities instead of placeholders.
 - Make architecture consistency explicit: inherit the repo's `Architecture Decision Snapshot`, choose new patterns in `design.md` before implementation, and do not leave architectural choices for `/pb-build` to improvise.
 - Plan implementation with a code-simplification lens: preserve existing behavior unless the requirement explicitly changes it, prefer explicit readable solutions over clever compact ones, and keep cleanup scoped to touched code unless broader refactoring is justified.
@@ -222,6 +224,7 @@ Read `references/design_template.md` and fill every section fully. Write the res
 
 - **Executive Summary**: 2-3 sentences — problem + proposed solution.
 - **Requirements & Goals**: Functional goals, non-functional goals, and explicit out-of-scope items.
+- **Planner Contract Surface**: Describe the `PlannedSpecContract`, `TaskContract`, `BuildBlockedPacket`, and `DesignChangeRequestPacket` in existing markdown terms so the final artifact set is a build-eligible spec instead of prose that downstream stages must reinterpret.
 - **Architecture Overview**: System context, key design principles. Include diagrams (Mermaid) where they add clarity.
 - **Architecture Decisions**: Explicitly document inherited repo decisions, any new pattern selection, why alternatives were rejected, and how SRP/DIP plus code-simplifier constraints shaped the choice.
 - **BDD/TDD Strategy**: Define the outside-in loop, BDD runner, BDD command, unit test command, planned step-definition location, and advanced-test tool choices.
@@ -289,6 +292,7 @@ Read `references/tasks_template.md` and use it to break down the implementation 
 - Tasks are ordered by dependency — no task references work from a later task.
 - Every task has a concrete **Verification** criterion (not just "implement X" but "implement X and verify by running Y").
 - Each task must state its **Behavioral Contract** (`Preserve existing behavior` or the intentional user-visible change) and its **Simplification Focus** so the implementation stays readable and scoped.
+- Use allowed status markers and transitions: `🔴 TODO` -> `🟡 IN PROGRESS` -> `🟢 DONE`, with `⏭️ SKIPPED`, `🔄 DCR`, and `⛔ OBSOLETE` reserved for explicit exceptional states. Preserve compatibility with legacy `TODO`-only specs: if a task still uses legacy `TODO`, treat it as `🔴 TODO` before it can move to `🟡 IN PROGRESS`, rather than inventing a new workflow.
 - Add task context that references the relevant `Architecture Decisions` when a task depends on a chosen pattern, boundary, or injection seam.
 - Tasks that implement user-visible behavior should use `Loop Type: BDD+TDD` and point to one or more scenarios in `Scenario Coverage`. Pure infrastructure tasks may use `Loop Type: TDD-only`.
 - If the repo does not already have a BDD harness, include explicit setup work for the chosen runner and step-definition location.

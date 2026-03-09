@@ -56,6 +56,39 @@ If feedback includes a standardized `🛑 Build Blocked` packet, treat it as hig
 - Exact failing commands / error excerpts
 - Suggested design change and affected tasks
 
+If feedback includes a standardized `🛑 Build Blocked` or `🔄 Design Change Request` packet, treat it as structured feedback.
+Validate the packet before modifying any spec file.
+
+Required `🛑 Build Blocked` sections:
+
+- `Reason`
+- `Loop Type`
+- `Scenario Coverage`
+- `What We Tried`
+- `Failure Evidence`
+- `Failing Step`
+- `Suggested Design Change`
+- `Impact`
+- `Next Action`
+
+Required `🔄 Design Change Request` sections:
+
+- `Scenario Coverage`
+- `Problem`
+- `What We Tried`
+- `Failure Evidence`
+- `Failing Step`
+- `Suggested Change`
+- `Impact`
+
+If any required section is missing, stop and report:
+
+- `❌ Incomplete 🛑 Build Blocked packet. Missing required section(s): [section names]`
+- `❌ Incomplete 🔄 Design Change Request packet. Missing required section(s): [section names]`
+
+Do not guess or reconstruct missing failure evidence, impact, or suggested changes.
+Only after packet validation passes may you update the affected `.feature`, `design.md`, and `tasks.md` files.
+
 ### Step 3: Update `.feature` Files and design.md
 
 If feedback changes user-visible behavior, update the relevant files under `specs/<spec-dir>/features/` first.

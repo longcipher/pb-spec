@@ -27,10 +27,12 @@ pb-spec follows a **harness-first** philosophy: reliability comes from process d
 | [Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) | Grounding, context hygiene, recovery, observability | State checks, minimal context handoff, task-local rollback guidance |
 | [Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) | Prefer simple composable workflows over framework complexity | Small adapter-based CLI + explicit workflow prompts |
 | [Stop Using /init for AGENTS.md](https://addyosmani.com/blog/agents-md/) | Keep AGENTS.md focused and maintainable | `/pb-init` updates a managed snapshot block in `AGENTS.md` while preserving all user-authored constraints outside that block |
+| [Ensuring Correctness Through the Type System](https://lindbakk.com/blog/ensuring-correctness-through-the-type-system) | Use the type system to encode invariants and catch errors early | Encode contracts as type-level assertions in `design.md` and add type checks to verification; `pb-plan` adds type guidance and `pb-build` runs the type checker when applicable. |
 
 ### Practical Principles in pb-spec
 
 - **Context Before Code:** `/pb-init` and `/pb-plan` establish project and requirement context before implementation starts.
+- **Type System:** pb-spec recommends explicit type annotations and type-level contracts in Architecture Decisions and verification. For strongly-typed projects, `pb-plan` suggests type contracts and adds the project's type-check command to verification so `pb-build` runs it in Phase 0 and at task closure.
 - **Behavior Before Code:** `/pb-plan` turns user-visible requirements into Gherkin `.feature` scenarios before implementation begins.
 - **Verification by Design:** Planning requires explicit verification commands so completion is measurable.
 - **Observability as Context:** Service-facing tasks must capture runtime evidence (log tails and/or health probes), not only test output.
@@ -134,6 +136,8 @@ This design avoids relying on any fixed `AGENTS.md` section layout and protects 
 
 The managed snapshot now also includes an **Architecture Decision Snapshot** so later agents inherit repo-level conventions instead of re-deciding them every run. Typical entries include established patterns, dependency-injection boundaries, error-handling conventions, and workflow/state-modeling rules.
 
+This stronger contract does not add a new command or side-channel validator. The existing markdown workflow remains the source of truth, with `AGENTS.md` carrying repo-level constraints forward into planning, refinement, and execution.
+
 ### 2. `/pb-plan <requirement>` — Design & Task Planning
 
 Takes a natural-language requirement and produces a complete feature spec:
@@ -158,15 +162,21 @@ It also performs two additional planning audits before implementation starts:
 
 It also adds an explicit **Architecture Decisions** section to `design.md`. For work that introduces a new boundary or is likely to exceed 200 lines, planning must evaluate **SRP**, **DIP**, and the classic patterns **Factory**, **Strategy**, **Observer**, **Adapter**, and **Decorator**. The chosen pattern must be justified against alternatives and checked against the code-simplification lens so the design stays simpler, not just more abstract.
 
+The resulting `design.md`, `tasks.md`, and `features/*.feature` files are also the workflow's type carrier in plain markdown. `pb-plan` keeps the current artifact family and command surface, but those artifacts now need explicit contract fields so downstream stages can validate readiness without inventing a separate YAML or JSON schema.
+
 ### 3. `/pb-refine <feature-name>` — Design Iteration (Optional)
 
 Reads user feedback or Design Change Requests (from failed builds, including standardized 3-failure build-block packets) and intelligently updates `design.md` and `tasks.md`. It maintains a revision history and cascades design changes to the task list without overwriting completed work. `AGENTS.md` remains read-only in this phase.
+
+`/pb-refine` stays on the same workflow and packet family. It now validates `🛑 Build Blocked` and `🔄 Design Change Request` markdown packets for required sections such as failure evidence and impact before it updates affected spec artifacts.
 
 ### 4. `/pb-build <feature-name>` — Subagent-Driven Implementation
 
 Reads `specs/<YYYY-MM-DD-NO-feature-name>/tasks.md` and implements each task sequentially. Every `BDD+TDD` task is executed by a fresh subagent following an outside-in double loop: run the Gherkin scenario first so the BDD outer loop is red, drive the implementation with TDD (Red → Green → Refactor) in the inner loop, then re-run the scenario until it passes. Runtime verification (log/health evidence when applicable) still applies. Supports **Design Change Requests** if the planned design proves infeasible during implementation, and auto-escalates to DCR after three consecutive task failures. Only the `<feature-name>` part is needed when invoking — the agent resolves the full directory automatically. `AGENTS.md` is read-only unless the user explicitly requests an `AGENTS.md` change.
 
 `/pb-build` is now explicitly architecture-bound: it reads the repo's **Architecture Decision Snapshot**, follows the feature's **Architecture Decisions**, re-checks **SRP** and **DIP** during execution, and keeps external dependencies behind interfaces or abstract classes when the design requires that seam. It should not improvise a different Factory, Strategy, Observer, Adapter, or Decorator choice mid-build.
+
+Before parsing tasks or spawning subagents, `/pb-build` now runs a mandatory Phase 0 validation gate against the existing markdown contract: required design sections, required `Task X.Y` fields, and at least one feature scenario. If any item is missing, the build stops before implementation work starts. Task closure also follows explicit state transitions, so `DONE` is only reachable after scenario, test, and verification evidence are satisfied.
 
 ## Skills Overview
 

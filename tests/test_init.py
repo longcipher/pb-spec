@@ -5,6 +5,11 @@ from click.testing import CliRunner
 
 from pb_spec.cli import main
 
+PB_BUILD_PROMPT_ONLY_SHARED_IMPLEMENTER_SNIPPETS = (
+    "Confirm Test Infrastructure",
+    "TDD phases are separate actions",
+)
+
 
 @pytest.fixture()
 def runner():
@@ -246,3 +251,29 @@ def test_init_codex_has_frontmatter(tmp_path, monkeypatch, runner):
 
     content = (tmp_path / ".codex" / "prompts" / "pb-init.md").read_text()
     assert content.startswith("---")
+
+
+def test_init_prompt_only_pb_build_contains_shared_implementer_contract(
+    tmp_path, monkeypatch, runner
+):
+    """Prompt-only pb-build renderings should embed the same implementer contract as skill references."""
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(main, ["init", "--ai", "all"])
+
+    assert result.exit_code == 0, result.output
+
+    skill_reference = (
+        tmp_path / ".claude" / "skills" / "pb-build" / "references" / "implementer_prompt.md"
+    ).read_text()
+    rendered_prompt_only_outputs = {
+        "copilot": (tmp_path / ".github" / "prompts" / "pb-build.prompt.md").read_text(),
+        "gemini": (tmp_path / ".gemini" / "commands" / "pb-build.toml").read_text(),
+        "codex": (tmp_path / ".codex" / "prompts" / "pb-build.md").read_text(),
+    }
+
+    for snippet in PB_BUILD_PROMPT_ONLY_SHARED_IMPLEMENTER_SNIPPETS:
+        assert snippet in skill_reference
+        for platform_name, rendered_content in rendered_prompt_only_outputs.items():
+            assert snippet in rendered_content, (
+                f"{platform_name} pb-build rendering must preserve shared implementer contract: {snippet!r}"
+            )

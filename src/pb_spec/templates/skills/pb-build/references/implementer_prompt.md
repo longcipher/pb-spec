@@ -33,6 +33,17 @@ Before coding, define a compact task contract from the provided task block:
 - How success is verified
 - Which `Scenario Coverage` entries and scenario name apply to this task
 - Which `Architecture Decisions` are binding for this task, including any SRP, DIP, Factory, Strategy, Observer, Adapter, or Decorator choice
+- If the provided task block or project context is missing any required contract field, stop immediately.
+
+Report malformed spec context with precise output:
+
+```text
+❌ Missing required design section in specs/<spec-dir>/design.md: [Section Name]
+❌ Missing required task field in specs/<spec-dir>/tasks.md for Task X.Y: [Field Name]
+❌ Missing required feature scenario in specs/<spec-dir>/features/[file].feature: [Missing scenario detail]
+```
+
+Do not continue to grounding, test writing, or implementation work after reporting a malformed contract.
 
 ### 1. Grounding & State Verification (Mandatory)
 

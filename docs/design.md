@@ -4,7 +4,7 @@
 | :--- | :--- |
 | **Author** | pb-spec maintainers |
 | **Status** | Synced with implementation |
-| **Last Updated** | 2026-03-06 |
+| **Last Updated** | 2026-03-09 |
 
 ## 1. Executive Summary
 
@@ -15,7 +15,7 @@
 3. `/pb-refine` iterates plans based on feedback or DCR, including Gherkin scenario updates
 4. `/pb-build` executes tasks through a BDD outer loop and a TDD inner loop
 
-The tool is intentionally lightweight: platform-specific behavior is isolated in adapters, while skill/prompt source-of-truth stays in repository templates.
+The tool is intentionally lightweight: platform-specific behavior is isolated in adapters, while skill/prompt source-of-truth stays in repository templates. The strengthened workflow contract still uses the same commands and the same markdown artifacts. No separate validator command or alternate schema language was added.
 
 ## 2. Goals and Scope
 
@@ -31,6 +31,8 @@ The tool is intentionally lightweight: platform-specific behavior is isolated in
 1. Running model APIs directly.
 2. Managing remote project state.
 3. Replacing tool-native orchestration/runtime.
+4. Introducing a new workflow command or side-channel validator for spec contracts.
+5. Replacing markdown workflow artifacts with YAML or JSON schemas.
 
 ## 3. Current Architecture
 
@@ -107,13 +109,19 @@ Audits the repository and updates a **managed snapshot block** inside `AGENTS.md
 
 Creates `specs/<YYYY-MM-DD-NN-feature>/design.md`, `tasks.md`, and `features/*.feature` in one shot. It emphasizes live codebase analysis, Gherkin-first behavior modeling, verification-first planning, template-identity cleanup for scaffolded repos, and risk-based advanced test planning.
 
+Those markdown artifacts are the workflow's contract carrier. The strengthened contract keeps the current format, but requires explicit design sections, task fields, scenario coverage, verification fields, and state markers so downstream stages do not need to reconstruct missing structure from prose.
+
 ### 6.3 pb-refine
 
 Applies incremental changes to existing spec docs without full regeneration. It logs revisions and cascades `.feature`, design, and task updates together.
 
+`pb-refine` now validates the existing `🛑 Build Blocked` and `🔄 Design Change Request` markdown packets before editing spec artifacts. Required sections such as failure evidence, impact, and suggested change must be present; the refiner does not guess missing packet details.
+
 ### 6.4 pb-build
 
 Implements tasks sequentially with strict context hygiene and an outside-in double loop. The BDD outer loop proves the scenario fails first and then passes, while the TDD inner loop drives the underlying implementation. Failure recovery uses task-local rollback semantics to avoid destructive workspace-wide resets.
+
+Before task execution begins, `pb-build` performs a mandatory Phase 0 validation gate over the existing markdown contract: required design sections, required `Task X.Y` fields, and at least one feature scenario. If any contract item is missing, the workflow stops before spawning implementation work. During execution, task status transitions are explicit: legacy `TODO` remains accepted as the starting state, but `DONE` is only reachable after the task passes through `IN PROGRESS` and its BDD, test, and verification evidence requirements are satisfied.
 
 ## 7. Reliability and Safety Rules
 
@@ -123,6 +131,8 @@ Implements tasks sequentially with strict context hygiene and an outside-in doub
 4. File-scoped rollback guidance for failed task attempts.
 5. Per-task verification criteria, scenario coverage mapping, and explicit completion status tracking in `tasks.md`.
 6. Managed `AGENTS.md` snapshot updates instead of whole-file rewrites.
+7. Mandatory markdown contract validation before build execution.
+8. Required packet validation for blocked-build and DCR refine handoffs.
 
 ## 8. Testing and Verification
 
@@ -139,6 +149,11 @@ Primary verification commands:
 ```bash
 uv run pytest -q
 uv run ruff check .
+uv run behave features/workflow_type_contracts.feature
+just lint
+just test
+just bdd
+just test-all
 ```
 
 ## 9. Known Constraints and Follow-ups

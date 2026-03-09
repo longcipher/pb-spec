@@ -5,6 +5,24 @@ from click.testing import CliRunner
 
 from pb_spec.cli import main
 
+CROSS_PLATFORM_CONTRACT_SNIPPETS = {
+    "pb-plan": (
+        "contract-complete spec",
+        "build-eligible spec contract",
+        "markdown-carried packet sections",
+    ),
+    "pb-build": (
+        "Phase 0 — Validate Spec Contract",
+        "Confirm Test Infrastructure",
+        "TDD phases are separate actions",
+    ),
+    "pb-refine": (
+        "Incomplete 🛑 Build Blocked packet. Missing required section(s):",
+        "Incomplete 🔄 Design Change Request packet. Missing required section(s):",
+        "Only after packet validation passes may you update the affected `.feature`, `design.md`, and `tasks.md` files.",
+    ),
+}
+
 
 @pytest.fixture()
 def runner():
@@ -209,3 +227,52 @@ def test_e2e_gemini_and_codex_no_references_dir(tmp_path, monkeypatch, runner):
         assert directory.exists()
         for child in directory.iterdir():
             assert child.is_file(), f"Unexpected directory in prompt folder: {child}"
+
+
+def test_e2e_rendered_platforms_preserve_workflow_contract_language(tmp_path, monkeypatch, runner):
+    """Rendered skill and prompt installs should preserve the shared workflow contract language."""
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(main, ["init", "--ai", "all"])
+
+    assert result.exit_code == 0, result.output
+
+    baseline_paths = {
+        "pb-plan": tmp_path / ".claude" / "skills" / "pb-plan" / "SKILL.md",
+        "pb-refine": tmp_path / ".claude" / "skills" / "pb-refine" / "SKILL.md",
+    }
+    pb_build_baseline_parts = (
+        (tmp_path / ".claude" / "skills" / "pb-build" / "SKILL.md").read_text(),
+        (
+            tmp_path / ".claude" / "skills" / "pb-build" / "references" / "implementer_prompt.md"
+        ).read_text(),
+    )
+    rendered_prompt_only_paths = {
+        "copilot": {
+            "pb-plan": tmp_path / ".github" / "prompts" / "pb-plan.prompt.md",
+            "pb-build": tmp_path / ".github" / "prompts" / "pb-build.prompt.md",
+            "pb-refine": tmp_path / ".github" / "prompts" / "pb-refine.prompt.md",
+        },
+        "gemini": {
+            "pb-plan": tmp_path / ".gemini" / "commands" / "pb-plan.toml",
+            "pb-build": tmp_path / ".gemini" / "commands" / "pb-build.toml",
+            "pb-refine": tmp_path / ".gemini" / "commands" / "pb-refine.toml",
+        },
+        "codex": {
+            "pb-plan": tmp_path / ".codex" / "prompts" / "pb-plan.md",
+            "pb-build": tmp_path / ".codex" / "prompts" / "pb-build.md",
+            "pb-refine": tmp_path / ".codex" / "prompts" / "pb-refine.md",
+        },
+    }
+
+    for skill_name, snippets in CROSS_PLATFORM_CONTRACT_SNIPPETS.items():
+        if skill_name == "pb-build":
+            baseline_content = "\n".join(pb_build_baseline_parts)
+        else:
+            baseline_content = baseline_paths[skill_name].read_text()
+        for snippet in snippets:
+            assert snippet in baseline_content
+            for platform_name, platform_paths in rendered_prompt_only_paths.items():
+                rendered_content = platform_paths[skill_name].read_text()
+                assert snippet in rendered_content, (
+                    f"{platform_name} {skill_name} rendering must preserve workflow contract language: {snippet!r}"
+                )

@@ -38,6 +38,24 @@ Read `specs/<spec-dir>/tasks.md`. If not found, stop and report:
 
 Never guess `<spec-dir>` from memory. Always resolve from actual directory names under `specs/`.
 
+## Step 1a: Phase 0 — Validate Spec Contract
+
+Before parsing unfinished tasks or spawning a subagent, validate the planned spec against the repo's real markdown contract.
+
+- `design.md` must contain these required sections: `Architecture Overview`, `BDD/TDD Strategy`, `Detailed Design`, `Verification & Testing Strategy`, and `Implementation Plan`.
+- `tasks.md` must contain one or more `### Task X.Y:` blocks, and each task block must include these required fields: `Context`, `Verification`, `Scenario Coverage`, `Loop Type`, `Behavioral Contract`, `Simplification Focus`, `Status`, `BDD Verification`, `Advanced Test Verification`, and `Runtime Verification`.
+- `specs/<spec-dir>/features/` must contain at least one `.feature` file with at least one `Scenario`.
+- Validate the markdown headings and field names exactly as written in the repo templates. Do not invent a new schema or alternate field names.
+- If any required contract item is missing, stop immediately and report the missing field instead of spawning a subagent.
+
+Report validation failures with precise output:
+
+```text
+❌ Missing required design section in specs/<spec-dir>/design.md: [Section Name]
+❌ Missing required task field in specs/<spec-dir>/tasks.md for Task X.Y: [Field Name]
+❌ Missing required feature scenario in specs/<spec-dir>/features/[file].feature: [Missing scenario detail]
+```
+
 ## Step 2: Parse Unfinished Tasks
 
 Determine unfinished tasks from each `### Task X.Y:` block in `tasks.md`, then inspect the status and checkbox lines inside that block. Do not treat every `- [ ]` step as a separate task. Build an ordered list of task blocks preserving Phase → Task number order.
@@ -61,6 +79,8 @@ If all tasks are checked (`- [x]`), report:
 
 For each unfinished task, in order:
 
+- **When the builder starts a task,** treat legacy `TODO` as `🔴 TODO`, update the task Status to `🟡 IN PROGRESS`, and only then enter the BDD/TDD loop. `⏭️ SKIPPED` and `🔄 DCR` remain explicit exceptional states.
+
 1. **Extract** the full task block (Context, Scenario Coverage, Loop Type, Steps, BDD Verification, Verification).
 2. **Gather context** — read `design.md` and `AGENTS.md` (if it exists). Treat `AGENTS.md` as read-only policy context.
    - Read any referenced `.feature` files under `specs/<spec-dir>/features/`.
@@ -78,6 +98,8 @@ For each unfinished task, in order:
    - The subagent must restate the architecture contract before coding and verify it still conforms after implementation.
 5. **Mark completed** — update `- [ ]` to `- [x]` and Status to `🟢 DONE` in `tasks.md`.
    - **Use precise editing:** Use `sed`, string-replacement, or line-targeted edits to update the specific Task ID heading and its checkboxes. Do NOT rewrite the entire `tasks.md` file — this risks truncation and content loss in large files.
+   - Do not move a task directly from `🔴 TODO` or legacy `TODO` to `🟢 DONE`; `🟢 DONE` is only reachable from `🟡 IN PROGRESS`.
+   - Mark `🟢 DONE` only when every required evidence checkbox in that task block is either `- [x]` or explicitly marked `N/A`.
    - **Completion gate:** Mark done only when `BDD Verification` is satisfied for `BDD+TDD` tasks, task Verification is satisfied, tests are green, and runtime checks (when applicable) are evidence-backed.
 
 > **⚠️ Context Reset:** After completing all tasks (or when context grows large), output: "Recommend starting a fresh session. Run `/pb-build <feature-name>` again to continue from where you left off."
@@ -193,10 +215,13 @@ Summary must be factual and command-backed: do not claim "passed" or "completed"
 
 | State | Marker | Meaning |
 |-------|--------|---------|
-| Pending | `- [ ]` | Not started |
-| Done | `- [x]` | Completed and verified |
+| Pending | `🔴 TODO` | Not started; treat legacy `TODO` as this state |
+| In Progress | `🟡 IN PROGRESS` | Active implementation after work has started |
+| Done | `🟢 DONE` | Completed and verified after all required evidence is checked |
 | Skipped | `⏭️ SKIPPED` | Skipped due to failure |
 | Design Block | `🔄 DCR` | Blocked — awaiting design change |
+
+Use `- [ ]` and `- [x]` inside the task block as evidence checkboxes, not as a substitute for the task Status line.
 
 Update `tasks.md` in-place after each task using **precise edits** (target the specific `### Task X.Y` block). Do not rewrite the entire file. Single source of truth.
 
@@ -291,6 +316,17 @@ Before coding, define a compact task contract from the provided task block:
 - How success is verified
 - Which `Scenario Coverage` entries and scenario name apply to this task
 - Which `Architecture Decisions` are binding for this task, including any SRP, DIP, Factory, Strategy, Observer, Adapter, or Decorator choice
+- If the provided task block or project context is missing any required contract field, stop immediately.
+
+Report malformed spec context with precise output:
+
+```text
+❌ Missing required design section in specs/<spec-dir>/design.md: [Section Name]
+❌ Missing required task field in specs/<spec-dir>/tasks.md for Task X.Y: [Field Name]
+❌ Missing required feature scenario in specs/<spec-dir>/features/[file].feature: [Missing scenario detail]
+```
+
+Do not continue to grounding, test writing, or implementation work after reporting a malformed contract.
 
 **1. Grounding & State Verification (Mandatory)**
 
@@ -299,6 +335,7 @@ Before writing any code, verify the current workspace state:
 - **Locate Files:** Run `ls` or `find` to confirm paths of files you intend to modify. Do not guess paths.
 - **Read Context:** Read target files to understand surrounding code and current state.
 - **Check Dependencies:** Verify modules you plan to import actually exist.
+- **Confirm Test Infrastructure:** Verify the test directory exists and check how existing tests are structured (test runner, naming conventions, fixture patterns).
 - **Read `design.md`** for overall design context.
 - **Read the `Architecture Decisions` section** and restate the specific architecture contract for this task before coding.
 - **Read the `Architecture Decision Snapshot`** from `AGENTS.md` when present and preserve any repo-level constraints it establishes.
@@ -375,6 +412,7 @@ Fix any "no" answers before submitting.
 - Do not modify unrelated code.
 - Tests are mandatory — never submit without them.
 - `BDD+TDD` tasks must satisfy Scenario Coverage — do not skip the outer loop when the task says `BDD+TDD`.
+- **TDD phases are separate actions.** Never write test and implementation in the same step. Write tests first, see them fail, then write implementation.
 - Runtime evidence is mandatory when applicable — do not claim completion without logs/probe evidence for runtime-facing tasks.
 - **No Blind Edits:** Always read a file before editing it.
 - **Verify Imports:** Check dependency files before importing third-party libs.
