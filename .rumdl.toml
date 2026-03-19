@@ -25,6 +25,7 @@ exclude = [
     "dist",
     "build",
     "target",
+    "testdata",
 
     # Specific files or patterns
     "CHANGELOG.md",

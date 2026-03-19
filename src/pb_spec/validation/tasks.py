@@ -168,10 +168,13 @@ def validate_task_file(
                     "Scenario Coverage must name a concrete scenario for "
                     f"{task_block.task_id} when Loop Type is BDD+TDD"
                 )
-            elif scenario_inventory is not None and scenario_coverage not in scenario_inventory:
-                errors.append(
-                    f"Scenario reference not found for {task_block.task_id}: {scenario_coverage}"
-                )
+            elif scenario_inventory is not None:
+                scenario_names = _extract_scenario_names(scenario_coverage)
+                for scenario_name in scenario_names:
+                    if scenario_name not in scenario_inventory:
+                        errors.append(
+                            f"Scenario reference not found for {task_block.task_id}: {scenario_name}"
+                        )
 
     return errors
 
@@ -182,7 +185,7 @@ def find_referenced_scenarios(task_blocks: list[TaskBlock]) -> set[str]:
     for block in task_blocks:
         coverage = block.fields.get("Scenario Coverage")
         if coverage is not None and not _is_not_applicable_value(coverage):
-            referenced.add(coverage)
+            referenced.update(_extract_scenario_names(coverage))
     return referenced
 
 
@@ -204,12 +207,12 @@ def _build_task_block(task_id: str, name: str, body_lines: list[str]) -> TaskBlo
     for line in body_lines:
         quote_field_match = QUOTE_FIELD_RE.match(line)
         if quote_field_match:
-            fields[quote_field_match.group(1)] = quote_field_match.group(2)
+            fields[quote_field_match.group(1)] = _strip_backticks(quote_field_match.group(2))
             continue
 
         field_match = FIELD_RE.match(line)
         if field_match:
-            fields[field_match.group(1)] = field_match.group(2)
+            fields[field_match.group(1)] = _strip_backticks(field_match.group(2))
             continue
 
         if CHECKBOX_RE.match(line):
@@ -217,7 +220,7 @@ def _build_task_block(task_id: str, name: str, body_lines: list[str]) -> TaskBlo
             checkbox_label_match = CHECKBOX_LABEL_RE.match(line)
             if checkbox_label_match:
                 checkbox_fields[_normalize_checkbox_field_name(checkbox_label_match.group(1))] = (
-                    checkbox_label_match.group(2)
+                    _strip_backticks(checkbox_label_match.group(2))
                 )
             if line.startswith("- [ ] **Step") or line.startswith("- [x] **Step"):
                 checkbox_lines.append(line)
@@ -240,6 +243,47 @@ def _is_not_applicable_value(value: str) -> bool:
 
 def _is_bare_not_applicable_value(value: str) -> bool:
     return value.strip() == "N/A"
+
+
+def _extract_scenario_names(coverage: str) -> list[str]:
+    """Extract all scenario names from a coverage value.
+
+    Handles formats:
+    - 'Scenario Name'
+    - 'feature_file.feature / Scenario Name'
+    - 'feature_file.feature / all scenarios' (returns empty list)
+    - '`feature / s1`, `feature / s2`' (multiple backtick-wrapped refs)
+    """
+    if "`, `" in coverage:
+        parts = coverage.split("`, `")
+        names = []
+        for part in parts:
+            name = _parse_single_scenario_ref(part.strip("`").strip())
+            if name is not None:
+                names.append(name)
+        return names
+    name = _parse_single_scenario_ref(coverage)
+    return [name] if name is not None else []
+
+
+def _parse_single_scenario_ref(value: str) -> str | None:
+    """Parse a single 'feature / scenario' or plain scenario reference."""
+    stripped = value.strip().strip("`")
+    if " / " in stripped:
+        _feature, scenario = stripped.split(" / ", 1)
+        scenario = scenario.strip()
+        if scenario.lower() == "all scenarios":
+            return None
+        return scenario
+    return stripped if stripped else None
+
+
+def _strip_backticks(value: str) -> str:
+    """Strip surrounding single backticks from a field value."""
+    stripped = value.strip()
+    if len(stripped) >= 2 and stripped.startswith("`") and stripped.endswith("`"):
+        return stripped[1:-1]
+    return stripped
 
 
 def _normalize_checkbox_field_name(name: str) -> str:
