@@ -5,6 +5,7 @@ import click
 from pb_spec import __version__
 from pb_spec.commands.init import init_cmd
 from pb_spec.commands.update import update_cmd
+from pb_spec.commands.validate import validate_cmd
 from pb_spec.commands.version import version_cmd
 
 
@@ -15,5 +16,6 @@ def main():
 
 
 main.add_command(init_cmd, "init")
+main.add_command(validate_cmd, "validate")
 main.add_command(version_cmd, "version")
 main.add_command(update_cmd, "update")

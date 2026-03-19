@@ -46,7 +46,9 @@ Never guess `<spec-dir>` from memory. Always resolve from actual directory names
 
 Before parsing unfinished tasks or spawning a subagent, validate the planned spec against the repo's real markdown contract.
 
-- `design.md` must contain these required sections: `Architecture Overview`, `BDD/TDD Strategy`, `Detailed Design`, `Verification & Testing Strategy`, and `Implementation Plan`.
+- `design.md` must satisfy the current mode-aware contract.
+   Full mode requires: `Executive Summary`, `Requirements & Goals`, `Architecture Overview`, `Detailed Design`, `Verification & Testing Strategy`, and `Implementation Plan`.
+   Lightweight mode requires: `Summary`, `Approach`, `Architecture Decisions`, `BDD/TDD Strategy`, `Code Simplification Constraints`, `BDD Scenario Inventory`, `Existing Components to Reuse`, and `Verification`.
 - `tasks.md` must contain one or more `### Task X.Y:` blocks, and each task block must include these required fields: `Context`, `Verification`, `Scenario Coverage`, `Loop Type`, `Behavioral Contract`, `Simplification Focus`, `Status`, `BDD Verification`, `Advanced Test Verification`, and `Runtime Verification`.
 - `specs/<spec-dir>/features/` must contain at least one `.feature` file with at least one `Scenario`.
 - Validate the markdown headings and field names exactly as written in the repo templates. Do not invent a new schema or alternate field names.

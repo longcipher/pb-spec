@@ -153,6 +153,7 @@ When introducing new dependencies, prefer these unless compatibility requires a 
 - Type check with `ty` — all code must pass `ty check` with zero errors.
 - Use Gherkin + `behave` for outer-loop acceptance tests.
 - Use `pytest` for inner-loop TDD — tests must pass before claiming completion.
+- Use Hypothesis under `tests/` when you need generated coverage for invariants; these tests must run through the normal `uv run pytest` path.
 - Use `pytest-benchmark` for performance-sensitive code.
 - Use `pytest-cov` to track test coverage.
 
@@ -178,8 +179,12 @@ When fixing failures, identify root cause first, then apply idiomatic fixes inst
 
 Use outside-in development for behavior changes:
 
+- **Git Restrictions:** NEVER use `git worktree`. All code modifications MUST be made directly on the current branch in the existing working directory.
 - start with a failing Gherkin scenario under `features/`,
 - drive implementation with failing `pytest` tests,
+- keep example-based `pytest` tests as the default inner loop for named cases and edge cases,
+- add Hypothesis properties under `tests/` when the rule is an invariant instead of a single named example,
+- treat Atheris as conditional planning work rather than baseline template scaffolding,
 - keep step definitions thin and reuse Python domain modules.
 
 After each feature or bug fix, run:
@@ -198,9 +203,14 @@ If any command fails, report the failure and do not claim completion.
 
 - BDD scenarios: place Gherkin features under `features/` and step definitions under `features/steps/`.
 - Use BDD to define acceptance behavior first, then use `pytest` for the inner TDD loop.
+- Keep example-based and Hypothesis-based tests together under `tests/`; `just test` must exercise both without a separate property-test command.
 - Unit tests: place in `tests/` mirroring the source structure.
 - Integration tests: place in `tests/integration/`.
-- Performance tests: use `pytest-benchmark` with `@pytest.mark.benchmark`.
+- Fuzz tests: only plan or add Atheris when a module parses hostile text or binary input, decodes file or protocol formats, or wraps native extensions where crash resistance matters.
+- Fuzz workflow: when fuzzing is justified, keep the harness targeted to the affected module instead of adding a default workspace-wide fuzz command to every starter.
+- Performance tests: use `pytest-benchmark` with `@pytest.mark.benchmark` only for code with an explicit latency SLA, throughput target, or hot-path requirement.
+- Treat benchmark work as optional planning scope; keep the standard `pytest` loop as the default when no performance requirement exists.
+- For `/pb-plan` work, mark fuzzing as `conditional` or `N/A` unless the scope explicitly includes parser-like, protocol, binary-decoding, hostile-input, or native-extension-heavy code.
 - Add tests for behavioral changes and public API changes.
 - Use `pytest` fixtures for setup/teardown; avoid `setUp`/`tearDown` methods.
 - Use `pytest.raises` for exception testing; `pytest.approx` for floating-point comparisons.

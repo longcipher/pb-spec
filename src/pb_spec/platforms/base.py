@@ -1,5 +1,7 @@
 """Platform abstract base class."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from pathlib import Path
 
@@ -48,11 +50,13 @@ class Platform(ABC):
 
     def install(self, cwd: Path, force: bool = False, global_install: bool = False) -> list[str]:
         """Install all skills to target directory."""
+        import click
+
         installed = []
         for skill_name in self.skill_names:
             target = self.get_skill_path(cwd, skill_name, global_install=global_install)
             if target.exists() and not force:
-                print(f"  Skipping {target} (exists, use --force)")
+                click.echo(f"  Skipping {target} (exists, use --force)")
                 continue
             content = self._load_and_render(skill_name)
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -72,6 +76,8 @@ class Platform(ABC):
         installed: list[str],
     ) -> None:
         """Install reference files next to the skill file. Override to skip."""
+        import click
+
         from pb_spec.templates import load_references
 
         refs = load_references(skill_name)
@@ -82,7 +88,7 @@ class Platform(ABC):
         for filename, content in refs.items():
             ref_target = refs_dir / filename
             if ref_target.exists() and not force:
-                print(f"  Skipping {ref_target} (exists, use --force)")
+                click.echo(f"  Skipping {ref_target} (exists, use --force)")
                 continue
             ref_target.write_text(content, encoding="utf-8")
             installed.append(self._format_output_path(ref_target, cwd))

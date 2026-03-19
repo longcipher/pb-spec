@@ -121,7 +121,7 @@ Applies incremental changes to existing spec docs without full regeneration. It 
 
 Implements tasks sequentially with strict context hygiene and an outside-in double loop. The BDD outer loop proves the scenario fails first and then passes, while the TDD inner loop drives the underlying implementation. Failure recovery uses task-local rollback semantics to avoid destructive workspace-wide resets.
 
-Before task execution begins, `pb-build` performs a mandatory Phase 0 validation gate over the existing markdown contract: required design sections, required `Task X.Y` fields, and at least one feature scenario. If any contract item is missing, the workflow stops before spawning implementation work. During execution, task status transitions are explicit: legacy `TODO` remains accepted as the starting state, but `DONE` is only reachable after the task passes through `IN PROGRESS` and its BDD, test, and verification evidence requirements are satisfied.
+Before task execution begins, `pb-build` performs a mandatory Phase 0 validation gate over the existing markdown contract: required design sections, required `Task X.Y` fields, and at least one feature scenario. If any contract item is missing, the workflow stops before spawning implementation work. During execution, the builder still uses explicit task status transitions. The current static validator is narrower: it enforces allowed status values and blocks `DONE` tasks that still leave required verification evidence unchecked, rather than reconstructing prior state history from a single markdown snapshot.
 
 ## 7. Reliability and Safety Rules
 

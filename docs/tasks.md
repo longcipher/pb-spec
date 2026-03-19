@@ -31,20 +31,20 @@
 - [ ] **Step 2:** Edit `pyproject.toml`:
   - Set `name = "pb-spec"`, minimum Python version `>=3.12`.
   - Add `click>=8.1` dependency.
-  - Configure `[project.scripts]` entry: `pb-spec = "pb.cli:main"`.
+  - Configure `[project.scripts]` entry: `pb-spec = "pb_spec.cli:main"`.
   - Configure `[tool.uv]` dev dependencies: `pytest>=8.0`.
 - [ ] **Step 3:** Create directory structure:
 
-  ```text
-  src/pb/__init__.py
-  src/pb/cli.py
-  src/pb/commands/__init__.py
-  src/pb/platforms/__init__.py
-  src/pb/templates/  (Empty directory, populated later)
-  tests/__init__.py
-  ```
+```text
+src/pb_spec/__init__.py
+src/pb_spec/cli.py
+src/pb_spec/commands/__init__.py
+src/pb_spec/platforms/__init__.py
+src/pb_spec/templates/  (Empty directory, populated later)
+tests/__init__.py
+```
 
-- [ ] **Step 4:** Set `__version__` in `src/pb/__init__.py`.
+- [ ] **Step 4:** Set `__version__` in `src/pb_spec/__init__.py`.
 - [ ] **Verification:** Run `uv sync && uv run pb-spec --help`, confirm CLI is executable.
 
 ### Task 1.2: CLI Entry & Basic Commands
@@ -55,12 +55,12 @@
 - **Priority:** P0
 - **Est. Time:** 2h
 - **Status:** � DONE
-- [x] **Step 1:** Write `src/pb/cli.py`:
+- [x] **Step 1:** Write `src/pb_spec/cli.py`:
   - Create `click.Group` main command `pb`.
   - Register `init`, `version`, `update` subcommands.
-- [ ] **Step 2:** Implement `src/pb/commands/version.py`:
+- [ ] **Step 2:** Implement `src/pb_spec/commands/version.py`:
   - Read `importlib.metadata.version("pb-spec")` and output version.
-- [ ] **Step 3:** Implement `src/pb/commands/update.py`:
+- [ ] **Step 3:** Implement `src/pb_spec/commands/update.py`:
   - Call `subprocess.run(["uv", "tool", "upgrade", "pb-spec"])`.
   - Handle error case where uv is missing.
 - [ ] **Step 4:** Write tests `tests/test_cli.py`:
@@ -80,18 +80,18 @@
 - **Priority:** P0
 - **Est. Time:** 3h
 - **Status:** � DONE
-- [ ] **Step 1:** Implement `src/pb/platforms/base.py`:
+- [ ] **Step 1:** Implement `src/pb_spec/platforms/base.py`:
   - Define `Platform` ABC: `name`, `get_skill_path()`, `render_skill()`, `install()`.
   - Implement generic `install()` logic (iterate skill_names, check file existence, write).
-- [ ] **Step 2:** Implement `src/pb/platforms/claude.py`:
+- [ ] **Step 2:** Implement `src/pb_spec/platforms/claude.py`:
   - Path: `.claude/skills/<name>/SKILL.md`.
   - Render: YAML frontmatter + markdown body.
   - Support `references/` subdirectory.
-- [ ] **Step 3:** Implement `src/pb/platforms/copilot.py`:
+- [ ] **Step 3:** Implement `src/pb_spec/platforms/copilot.py`:
   - Path: `.github/prompts/<name>.prompt.md`.
   - Render: Pure markdown (no frontmatter).
   - Inline content from `references/` into prompt file.
-- [ ] **Step 4:** Implement `src/pb/platforms/opencode.py`:
+- [ ] **Step 4:** Implement `src/pb_spec/platforms/opencode.py`:
   - Path: `.opencode/skills/<name>/SKILL.md`.
   - Render: YAML frontmatter + markdown body (same as Claude).
   - Support `references/` subdirectory.
@@ -104,18 +104,18 @@
 
 ### Task 2.2: Template Loading System
 
-> **Context:** Implement mechanism to read template files from `src/pb/templates/`, supporting access after `importlib.resources` packaging.
+> **Context:** Implement mechanism to read template files from `src/pb_spec/templates/`, supporting access after `importlib.resources` packaging.
 > **Verification:** Unit tests verify template loading and variable substitution.
 
 - **Priority:** P0
 - **Est. Time:** 2h
 - **Status:** � DONE
-- [ ] **Step 1:** Implement `src/pb/templates/__init__.py`:
+- [ ] **Step 1:** Implement `src/pb_spec/templates/__init__.py`:
   - `load_template(skill_name: str, filename: str) -> str` — Load template file content.
   - `load_skill_content(skill_name: str) -> str` — Load SKILL.md template.
   - `load_references(skill_name: str) -> dict[str, str]` — Load all files in `references/` subdirectory.
   - Use `importlib.resources` to ensure templates are accessible after packaging.
-- [ ] **Step 2:** Create `src/pb/templates/skills/` directory structure (placeholders first):
+- [ ] **Step 2:** Create `src/pb_spec/templates/skills/` directory structure (placeholders first):
 
   ```text
   skills/pb-init/SKILL.md
@@ -126,7 +126,7 @@
   skills/pb-build/references/implementer_prompt.md
   ```
 
-- [ ] **Step 3:** Create `src/pb/templates/prompts/` directory (for Copilot):
+- [ ] **Step 3:** Create `src/pb_spec/templates/prompts/` directory (for Copilot):
 
   ```text
   prompts/pb-init.prompt.md
@@ -152,12 +152,12 @@
 - **Priority:** P0
 - **Est. Time:** 3h
 - **Status:** � DONE
-- [ ] **Step 1:** Write `src/pb/templates/skills/pb-init/SKILL.md`:
+- [ ] **Step 1:** Write `src/pb_spec/templates/skills/pb-init/SKILL.md`:
   - Define agent behavior: Scan project → Detect language/framework → Generate AGENTS.md.
   - Define AGENTS.md output format template.
   - Define constraints: Read-only analysis, idempotent update, do not modify source code.
   - Include detection rule table (pyproject.toml → Python, Cargo.toml → Rust, etc.).
-- [ ] **Step 2:** Write `src/pb/templates/prompts/pb-init.prompt.md`:
+- [ ] **Step 2:** Write `src/pb_spec/templates/prompts/pb-init.prompt.md`:
   - Copilot format: No frontmatter.
   - Use `#file:` syntax for reference paths.
 - [ ] **Step 3:** Verify template rendering:
@@ -174,20 +174,20 @@
 - **Priority:** P0
 - **Est. Time:** 4h
 - **Status:** � DONE
-- [ ] **Step 1:** Write `src/pb/templates/skills/pb-plan/SKILL.md`:
+- [ ] **Step 1:** Write `src/pb_spec/templates/skills/pb-plan/SKILL.md`:
   - Define agent behavior: Requirement analysis → Context collection → Generate design.md + tasks.md.
   - Define feature-name generation rules (≤4 words, kebab-case).
   - Emphasize: No confirmation questions, output optimal solution directly.
   - Reference `references/design_template.md` and `references/tasks_template.md`.
-- [ ] **Step 2:** Write `src/pb/templates/skills/pb-plan/references/design_template.md`:
+- [ ] **Step 2:** Write `src/pb_spec/templates/skills/pb-plan/references/design_template.md`:
   - Simplified based on `docs/design_template.md`, keeping core sections.
   - Remove Rust-specific content, make template language-agnostic.
   - Retain: Summary, Requirements, Architecture, Detailed Design, Verification.
-- [ ] **Step 3:** Write `src/pb/templates/skills/pb-plan/references/tasks_template.md`:
+- [ ] **Step 3:** Write `src/pb_spec/templates/skills/pb-plan/references/tasks_template.md`:
   - Simplified based on `docs/tasks_template.md`.
   - Remove Rust-specific content.
   - Retain: Phase grouping, Task structure (Context/Steps/Verification), checkbox format.
-- [ ] **Step 4:** Write `src/pb/templates/prompts/pb-plan.prompt.md`:
+- [ ] **Step 4:** Write `src/pb_spec/templates/prompts/pb-plan.prompt.md`:
   - Copilot format: Inline all references content.
   - Use delimiters to mark template areas.
 - [ ] **Verification:** Template content fully covers all agent behaviors defined in design.md.
@@ -200,17 +200,17 @@
 - **Priority:** P0
 - **Est. Time:** 4h
 - **Status:** � DONE
-- [ ] **Step 1:** Write `src/pb/templates/skills/pb-build/SKILL.md`:
+- [ ] **Step 1:** Write `src/pb_spec/templates/skills/pb-build/SKILL.md`:
   - Define workflow: Read tasks.md → Assign subagent per task → TDD implementation → Mark completed.
   - Define subagent assignment rules (sequential, fresh context).
   - Define task state tracking mechanism (checkbox).
   - Define progress display format.
   - Define error handling: Subagent failure → Report → User chooses Retry/Skip/Abort.
   - Define constraints: NEVER/ALWAYS rule list.
-- [ ] **Step 2:** Write `src/pb/templates/skills/pb-build/references/implementer_prompt.md`:
+- [ ] **Step 2:** Write `src/pb_spec/templates/skills/pb-build/references/implementer_prompt.md`:
   - Subagent instruction template: Task Description, Context, TDD steps, Self-Review checklist.
   - Report format: What implemented, Tests, Files changed, Issues.
-- [ ] **Step 3:** Write `src/pb/templates/prompts/pb-build.prompt.md`:
+- [ ] **Step 3:** Write `src/pb_spec/templates/prompts/pb-build.prompt.md`:
   - Copilot format: inline implementer_prompt content.
 - [ ] **Verification:** Template contains all key elements of lightspec-loop (fresh context, sequential, TDD, self-review).
 
@@ -226,12 +226,12 @@
 - **Priority:** P0
 - **Est. Time:** 3h
 - **Status:** � DONE
-- [ ] **Step 1:** Implement `src/pb/commands/init.py`:
+- [ ] **Step 1:** Implement `src/pb_spec/commands/init.py`:
   - Accept `--ai` argument (claude/copilot/opencode/all).
   - Accept `--force` argument.
   - Call `resolve_targets()` → Iterate platforms → Call `platform.install()`.
   - Output installation result summary.
-- [ ] **Step 2:** Register init command in `src/pb/cli.py`:
+- [ ] **Step 2:** Register init command in `src/pb_spec/cli.py`:
   - `@click.option("--ai", type=click.Choice(["claude", "copilot", "opencode", "all"]), required=True)`
   - `@click.option("--force", is_flag=True, default=False)`
 - [ ] **Step 3:** Handle edge cases:
@@ -356,14 +356,6 @@
   uv publish --repository testpypi
   uv tool install --index-url https://test.pypi.org/simple/ pb-spec
   pb-spec version
-  ```
-
-- [ ] **Step 4:** Publication test:
-
-  ```bash
-  uv publish --repository testpypi
-  uv tool install --index-url https://test.pypi.org/simple/ pb
-  pb version
   ```
 
 - [ ] **Verification:** Wheel build successful and contains all template files.

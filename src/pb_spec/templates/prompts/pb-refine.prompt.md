@@ -55,6 +55,16 @@ If feedback includes a standardized `🛑 Build Blocked` packet, treat it as hig
 If feedback includes a standardized `🛑 Build Blocked` or `🔄 Design Change Request` packet, treat it as structured feedback.
 Validate the packet before modifying any spec file.
 
+**Primary check — use the CLI validator:**
+
+```bash
+pb-spec validate <feedback-file>
+```
+
+If `pb-spec validate` reports success, proceed with refinement. If it reports failures, stop and output the reported errors verbatim.
+
+**Fallback — if `pb-spec` is not installed, run these manual checks:**
+
 Required `🛑 Build Blocked` sections:
 
 - `Reason`

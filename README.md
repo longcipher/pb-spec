@@ -50,6 +50,18 @@ pb-spec follows a **harness-first** philosophy: reliability comes from process d
 - **Idempotent**: safe to re-run; use `--force` to overwrite existing files
 - **Built with**: Python 3.12+, [click](https://click.palletsprojects.com/), [uv](https://docs.astral.sh/uv/)
 
+## Project Layers
+
+pb-spec is organized into three layers:
+
+| Layer | Role | Artifacts |
+|-------|------|-----------|
+| **Workflow** | Agent-driven development lifecycle | `/pb-init` → `/pb-plan` → `/pb-refine` → `/pb-build` |
+| **Contract** | Machine-readable artifact specification | `design.md` + `tasks.md` + `features/*.feature` |
+| **Tooling** | Validation, parsing, and CI integration | `pb-spec validate`, internal parsers, future ecosystem tools |
+
+The **workflow layer** defines the four commands and their execution semantics. The **contract layer** carries the explicit field requirements, state transitions, and scenario coverage rules described in [docs/contract.md](docs/contract.md). The **tooling layer** makes the contract executable through validation commands and reusable parsing libraries.
+
 ## Installation
 
 ```bash
@@ -110,6 +122,12 @@ pb-spec update
 ```
 
 Update pb-spec to the latest version (requires `uv`).
+
+```text
+pb-spec validate <target>
+```
+
+Validate either a generated spec directory or a markdown feedback packet file. For spec directories, the current validator checks `design.md` required sections, `tasks.md` task blocks for required fields, allowed status values, and `DONE` completion evidence, inventories `features/*.feature` scenario names, and verifies `Scenario Coverage` references for `BDD+TDD` tasks. It does not currently fail build eligibility on an otherwise valid spec just because an extra scenario is not yet referenced by a task. For feedback files, it validates `🛑 Build Blocked` and `🔄 Design Change Request` packet completeness and requires concrete failure evidence rather than generic summaries.
 
 ## Workflow
 
@@ -176,7 +194,7 @@ Reads `specs/<YYYY-MM-DD-NO-feature-name>/tasks.md` and implements each task seq
 
 `/pb-build` is now explicitly architecture-bound: it reads the repo's **Architecture Decision Snapshot**, follows the feature's **Architecture Decisions**, re-checks **SRP** and **DIP** during execution, and keeps external dependencies behind interfaces or abstract classes when the design requires that seam. It should not improvise a different Factory, Strategy, Observer, Adapter, or Decorator choice mid-build.
 
-Before parsing tasks or spawning subagents, `/pb-build` now runs a mandatory Phase 0 validation gate against the existing markdown contract: required design sections, required `Task X.Y` fields, and at least one feature scenario. If any item is missing, the build stops before implementation work starts. Task closure also follows explicit state transitions, so `DONE` is only reachable after scenario, test, and verification evidence are satisfied.
+Before parsing tasks or spawning subagents, `/pb-build` now runs a mandatory Phase 0 validation gate against the existing markdown contract: required design sections, required `Task X.Y` fields, and at least one feature scenario. If any item is missing, the build stops before implementation work starts. The builder still manages explicit task-state transitions during execution, while the current static validator focuses on allowed status values and evidence-backed completion gates rather than reconstructing prior state history from a single markdown snapshot.
 
 ## Skills Overview
 
@@ -211,6 +229,45 @@ pb-spec's prompt design is inspired by Anthropic's research on [Effective Harnes
 - **Architect (Planner):** `design_template.md` + `tasks_template.md` enforce verification criteria, including runtime signals when applicable
 - **Orchestrator (Builder):** `pb-build` SKILL enforces context hygiene, runtime verification gates, bounded retries, and DCR escalation
 - **Foundation (Init):** `pb-init` updates only the managed marker block in `AGENTS.md`, preserving all external user-authored constraints
+
+## Library API
+
+The validation module is importable for CI pipelines and tooling integration:
+
+```python
+from pathlib import Path
+from pb_spec.validation import (
+    validate_design_file,
+    validate_task_file,
+    collect_feature_scenarios,
+    parse_task_blocks,
+    parse_feedback_packets,
+    validate_feedback_file,
+)
+
+spec_dir = Path("specs/my-feature")
+
+# Validate design.md sections
+errors = validate_design_file(spec_dir / "design.md")
+
+# Validate tasks.md with scenario cross-referencing
+scenario_inventory = collect_feature_scenarios(spec_dir / "features")
+errors.extend(validate_task_file(spec_dir / "tasks.md", scenario_inventory=scenario_inventory))
+
+# Parse task blocks programmatically
+task_blocks = parse_task_blocks(spec_dir / "tasks.md")
+for block in task_blocks:
+    print(block.task_id, block.name, block.fields.get("Status"))
+
+# Validate feedback packets
+errors = validate_feedback_file(Path("feedback.md"))
+```
+
+CI usage with the CLI:
+
+```bash
+pb-spec validate specs/my-feature && echo "Build eligible" || echo "Validation failed"
+```
 
 ## Development
 

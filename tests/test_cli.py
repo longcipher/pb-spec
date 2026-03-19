@@ -13,6 +13,38 @@ from pb_spec.cli import main
 runner = CliRunner()
 
 
+VALID_FULL_DESIGN = """# Example Design
+
+## Executive Summary
+
+Concrete summary.
+
+## Requirements & Goals
+
+Concrete requirements.
+
+## Architecture Overview
+
+Concrete architecture overview.
+
+## Existing Components to Reuse
+
+No existing components identified for reuse.
+
+## Detailed Design
+
+Concrete design details.
+
+## Verification & Testing Strategy
+
+Concrete verification strategy.
+
+## Implementation Plan
+
+Concrete implementation plan.
+"""
+
+
 def get_project_version() -> str:
     """Read version from pyproject.toml."""
     root_dir = Path(__file__).parents[1]
@@ -26,6 +58,7 @@ def test_help_contains_subcommands():
     result = runner.invoke(main, ["--help"])
     assert result.exit_code == 0
     assert "init" in result.output
+    assert "validate" in result.output
     assert "version" in result.output
     assert "update" in result.output
 
@@ -35,6 +68,315 @@ def test_init_help_contains_global_option():
     result = runner.invoke(main, ["init", "--help"])
     assert result.exit_code == 0
     assert "-g, --global" in result.output
+
+
+def test_validate_help_contains_target_argument():
+    """pb-spec validate --help should describe the validation target argument."""
+    result = runner.invoke(main, ["validate", "--help"])
+    assert result.exit_code == 0
+    assert "TARGET" in result.output
+
+
+def test_validate_succeeds_for_minimal_valid_spec(tmp_path: Path) -> None:
+    """pb-spec validate should succeed for a spec dir with valid tasks and features."""
+    spec_dir = tmp_path / "spec"
+    features_dir = spec_dir / "features"
+    features_dir.mkdir(parents=True)
+    (features_dir / "auth.feature").write_text(
+        """Feature: Authentication
+
+  Scenario: User authenticates successfully
+    Given the user has valid credentials
+    When the user signs in
+    Then access is granted
+""",
+        encoding="utf-8",
+    )
+    (spec_dir / "design.md").write_text(VALID_FULL_DESIGN, encoding="utf-8")
+    (spec_dir / "tasks.md").write_text(
+        """# Example Tasks
+
+### Task 1.1: Validate auth scenario mapping
+
+> **Context:** Keep Scenario Coverage aligned with real feature files.
+> **Verification:** Validate the task file.
+
+- **Status:** 🔴 TODO
+- **Loop Type:** BDD+TDD
+- **Scenario Coverage:** User authenticates successfully
+- **Behavioral Contract:** Preserve existing behavior
+- **Simplification Focus:** N/A
+- [ ] **Step 1:** Parse the task.
+- [ ] **BDD Verification:** Run the auth scenario.
+- [ ] **Advanced Test Verification:** N/A because no advanced tests apply
+- [ ] **Runtime Verification:** N/A because this is not runtime-facing work
+""",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(main, ["validate", str(spec_dir)])
+
+    assert result.exit_code == 0
+    assert "Validation passed" in result.output
+
+
+def test_validate_succeeds_for_complete_feedback_packet_file(tmp_path: Path) -> None:
+    """pb-spec validate should succeed for a complete feedback packet markdown file."""
+    feedback_file = tmp_path / "feedback.md"
+    feedback_file.write_text(
+        """🛑 Build Blocked — Task 2.3: Stabilize validator
+
+Reason: 3 consecutive failed attempts (initial + 2 retries)
+Loop Type: BDD+TDD
+Scenario Coverage: auth.feature + User authenticates successfully
+
+What We Tried:
+- Attempt 1: Added task parsing checks.
+
+Failure Evidence:
+- uv run pytest tests/test_validate.py -k packets -> \"AssertionError: missing section\"
+
+Failing Step: Then the validate command should reject incomplete packets
+
+Suggested Design Change:
+- Update design.md to define packet parsing boundaries and adjust tasks.md to add packet validation work.
+
+Impact:
+- Task 2.3 and Task 2.4 need updated validation helpers.
+
+Next Action:
+- Run /pb-refine validate-packets and then retry /pb-build validate-packets.
+""",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(main, ["validate", str(feedback_file)])
+
+    assert result.exit_code == 0
+    assert "Validation passed" in result.output
+
+
+def test_validate_reports_invalid_feedback_packet_file(tmp_path: Path) -> None:
+    """pb-spec validate should fail for an incomplete feedback packet markdown file."""
+    feedback_file = tmp_path / "feedback.md"
+    feedback_file.write_text(
+        """🔄 Design Change Request — Task 2.4: Refine validator flow
+
+Scenario Coverage: auth.feature + User authenticates successfully
+
+Problem: The packet parser cannot distinguish packet bodies from plain prose.
+What We Tried: Added a regex without multiline capture.
+Impact: Task 2.4 must change before packet-aware refinement works.
+""",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(main, ["validate", str(feedback_file)])
+
+    assert result.exit_code != 0
+    assert "Validation failed" in result.output
+    assert "Incomplete 🔄 Design Change Request packet" in result.output
+
+
+def test_validate_reports_feedback_file_without_packets(tmp_path: Path) -> None:
+    """pb-spec validate should fail for a markdown file that does not contain any feedback packets."""
+    feedback_file = tmp_path / "feedback.md"
+    feedback_file.write_text(
+        """# Notes
+
+This file contains discussion, but no build-block or DCR packet.
+""",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(main, ["validate", str(feedback_file)])
+
+    assert result.exit_code != 0
+    assert "No 🛑 Build Blocked or 🔄 Design Change Request packets found in" in result.output
+
+
+def test_validate_reports_missing_tasks_file(tmp_path: Path) -> None:
+    """pb-spec validate should fail when tasks.md is missing."""
+    spec_dir = tmp_path / "spec"
+    features_dir = spec_dir / "features"
+    features_dir.mkdir(parents=True)
+    (features_dir / "auth.feature").write_text(
+        """Feature: Authentication
+
+  Scenario: User authenticates successfully
+    Given the user has valid credentials
+    When the user signs in
+    Then access is granted
+""",
+        encoding="utf-8",
+    )
+    (spec_dir / "design.md").write_text(VALID_FULL_DESIGN, encoding="utf-8")
+
+    result = runner.invoke(main, ["validate", str(spec_dir)])
+
+    assert result.exit_code != 0
+    assert "Missing required file" in result.output
+    assert "tasks.md" in result.output
+
+
+def test_validate_reports_missing_design_file(tmp_path: Path) -> None:
+    """pb-spec validate should fail when design.md is missing."""
+    spec_dir = tmp_path / "spec"
+    features_dir = spec_dir / "features"
+    features_dir.mkdir(parents=True)
+    (features_dir / "auth.feature").write_text(
+        """Feature: Authentication
+
+  Scenario: User authenticates successfully
+    Given the user has valid credentials
+    When the user signs in
+    Then access is granted
+""",
+        encoding="utf-8",
+    )
+    (spec_dir / "tasks.md").write_text(
+        """# Example Tasks
+
+### Task 1.1: Validate auth scenario mapping
+
+> **Context:** Keep Scenario Coverage aligned with real feature files.
+> **Verification:** Validate the task file.
+
+- **Status:** 🔴 TODO
+- **Loop Type:** BDD+TDD
+- **Scenario Coverage:** User authenticates successfully
+- **Behavioral Contract:** Preserve existing behavior
+- **Simplification Focus:** N/A
+- [ ] **Step 1:** Parse the task.
+- [ ] **BDD Verification:** Run the auth scenario.
+- [ ] **Advanced Test Verification:** N/A because no advanced tests apply
+- [ ] **Runtime Verification:** N/A because this is not runtime-facing work
+""",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(main, ["validate", str(spec_dir)])
+
+    assert result.exit_code != 0
+    assert "Missing required file" in result.output
+    assert "design.md" in result.output
+
+
+def test_validate_reports_missing_feature_files(tmp_path: Path) -> None:
+    """pb-spec validate should fail when the features directory has no .feature files."""
+    spec_dir = tmp_path / "spec"
+    (spec_dir / "features").mkdir(parents=True)
+    (spec_dir / "design.md").write_text(VALID_FULL_DESIGN, encoding="utf-8")
+    (spec_dir / "tasks.md").write_text(
+        """# Example Tasks
+
+### Task 1.1: Validate auth scenario mapping
+
+> **Context:** Keep Scenario Coverage aligned with real feature files.
+> **Verification:** Validate the task file.
+
+- **Status:** 🔴 TODO
+- **Loop Type:** TDD-only
+- **Scenario Coverage:** N/A because this is internal scaffolding
+- **Behavioral Contract:** Preserve existing behavior
+- **Simplification Focus:** N/A
+- [ ] **Step 1:** Parse the task.
+- [ ] **BDD Verification:** N/A because this task does not expose user-visible behavior
+- [ ] **Advanced Test Verification:** N/A because no advanced tests apply
+- [ ] **Runtime Verification:** N/A because this is not runtime-facing work
+""",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(main, ["validate", str(spec_dir)])
+
+    assert result.exit_code != 0
+    assert "No .feature files found under" in result.output
+
+
+def test_validate_reports_missing_feature_scenarios(tmp_path: Path) -> None:
+    """pb-spec validate should fail when feature files contain no Scenario entries."""
+    spec_dir = tmp_path / "spec"
+    features_dir = spec_dir / "features"
+    features_dir.mkdir(parents=True)
+    (features_dir / "auth.feature").write_text(
+        """Feature: Authentication
+
+  Background:
+    Given auth is configured
+""",
+        encoding="utf-8",
+    )
+    (spec_dir / "design.md").write_text(VALID_FULL_DESIGN, encoding="utf-8")
+    (spec_dir / "tasks.md").write_text(
+        """# Example Tasks
+
+### Task 1.1: Validate auth scenario mapping
+
+> **Context:** Keep Scenario Coverage aligned with real feature files.
+> **Verification:** Validate the task file.
+
+- **Status:** 🔴 TODO
+- **Loop Type:** TDD-only
+- **Scenario Coverage:** N/A because this is internal scaffolding
+- **Behavioral Contract:** Preserve existing behavior
+- **Simplification Focus:** N/A
+- [ ] **Step 1:** Parse the task.
+- [ ] **BDD Verification:** N/A because this task does not expose user-visible behavior
+- [ ] **Advanced Test Verification:** N/A because no advanced tests apply
+- [ ] **Runtime Verification:** N/A because this is not runtime-facing work
+""",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(main, ["validate", str(spec_dir)])
+
+    assert result.exit_code != 0
+    assert "No Scenario entries found under" in result.output
+
+
+def test_validate_reports_validation_errors(tmp_path: Path) -> None:
+    """pb-spec validate should print validation findings for invalid specs."""
+    spec_dir = tmp_path / "spec"
+    features_dir = spec_dir / "features"
+    features_dir.mkdir(parents=True)
+    (features_dir / "auth.feature").write_text(
+        """Feature: Authentication
+
+  Scenario: User authenticates successfully
+    Given the user has valid credentials
+    When the user signs in
+    Then access is granted
+""",
+        encoding="utf-8",
+    )
+    (spec_dir / "design.md").write_text(VALID_FULL_DESIGN, encoding="utf-8")
+    (spec_dir / "tasks.md").write_text(
+        """# Example Tasks
+
+### Task 1.1: Validate auth scenario mapping
+
+> **Context:** Keep Scenario Coverage aligned with real feature files.
+> **Verification:** Validate the task file.
+
+- **Status:** 🔴 TODO
+- **Loop Type:** BDD+TDD
+- **Scenario Coverage:** Unknown scenario
+- **Behavioral Contract:** Preserve existing behavior
+- **Simplification Focus:** N/A
+- [ ] **Step 1:** Parse the task.
+- [ ] **BDD Verification:** Run the auth scenario.
+- [ ] **Advanced Test Verification:** N/A because no advanced tests apply
+- [ ] **Runtime Verification:** N/A because this is not runtime-facing work
+""",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(main, ["validate", str(spec_dir)])
+
+    assert result.exit_code != 0
+    assert "Validation failed" in result.output
+    assert "Scenario reference not found for Task 1.1: Unknown scenario" in result.output
 
 
 def test_version_shows_version_number():
