@@ -9,6 +9,7 @@
 
 - **Status:** 🔴 TODO
 - **Loop Type:** BDD+TDD
+- **Requirement Coverage:** `R1`
 - **Scenario Coverage:** Health check returns service status
 - **Behavioral Contract:** The endpoint returns 200 with a JSON body containing service status
 - **Simplification Focus:** Keep handler minimal with no middleware

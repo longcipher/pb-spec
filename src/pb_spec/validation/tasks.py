@@ -5,43 +5,52 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Final
 
-TASK_HEADING_RE = re.compile(r"^### (Task \d+\.\d+):\s+(.+?)\s*$")
-FIELD_RE = re.compile(r"^- \*\*(.+?):\*\*\s*(.+?)\s*$")
-QUOTE_FIELD_RE = re.compile(r"^> \*\*(.+?):\*\*\s*(.+?)\s*$")
-CHECKBOX_RE = re.compile(r"^- \[[ xX]\] ")
-CHECKBOX_LABEL_RE = re.compile(r"^- \[[ xX]\] \*\*(.+?):\*\*\s*(.+?)\s*$")
+from pb_spec.validation.types import ValidationResult
 
-MINIMUM_REQUIRED_FIELDS = (
+TASK_HEADING_RE: Final[re.Pattern[str]] = re.compile(r"^### (Task \d+\.\d+):\s+(.+?)\s*$")
+FIELD_RE: Final[re.Pattern[str]] = re.compile(r"^- \*\*(.+?):\*\*\s*(.+?)\s*$")
+QUOTE_FIELD_RE: Final[re.Pattern[str]] = re.compile(r"^> \*\*(.+?):\*\*\s*(.+?)\s*$")
+CHECKBOX_RE: Final[re.Pattern[str]] = re.compile(r"^- \[[ xX]\] ")
+CHECKBOX_LABEL_RE: Final[re.Pattern[str]] = re.compile(r"^- \[[ xX]\] \*\*(.+?):\*\*\s*(.+?)\s*$")
+
+MINIMUM_REQUIRED_FIELDS: Final[tuple[str, ...]] = (
     "Context",
     "Verification",
     "Status",
     "Loop Type",
+    "Requirement Coverage",
     "Scenario Coverage",
     "Behavioral Contract",
     "Simplification Focus",
 )
-REQUIRED_CHECKBOX_FIELDS = (
+REQUIRED_CHECKBOX_FIELDS: Final[tuple[str, ...]] = (
     "BDD Verification",
     "Advanced Test Verification",
     "Runtime Verification",
 )
-FIELDS_REQUIRING_NA_REASON = {
-    "Scenario Coverage",
-    "BDD Verification",
-    "Advanced Test Verification",
-    "Runtime Verification",
-}
-ALLOWED_STATUSES = {
-    "TODO",
-    "🔴 TODO",
-    "🟡 IN PROGRESS",
-    "🟢 DONE",
-    "⏭️ SKIPPED",
-    "🔄 DCR",
-    "⛔ OBSOLETE",
-}
-ALLOWED_LOOP_TYPES = {"BDD+TDD", "TDD-only"}
+FIELDS_REQUIRING_NA_REASON: Final[frozenset[str]] = frozenset(
+    {
+        "Requirement Coverage",
+        "Scenario Coverage",
+        "BDD Verification",
+        "Advanced Test Verification",
+        "Runtime Verification",
+    }
+)
+ALLOWED_STATUSES: Final[frozenset[str]] = frozenset(
+    {
+        "TODO",
+        "🔴 TODO",
+        "🟡 IN PROGRESS",
+        "🟢 DONE",
+        "⏭️ SKIPPED",
+        "🔄 DCR",
+        "⛔ OBSOLETE",
+    }
+)
+ALLOWED_LOOP_TYPES: Final[frozenset[str]] = frozenset({"BDD+TDD", "TDD-only"})
 
 
 @dataclass(slots=True)
@@ -88,47 +97,93 @@ def validate_task_file(
     tasks_file: Path,
     *,
     scenario_inventory: dict[str, Path] | None = None,
+    known_requirement_ids: set[str] | None = None,
 ) -> list[str]:
-    """Validate the minimum required task fields for each parsed task block."""
-    errors: list[str] = []
+    """Validate the minimum required task fields for each parsed task block.
+
+    Returns list of error strings for backward compatibility.
+    """
+    result = validate_task_file_structured(
+        tasks_file,
+        scenario_inventory=scenario_inventory,
+        known_requirement_ids=known_requirement_ids,
+    )
+    # Return only error messages without file path prefix for backward compatibility
+    return [error.message for error in result.errors]
+
+
+def validate_task_file_structured(
+    tasks_file: Path,
+    *,
+    scenario_inventory: dict[str, Path] | None = None,
+    known_requirement_ids: set[str] | None = None,
+) -> ValidationResult:
+    """Validate the minimum required task fields for each parsed task block.
+
+    Returns structured ValidationResult with errors and warnings.
+    """
+    result = ValidationResult()
     task_blocks = parse_task_blocks(tasks_file)
     if not task_blocks:
-        return ["No valid Task X.Y blocks found in tasks.md"]
+        result.add_error(
+            "No valid Task X.Y blocks found in tasks.md",
+            file=str(tasks_file),
+        )
+        return result
 
     seen_task_ids: set[str] = set()
 
     for task_block in task_blocks:
         if task_block.task_id in seen_task_ids:
-            errors.append(f"Duplicate task ID in tasks.md: {task_block.task_id}")
+            result.add_error(
+                f"Duplicate task ID in tasks.md: {task_block.task_id}",
+                file=str(tasks_file),
+            )
         else:
             seen_task_ids.add(task_block.task_id)
 
         for field_name in MINIMUM_REQUIRED_FIELDS:
             if field_name not in task_block.fields:
-                errors.append(f"Missing required task field in {task_block.task_id}: {field_name}")
+                result.add_error(
+                    f"Missing required task field in {task_block.task_id}: {field_name}",
+                    file=str(tasks_file),
+                )
 
         if not task_block.checkbox_lines:
-            errors.append(f"Missing required task field in {task_block.task_id}: Step checkboxes")
+            result.add_error(
+                f"Missing required task field in {task_block.task_id}: Step checkboxes",
+                file=str(tasks_file),
+            )
 
         status = task_block.fields.get("Status")
         if status is not None and status not in ALLOWED_STATUSES:
-            errors.append(f"Invalid task status in {task_block.task_id}: {status}")
+            result.add_error(
+                f"Invalid task status in {task_block.task_id}: {status}",
+                file=str(tasks_file),
+            )
 
         loop_type = task_block.fields.get("Loop Type")
         if loop_type is not None and loop_type not in ALLOWED_LOOP_TYPES:
-            errors.append(f"Invalid loop type in {task_block.task_id}: {loop_type}")
+            result.add_error(
+                f"Invalid loop type in {task_block.task_id}: {loop_type}",
+                file=str(tasks_file),
+            )
 
         for field_name in REQUIRED_CHECKBOX_FIELDS:
             if field_name not in task_block.checkbox_fields:
-                errors.append(f"Missing required task field in {task_block.task_id}: {field_name}")
+                result.add_error(
+                    f"Missing required task field in {task_block.task_id}: {field_name}",
+                    file=str(tasks_file),
+                )
 
         for field_name in FIELDS_REQUIRING_NA_REASON:
             value = task_block.fields.get(field_name)
             if value is None:
                 value = task_block.checkbox_fields.get(field_name)
             if value is not None and _is_bare_not_applicable_value(value):
-                errors.append(
-                    f"N/A value must include a reason in {task_block.task_id}: {field_name}"
+                result.add_error(
+                    f"N/A value must include a reason in {task_block.task_id}: {field_name}",
+                    file=str(tasks_file),
                 )
 
         if status == "🟢 DONE":
@@ -146,9 +201,10 @@ def validate_task_file(
                     if normalized in REQUIRED_CHECKBOX_FIELDS and line.startswith("- [ ]"):
                         incomplete_verification.append(normalized)
             if incomplete_verification:
-                errors.append(
+                result.add_error(
                     f"Task marked DONE still has incomplete verification evidence in "
-                    f"{task_block.task_id}: {', '.join(sorted(set(incomplete_verification)))}"
+                    f"{task_block.task_id}: {', '.join(sorted(set(incomplete_verification)))}",
+                    file=str(tasks_file),
                 )
 
         advanced_test_verification = task_block.checkbox_fields.get("Advanced Test Verification")
@@ -157,26 +213,45 @@ def validate_task_file(
             and not _is_not_applicable_value(advanced_test_verification)
             and "Advanced Test Coverage" not in task_block.fields
         ):
-            errors.append(
-                f"Advanced Test Coverage is required when Advanced Test Verification is concrete in {task_block.task_id}"
+            result.add_error(
+                f"Advanced Test Coverage is required when Advanced Test Verification is concrete in {task_block.task_id}",
+                file=str(tasks_file),
             )
 
         scenario_coverage = task_block.fields.get("Scenario Coverage")
         if loop_type == "BDD+TDD" and scenario_coverage is not None:
             if _is_not_applicable_value(scenario_coverage):
-                errors.append(
+                result.add_error(
                     "Scenario Coverage must name a concrete scenario for "
-                    f"{task_block.task_id} when Loop Type is BDD+TDD"
+                    f"{task_block.task_id} when Loop Type is BDD+TDD",
+                    file=str(tasks_file),
                 )
             elif scenario_inventory is not None:
                 scenario_names = _extract_scenario_names(scenario_coverage)
                 for scenario_name in scenario_names:
                     if scenario_name not in scenario_inventory:
-                        errors.append(
-                            f"Scenario reference not found for {task_block.task_id}: {scenario_name}"
+                        result.add_error(
+                            f"Scenario reference not found for {task_block.task_id}: {scenario_name}",
+                            file=str(tasks_file),
                         )
 
-    return errors
+        requirement_coverage = task_block.fields.get("Requirement Coverage")
+        if requirement_coverage is not None and not _is_not_applicable_value(requirement_coverage):
+            requirement_ids = _extract_requirement_ids(requirement_coverage)
+            if not requirement_ids:
+                result.add_error(
+                    f"Requirement Coverage must list concrete requirement IDs in {task_block.task_id}",
+                    file=str(tasks_file),
+                )
+            elif known_requirement_ids is not None:
+                for requirement_id in sorted(requirement_ids):
+                    if requirement_id not in known_requirement_ids:
+                        result.add_error(
+                            f"Unknown requirement reference in {task_block.task_id}: {requirement_id}",
+                            file=str(tasks_file),
+                        )
+
+    return result
 
 
 def find_referenced_scenarios(task_blocks: list[TaskBlock]) -> set[str]:
@@ -186,6 +261,16 @@ def find_referenced_scenarios(task_blocks: list[TaskBlock]) -> set[str]:
         coverage = block.fields.get("Scenario Coverage")
         if coverage is not None and not _is_not_applicable_value(coverage):
             referenced.update(_extract_scenario_names(coverage))
+    return referenced
+
+
+def find_referenced_requirements(task_blocks: list[TaskBlock]) -> set[str]:
+    """Return the set of requirement IDs referenced by task blocks."""
+    referenced: set[str] = set()
+    for block in task_blocks:
+        coverage = block.fields.get("Requirement Coverage")
+        if coverage is not None and not _is_not_applicable_value(coverage):
+            referenced.update(_extract_requirement_ids(coverage))
     return referenced
 
 
@@ -253,7 +338,9 @@ def _extract_scenario_names(coverage: str) -> list[str]:
     - 'feature_file.feature / Scenario Name'
     - 'feature_file.feature / all scenarios' (returns empty list)
     - '`feature / s1`, `feature / s2`' (multiple backtick-wrapped refs)
+    - 'feature1 / s1, feature2 / s2' (comma-separated refs)
     """
+    # Handle backtick-wrapped comma-separated format
     if "`, `" in coverage:
         parts = coverage.split("`, `")
         names = []
@@ -262,8 +349,24 @@ def _extract_scenario_names(coverage: str) -> list[str]:
             if name is not None:
                 names.append(name)
         return names
+
+    # Handle plain comma-separated format (without backticks)
+    if ", " in coverage and " / " in coverage:
+        parts = coverage.split(", ")
+        names = []
+        for part in parts:
+            name = _parse_single_scenario_ref(part.strip())
+            if name is not None:
+                names.append(name)
+        return names
+
+    # Single scenario reference
     name = _parse_single_scenario_ref(coverage)
     return [name] if name is not None else []
+
+
+def _extract_requirement_ids(coverage: str) -> set[str]:
+    return set(re.findall(r"\b[A-Z]+[A-Z0-9_-]*\d+\b", coverage))
 
 
 def _parse_single_scenario_ref(value: str) -> str | None:

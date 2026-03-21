@@ -11,6 +11,8 @@
 ## Summary & Phasing
 
 > Brief implementation strategy.
+>
+> Note any subagent-produced requirement extraction or reconciliation findings that shape task ordering or coverage expectations.
 
 - **Planner Contract Rule:** Emit a contract-complete, build-eligible spec in the existing markdown artifacts. Do not introduce a sidecar schema or a new command.
 - **Packet Contract Rule:** Carry blocked-build and DCR expectations as markdown-carried packet sections in the existing task/design workflow.
@@ -40,6 +42,7 @@
 
 - **Priority:** P0 / P1 / P2
 - **Scope:** [Logical Unit of Work — e.g., "Model layer", "API endpoint", "Service integration"]
+- **Requirement Coverage:** `[Requirement IDs from Source Inputs & Normalization, or N/A with reason]`
 - **Scenario Coverage:** `[Feature/scenario names, or N/A for infrastructure-only work]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
@@ -61,6 +64,7 @@
 
 - **Priority:** P0
 - **Scope:** [Logical Unit of Work]
+- **Requirement Coverage:** `[Requirement IDs from Source Inputs & Normalization, or N/A with reason]`
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
@@ -85,6 +89,7 @@
 
 - **Priority:** P0
 - **Scope:** [Logical Unit of Work]
+- **Requirement Coverage:** `[Requirement IDs from Source Inputs & Normalization, or N/A with reason]`
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
@@ -106,6 +111,7 @@
 
 - **Priority:** P1
 - **Scope:** [Logical Unit of Work]
+- **Requirement Coverage:** `[Requirement IDs from Source Inputs & Normalization, or N/A with reason]`
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
@@ -130,6 +136,7 @@
 
 - **Priority:** P1
 - **Scope:** [Logical Unit of Work]
+- **Requirement Coverage:** `[Requirement IDs from Source Inputs & Normalization, or N/A with reason]`
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
@@ -152,6 +159,7 @@
 
 - **Priority:** P2
 - **Scope:** [Logical Unit of Work]
+- **Requirement Coverage:** `[Requirement IDs from Source Inputs & Normalization, or N/A with reason]`
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`

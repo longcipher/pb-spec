@@ -3,21 +3,29 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Final
 
-HEADING_RE = re.compile(r"^(#{2,6})\s+(.+?)\s*$")
-LEADING_NUMBER_RE = re.compile(r"^\d+(?:\.\d+)*\.?\s+")
-PLACEHOLDER_RE = re.compile(r"^(?:TBD|\[To be written\]|\[[^\]]+\])$", re.IGNORECASE)
+from pb_spec.validation.types import ValidationResult
 
-FULL_MODE_REQUIRED_SECTIONS = (
+HEADING_RE: Final[re.Pattern[str]] = re.compile(r"^(#{2,6})\s+(.+?)\s*$")
+LEADING_NUMBER_RE: Final[re.Pattern[str]] = re.compile(r"^\d+(?:\.\d+)*\.?\s+")
+PLACEHOLDER_RE: Final[re.Pattern[str]] = re.compile(
+    r"^(?:TBD|\[To be written\]|\[[^\]]+\])$", re.IGNORECASE
+)
+
+FULL_MODE_REQUIRED_SECTIONS: Final[tuple[str, ...]] = (
     "Executive Summary",
+    "Source Inputs & Normalization",
     "Requirements & Goals",
+    "Requirements Coverage Matrix",
     "Architecture Overview",
     "Detailed Design",
     "Verification & Testing Strategy",
     "Implementation Plan",
 )
-LIGHTWEIGHT_MODE_REQUIRED_SECTIONS = (
+LIGHTWEIGHT_MODE_REQUIRED_SECTIONS: Final[tuple[str, ...]] = (
     "Summary",
     "Approach",
     "Architecture Decisions",
@@ -29,41 +37,93 @@ LIGHTWEIGHT_MODE_REQUIRED_SECTIONS = (
 )
 
 
+@dataclass(slots=True, frozen=True)
+class RequirementCoverageRow:
+    requirement_id: str
+    covered_in_design: str
+    scenario_coverage: str
+    task_coverage: str
+    status_rationale: str
+
+
 def validate_design_file(design_file: Path) -> list[str]:
-    """Validate required design.md sections for full or lightweight mode."""
+    """Validate required design.md sections for full or lightweight mode.
+
+    Returns list of error strings for backward compatibility.
+    """
+    result = validate_design_file_structured(design_file)
+    # Return only error messages without file path prefix for backward compatibility
+    return [error.message for error in result.errors]
+
+
+def validate_design_file_structured(design_file: Path) -> ValidationResult:
+    """Validate required design.md sections for full or lightweight mode.
+
+    Returns structured ValidationResult with errors and warnings.
+    """
+    result = ValidationResult()
     sections = _parse_design_sections(design_file)
     section_names = {name for name, _, _ in sections}
     required_sections = _select_required_sections(section_names, sections)
 
-    errors: list[str] = []
     section_map = {name: content for name, content, _ in sections}
     for section_name in required_sections:
         if section_name not in section_map:
-            errors.append(f"Missing required design section in design.md: {section_name}")
+            result.add_error(
+                f"Missing required design section in design.md: {section_name}",
+                file=str(design_file),
+            )
             continue
 
         if _is_placeholder_content(section_map[section_name]) and not _has_subsections(
             section_name, sections
         ):
-            errors.append(
-                f"Required design section is empty or placeholder in design.md: {section_name}"
+            result.add_error(
+                f"Required design section is empty or placeholder in design.md: {section_name}",
+                file=str(design_file),
             )
 
     for section_name in _select_conditional_required_sections(section_names, sections):
         if section_name in required_sections:
             continue
         if section_name not in section_map:
-            errors.append(f"Missing required design section in design.md: {section_name}")
+            result.add_error(
+                f"Missing required design section in design.md: {section_name}",
+                file=str(design_file),
+            )
             continue
 
         if _is_placeholder_content(section_map[section_name]) and not _has_subsections(
             section_name, sections
         ):
-            errors.append(
-                f"Required design section is empty or placeholder in design.md: {section_name}"
+            result.add_error(
+                f"Required design section is empty or placeholder in design.md: {section_name}",
+                file=str(design_file),
             )
 
-    return errors
+    if _select_required_sections(section_names, sections) == FULL_MODE_REQUIRED_SECTIONS:
+        traceability_result = _validate_requirement_traceability_structured(
+            section_map, design_file
+        )
+        result.merge(traceability_result)
+
+    return result
+
+
+def parse_source_requirement_ids(design_file: Path) -> set[str]:
+    """Return requirement IDs listed in the source requirement ledger."""
+    sections = _parse_design_sections(design_file)
+    section_map = {name: content for name, content, _ in sections}
+    return _parse_requirement_ids_from_table(section_map.get("Source Requirement Ledger", ""))
+
+
+def parse_requirements_coverage_matrix(
+    design_file: Path,
+) -> dict[str, RequirementCoverageRow]:
+    """Return requirement rows from the requirements coverage matrix."""
+    sections = _parse_design_sections(design_file)
+    section_map = {name: content for name, content, _ in sections}
+    return _parse_requirement_matrix_rows(section_map.get("Requirements Coverage Matrix", ""))
 
 
 def _parse_design_sections(design_file: Path) -> list[tuple[str, str, int]]:
@@ -101,6 +161,53 @@ def _normalize_heading(heading: str) -> str:
     normalized_heading = heading.strip()
     normalized_heading = LEADING_NUMBER_RE.sub("", normalized_heading)
     return normalized_heading
+
+
+def _validate_requirement_traceability(section_map: dict[str, str]) -> list[str]:
+    """Legacy function for backward compatibility."""
+    result = _validate_requirement_traceability_structured(section_map, Path("design.md"))
+    return result.to_error_strings()
+
+
+def _validate_requirement_traceability_structured(
+    section_map: dict[str, str], design_file: Path
+) -> ValidationResult:
+    """Validate requirement traceability between ledger and matrix."""
+    result = ValidationResult()
+    ledger_section = section_map.get("Source Requirement Ledger", "")
+    matrix_section = section_map.get("Requirements Coverage Matrix", "")
+
+    ledger_ids = _parse_requirement_ids_from_table(ledger_section)
+    matrix_rows = _parse_requirement_matrix_rows(matrix_section)
+    matrix_ids = set(matrix_rows)
+
+    if ledger_section and not ledger_ids:
+        result.add_error(
+            "No requirement IDs found in Source Requirement Ledger",
+            file=str(design_file),
+        )
+
+    if matrix_section and not matrix_ids:
+        result.add_error(
+            "No requirement IDs found in Requirements Coverage Matrix",
+            file=str(design_file),
+        )
+
+    for requirement_id in sorted(ledger_ids - matrix_ids):
+        result.add_error(
+            "Requirement ID listed in Source Requirement Ledger but missing from "
+            f"Requirements Coverage Matrix: {requirement_id}",
+            file=str(design_file),
+        )
+
+    for requirement_id in sorted(matrix_ids - ledger_ids):
+        result.add_error(
+            "Requirement ID listed in Requirements Coverage Matrix but missing from "
+            f"Source Requirement Ledger: {requirement_id}",
+            file=str(design_file),
+        )
+
+    return result
 
 
 LIGHTWEIGHT_ONLY_SECTIONS = frozenset(
@@ -148,6 +255,47 @@ def _select_conditional_required_sections(
         conditional_sections.append("BDD Scenario Inventory")
 
     return tuple(conditional_sections)
+
+
+def _parse_requirement_ids_from_table(content: str) -> set[str]:
+    requirement_ids: set[str] = set()
+    for row in _parse_markdown_table(content):
+        requirement_id = row.get("Requirement ID", "").strip().strip("`")
+        if requirement_id:
+            requirement_ids.add(requirement_id)
+    return requirement_ids
+
+
+def _parse_requirement_matrix_rows(content: str) -> dict[str, RequirementCoverageRow]:
+    rows: dict[str, RequirementCoverageRow] = {}
+    for row in _parse_markdown_table(content):
+        requirement_id = row.get("Requirement ID", "").strip().strip("`")
+        if not requirement_id:
+            continue
+        rows[requirement_id] = RequirementCoverageRow(
+            requirement_id=requirement_id,
+            covered_in_design=row.get("Covered In Design", "").strip(),
+            scenario_coverage=row.get("Scenario Coverage", "").strip(),
+            task_coverage=row.get("Task Coverage", "").strip(),
+            status_rationale=row.get("Status / Rationale", "").strip(),
+        )
+    return rows
+
+
+def _parse_markdown_table(content: str) -> list[dict[str, str]]:
+    lines = [line.strip() for line in content.splitlines() if line.strip()]
+    table_lines = [line for line in lines if line.startswith("|") and line.endswith("|")]
+    if len(table_lines) < 2:
+        return []
+
+    headers = [cell.strip() for cell in table_lines[0].strip("|").split("|")]
+    rows: list[dict[str, str]] = []
+    for line in table_lines[2:]:
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        if len(cells) != len(headers):
+            continue
+        rows.append(dict(zip(headers, cells, strict=True)))
+    return rows
 
 
 def _has_subsections(section_name: str, sections: list[tuple[str, str, int]]) -> bool:

@@ -6,26 +6,37 @@ Run this when the user invokes `/pb-plan <requirement description>`. Do not ask 
 
 **Execution contract:**
 
+- Accept source material in arbitrary format: design documents, rough notes, pasted requirements, PRDs, RFC fragments, tickets, transcripts, and partial design drafts are all valid planning input.
 - Produce `design.md`, `tasks.md`, and `features/*.feature` under `specs/<spec-dir>/`.
 - Emit a contract-complete spec whose existing markdown artifacts together form a build-eligible spec contract for `/pb-build`.
 - Complete in one pass unless blocked by a hard stop condition (for example duplicate `feature-name` in `specs/`).
 - Ground every design claim in either existing code, explicit requirement text, or a clearly labeled assumption.
+- Do not require the user to provide pb-plan-specific prompt wording, formatting, or a pre-normalized requirement list.
 - Do not invent files, modules, APIs, commands, or project conventions.
 - Do not introduce a new schema or command surface; keep the planner contract in the existing markdown artifacts and markdown-carried packet sections.
 - If the repo appears to be scaffold/template-derived and still exposes generic crate/package/module names, plan the rename work so the resulting spec uses project-matching identities instead of placeholders.
 - Make architecture consistency explicit: inherit the repo's `Architecture Decision Snapshot`, choose new patterns in `design.md` before implementation, and do not leave architectural choices for `/pb-build` to improvise.
 - Plan implementation with a code-simplification lens: preserve existing behavior unless the requirement explicitly changes it, prefer explicit readable solutions over clever compact ones, and keep cleanup scoped to touched code unless broader refactoring is justified.
+- Use subagent assistance proactively when it improves requirement extraction, repo grounding, or coverage review. The planner remains responsible for the final artifact quality.
 
 ---
 
 ## Step 1: Parse Requirements & Determine Scope
 
+Treat the user's source material as potentially messy input. Normalize arbitrary format inputs such as rough notes, copied design docs, partial design drafts, bullets, and mixed-language requirement dumps into a consistent requirement ledger before deriving the final plan.
+
 Extract core requirements from the user's input. Derive a **feature-name** and determine the **scope mode**.
+
+Create a **source requirement ledger** first:
+
+- Assign stable IDs such as `R1`, `R2`, `R3` to each extracted requirement, constraint, assumption trigger, and explicit non-goal.
+- Preserve important terminology from the original source material instead of rewriting everything into generic planner language.
+- Record ambiguous input as assumptions only after checking the live codebase and related docs.
+- Keep the ledger available for later reconciliation against `design.md`, `tasks.md`, and `features/*.feature`.
 
 Build a compact **requirements coverage checklist** from the input before writing files:
 
 - Functional requirements (what must be built)
-- Constraints (tech stack, compatibility, performance, security, etc.)
 - Architecture and dependency-boundary requirements (patterns to preserve, external integrations that must remain injectable, state/error conventions to inherit)
 - Maintainability and simplification constraints (behavior-preserving refactors, readability requirements, cleanup scope)
 - Explicit non-goals or out-of-scope items
@@ -52,14 +63,28 @@ The spec directory name (referred to as `<spec-dir>` in all paths below) follows
 **Scope mode detection:**
 Count the words in the requirement description (excluding the `/pb-plan` trigger).
 
-- **Lightweight mode** (< 50 words): Simple change — produce a compact spec (see Step 4a/5a).
 - **Full mode** (≥ 50 words): Complex feature — produce the complete spec (see Step 4b/5b).
 
 ## Step 2: Collect Project Context
 
 Gather context to inform the design. **Always perform live codebase analysis** — do not rely on any static file.
 
-1. **Read `AGENTS.md`** (if it exists) — capture explicit project constraints, team rules, and gotchas. Do not assume any fixed section layout; treat it as free-form user-authored policy text.
+Before doing the detailed planning work, decide whether subagents will improve quality. For long, ambiguous, or multi-artifact inputs, use multiple fresh subagents with fresh, minimal context instead of doing all interpretation in one pass.
+
+- **Source Requirements Analyst** — reads only the original user-provided material and extracts the source requirement ledger, ambiguity list, and candidate user-visible behaviors.
+- **Codebase Analyst** — inspects the live repository, reusable components, architecture constraints, and existing test/BDD harnesses.
+- **Spec Reconciliation Auditor** — reviews the draft spec and reconciles the extracted source requirements against the generated `design.md`, `tasks.md`, and `features/*.feature` before final output.
+
+Subagent rules:
+
+- Give each subagent fresh, minimal context scoped to its assignment.
+- Prefer at least two subagents when the source material is longer than a short prompt, spans multiple documents, or mixes product/design/technical requirements.
+- Summarize subagent findings back into the planner's working notes instead of copying raw logs verbatim.
+- If subagent findings conflict, resolve them using evidence precedence and document the chosen assumption or interpretation.
+
+Choose test depth by risk while planning:
+
+1. **Read `AGENTS.md`** (if it exists) — capture explicit project constraints, team rules, and gotchas. Do not assume any fixed section layout; treat the file as free-form user-authored policy text.
 2. **Read `CLAUDE.md`** (if it exists) — capture additional coding standards or workflow rules. If `CLAUDE.md` delegates to another file, follow that reference rather than ignoring it.
 3. **Search the live codebase directly** — this is **mandatory** regardless of whether `AGENTS.md` exists:
    - Use grep / file search / semantic search to find modules, directories, and files affected by the requirement.
@@ -75,14 +100,12 @@ Gather context to inform the design. **Always perform live codebase analysis** �
    - Shared infrastructure (database connections, HTTP clients, cache layers)
    - Similar prior implementations that establish patterns to follow
    **This audit is mandatory.** List reusable components in `design.md` Section 3.3 and reference them in `tasks.md` task context.
-
 6. **Extract the `Architecture Decision Snapshot`** — this is mandatory whenever the repo has `AGENTS.md` or architecture-oriented docs:
    - Separate **existing decisions to preserve** from **new decisions this feature must add**.
    - Before planning any change likely to exceed **200 lines** of implementation or introduce a new architectural boundary, explicitly evaluate **SRP**, **DIP**, and the classic patterns **Factory**, **Strategy**, **Observer**, **Adapter**, and **Decorator**.
    - State which pattern or principle is selected, why it fits better than the alternatives, and how it keeps the code simpler instead of merely more abstract.
    - All external dependencies must be routed **through interfaces or abstract classes** in the plan unless the existing repo explicitly establishes a different seam.
    - Reuse existing repo decisions when available; add new decisions only when the requirement creates a genuine gap.
-
 7. **Audit coding standards and simplification boundaries** — determine which style and maintainability rules the eventual implementation must follow:
    - Infer language- and framework-specific standards from `AGENTS.md`, `CLAUDE.md`, and the live codebase. Only apply standards that are relevant to the current repo; do not copy unrelated JavaScript or React rules into Python work.
    - Identify whether the requirement changes behavior or only restructures existing logic. Record the behavior-preservation boundary explicitly in the design.
@@ -115,7 +138,6 @@ If `AGENTS.md` does not exist, that's fine — scan the project root directly (c
 1. Live codebase state
 2. Existing project docs/specs
 3. `AGENTS.md`
-4. Reasonable assumptions (must be labeled)
 
 ## Step 3: Create Spec Directory
 
@@ -135,13 +157,11 @@ If `AGENTS.md` does not exist, that's fine — scan the project root directly (c
 
 1. Find all existing directories under `specs/` that start with today's date (`YYYY-MM-DD-`).
 2. Extract the highest sequence number among them.
-3. Set `NO` = highest + 1 (or `01` if none exist for today). Zero-pad to 2 digits.
 
 Create:
 
 ```text
 specs/<spec-dir>/
-├── design.md
 ├── tasks.md
 └── features/
 ```
@@ -155,15 +175,10 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`:
 ```markdown
 # Design: [Feature Name]
 
-| Metadata | Details |
 | :--- | :--- |
 | **Status** | Draft |
 | **Created** | YYYY-MM-DD |
 | **Scope** | Lightweight |
-
-## Summary
-
-> 2-3 sentences: problem + solution.
 
 ## Approach
 
@@ -171,7 +186,6 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`:
 
 ## Architecture Decisions
 
-- **Inherited Decisions:** Which items from the `Architecture Decision Snapshot` this change must preserve.
 - **Pattern Selection:** `Factory` / `Strategy` / `Observer` / `Adapter` / `Decorator` / `SRP-only split` / `DIP-only seam` / `N/A` with rationale.
 - **SRP / DIP Check:** Explain how responsibilities stay focused and where dependency inversion is required.
 - **Dependency Injection Plan:** All external dependencies must be routed through interfaces or abstract classes unless the repo already defines a different stable seam.
@@ -185,7 +199,6 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`:
 - **Unit Test Command:** ...
 - **Property Test Tool:** `fast-check` / `Hypothesis` / `proptest` / `N/A` with reason
 - **Fuzz Test Tool:** `jazzer.js` / `Atheris` / `cargo-fuzz` / `N/A` with reason
-- **Benchmark Tool:** `Vitest Bench` / `pytest-benchmark` / `criterion` / `N/A` with reason
 - **Feature Files:** `specs/<spec-dir>/features/*.feature`
 - **Outside-in Loop:** Which Gherkin scenarios fail first and then pass
 
@@ -210,16 +223,10 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`:
 > How to verify the change works. Include advanced test commands when property/fuzz/benchmark coverage is required.
 ```
 
-**Skip** these sections in lightweight mode: Architecture Overview, Detailed Design, Non-Functional Goals, Out of Scope, Cross-Functional Concerns.
-
 ## Step 4b: Output design.md — Full Mode (≥ 50 words)
 
-Fill the **Design Template** below fully and write to `specs/<spec-dir>/design.md`. Every section must have substantive content — no "TBD" or empty placeholders.
-Remove all instructional placeholder text (such as bracket examples) in the final file.
-
-The full design must explicitly document code simplification constraints: the behavior-preservation boundary, repo-specific coding standards to follow, readability priorities, and non-goals for unrelated cleanup.
 The full design must also include an explicit **Architecture Decisions** section that records inherited repo decisions, selected patterns, rejected alternatives, and the SRP/DIP reasoning behind those choices.
-The full design must define the planner contract surface in markdown terms: `PlannedSpecContract`, `TaskContract`, `BuildBlockedPacket`, and `DesignChangeRequestPacket`, so the resulting artifact set is a build-eligible spec rather than prose that `/pb-build` must reinterpret.
+The full design must include **Source Inputs & Normalization** and a **Requirements Coverage Matrix** that maps each source requirement ID to design sections, planned scenarios, and task IDs.
 
 ## Step 5a: Output tasks.md — Lightweight Mode (< 50 words)
 
@@ -239,6 +246,7 @@ Write a **flat task list** to `specs/<spec-dir>/tasks.md`. Even in lightweight m
 
 > **Context:** ...
 > **Verification:** ...
+> **Requirement Coverage:** [Requirement IDs from source requirement ledger, or `N/A` with reason]
 > **Scenario Coverage:** [Feature/scenario names]
 
 - **Loop Type:** `BDD+TDD` / `TDD-only`
@@ -268,7 +276,7 @@ Remove all instructional placeholder text (such as bracket examples) in the fina
 **Task requirements:**
 
 - Grouped into Phases (BDD Harness → Scenario Implementation → Integration → Polish).
-- Each task: **Context**, **Scenario Coverage**, **Loop Type**, **Steps** (checkboxes), **BDD Verification**, and **Verification**.
+- Each task: **Context**, **Requirement Coverage**, **Scenario Coverage**, **Loop Type**, **Steps** (checkboxes), **BDD Verification**, and **Verification**.
 - Each task represents a **Logical Unit of Work** — a self-contained, meaningful change. Do NOT split by time estimates.
 - **Task ID format:** Each task MUST have a unique ID: `Task X.Y` (e.g., `Task 1.1`, `Task 2.3`).
 - Ordered by dependency — no task references work from a later task.
@@ -303,7 +311,21 @@ Write one or more `.feature` files under `specs/<spec-dir>/features/`.
 - If the repo lacks a BDD runner, reflect the setup work in `tasks.md` rather than pretending it already exists.
 - Every planned scenario must map back to `design.md` and at least one task in `tasks.md`.
 
-## Step 7: Prompt Developer Review
+## Step 7: Self-Reconciliation Before Final Output
+
+Before presenting the final spec, run a reconciliation pass. Use the source requirement ledger as the source of truth and reconcile the extracted source requirements against the generated `design.md`, `tasks.md`, and `features/*.feature`.
+
+The reconciliation pass must verify:
+
+- every requirement ID appears in a **Requirements Coverage Matrix** entry in `design.md`
+- every user-visible requirement maps to at least one scenario
+- every implemented or preserved requirement maps to at least one task via **Requirement Coverage** or explicit task context
+- every dropped requirement is called out as out-of-scope, deferred, or assumption-bound with rationale
+- no scenario or task introduces major behavior that cannot be traced back to an original requirement, assumption, or repo-grounded constraint
+
+If gaps remain after the first draft, revise the artifacts before finalizing. Do not hand the gap back to the user as an extra pre-planning step unless a true blocker remains.
+
+## Step 8: Prompt Developer Review
 
 After writing both files, output:
 
@@ -329,19 +351,22 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 2. **Optimal solution first.** Output the best design. Developer requests changes after review if needed.
 3. **Right-sized output (YAGNI).** Match output detail to requirement complexity. Simple changes get compact specs; complex features get full specs.
 4. **Live codebase analysis.** Always search the actual codebase. Use `AGENTS.md` as complementary policy context, not a replacement for code inspection.
-5. **Task granularity: Logical Unit of Work.** Each task is a self-contained, meaningful change. Do not split based on arbitrary time estimates.
-6. **Scenario-first planning.** User-visible behavior must become Gherkin artifacts under `features/*.feature`.
-7. **Verification per task.** Every task defines how to prove it is done; runtime-facing tasks include runtime observability evidence.
-8. **Double-loop execution readiness.** `tasks.md` must make it obvious which tasks are `BDD+TDD` versus `TDD-only`.
-9. **Dependency order.** Phases and tasks flow foundational → dependent.
-10. **Project-aware.** Use existing conventions, patterns, and tech stack. Reuse existing components — do not reinvent.
-11. **Identity-aware.** Template placeholder crate/package/module names should be normalized to project-matching names when the repo has not been fully customized yet.
-12. **Risk-based test depth.** Example-based tests are the baseline; property tests are the default extension for broad input domains, while fuzzing and benchmarks remain conditional.
-13. **Readable over clever.** Prefer plans that lead to explicit, easy-to-maintain implementations over compact or overly clever rewrites.
-14. **Scoped simplification.** Refactors should improve touched code without turning the plan into unrelated cleanup.
-15. **Requirements coverage.** Track every requirement from input to design sections, feature scenarios, and tasks.
-16. **Truthfulness over fluency.** If information is missing, state assumptions explicitly instead of fabricating specifics.
-17. **Deterministic output quality.** Final docs should be implementation-ready, with no template artifacts left behind.
+5. **Input normalization first.** Arbitrary format source material is valid; the planner must normalize it instead of requiring the user to pre-structure it.
+6. **Subagent leverage with accountability.** Use specialized subagents for extraction, repo analysis, and reconciliation when they improve quality, but keep the main planner responsible for the final contract.
+7. **Task granularity: Logical Unit of Work.** Each task is a self-contained, meaningful change. Do not split based on arbitrary time estimates.
+8. **Scenario-first planning.** User-visible behavior must become Gherkin artifacts under `features/*.feature`.
+9. **Verification per task.** Every task defines how to prove it is done; runtime-facing tasks include runtime observability evidence.
+10. **Double-loop execution readiness.** `tasks.md` must make it obvious which tasks are `BDD+TDD` versus `TDD-only`.
+11. **Dependency order.** Phases and tasks flow foundational → dependent.
+12. **Project-aware.** Use existing conventions, patterns, and tech stack. Reuse existing components — do not reinvent.
+13. **Identity-aware.** Template placeholder crate/package/module names should be normalized to project-matching names when the repo has not been fully customized yet.
+14. **Risk-based test depth.** Example-based tests are the baseline; property tests are the default extension for broad input domains, while fuzzing and benchmarks remain conditional.
+15. **Readable over clever.** Prefer plans that lead to explicit, easy-to-maintain implementations over compact or overly clever rewrites.
+16. **Scoped simplification.** Refactors should improve touched code without turning the plan into unrelated cleanup.
+17. **Requirements coverage.** Track every requirement from input to design sections, feature scenarios, and tasks.
+18. **Traceability over intuition.** A plan is not complete until the source requirement ledger, the Requirements Coverage Matrix, the scenarios, and the task list agree.
+19. **Truthfulness over fluency.** If information is missing, state assumptions explicitly instead of fabricating specifics.
+20. **Deterministic output quality.** Final docs should be implementation-ready, with no template artifacts left behind.
 
 ---
 
@@ -405,20 +430,38 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 ---
 
-## 2. Requirements & Goals
+## 2. Source Inputs & Normalization
 
-### 2.1 Problem Statement
+### 2.1 Source Materials
+
+> What did the planner consume? Capture raw design docs, rough notes, partial design drafts, issue threads, transcripts, or mixed-format requirement sources. The planner should accept arbitrary format input instead of requiring a special prompt recipe.
+
+### 2.2 Normalization Approach
+
+> Explain how the raw input was normalized into a source requirement ledger, what ambiguities were resolved via repo evidence, and which assumptions remain explicit. If subagent findings were used during intake or reconciliation, summarize the subagent roles and the evidence they contributed.
+
+### 2.3 Source Requirement Ledger
+
+| Requirement ID | Source Summary | Type | Notes |
+| :--- | :--- | :--- | :--- |
+| `R1` | `[Requirement or constraint extracted from the source]` | `Functional / Constraint / Non-goal / Assumption trigger` | `[Any wording that must be preserved]` |
+
+---
+
+## 3. Requirements & Goals
+
+### 3.1 Problem Statement
 
 > Describe current pain points or missing functionality. Be specific.
 
-### 2.2 Functional Goals
+### 3.2 Functional Goals
 
 > Must-have features. Numbered list.
 
 1. **[Goal A]:** Description...
 2. **[Goal B]:** Description...
 
-### 2.3 Non-Functional Goals
+### 3.3 Non-Functional Goals
 
 > Performance, reliability, security, observability, etc.
 
@@ -426,27 +469,37 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 - **Reliability:** ...
 - **Security:** ...
 
-### 2.4 Out of Scope
+### 3.4 Out of Scope
 
 > What is explicitly NOT being done. Prevents scope creep.
 
-### 2.5 Assumptions
+### 3.5 Assumptions
 
 > Any assumptions or constraints. List decisions made when requirements were ambiguous.
 
 ---
 
-## 3. Architecture Overview
+## 4. Requirements Coverage Matrix
 
-### 3.1 System Context
+> Reconcile the normalized source requirements against the generated spec before finalizing the plan.
+
+| Requirement ID | Covered In Design | Scenario Coverage | Task Coverage | Status / Rationale |
+| :--- | :--- | :--- | :--- | :--- |
+| `R1` | `[Section references]` | `[Feature/scenario names or N/A]` | `[Task IDs or N/A]` | `[Covered / Out of scope / Deferred / Assumption-bound]` |
+
+---
+
+## 5. Architecture Overview
+
+### 5.1 System Context
 
 > How does this feature fit into the existing system? Describe interactions with other modules, services, or external systems. Use a diagram if helpful.
 
-### 3.2 Key Design Principles
+### 5.2 Key Design Principles
 
 > Core ideas guiding this design.
 
-### 3.3 Existing Components to Reuse
+### 5.3 Existing Components to Reuse
 
 > **Mandatory:** Before designing new modules, search the existing codebase for reusable components. List any existing utilities, clients, base classes, or patterns that this feature MUST reuse instead of reimplementing.
 
@@ -457,7 +510,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 > If no reusable components exist, state "No existing components identified for reuse" and explain why.
 
-### 3.4 Project Identity Alignment
+### 5.4 Project Identity Alignment
 
 > If the repository appears to come from a template/scaffold, identify any generic crate/package/module names that must be renamed to match the current project or product identity before feature work is complete.
 
@@ -467,7 +520,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 > If no identity cleanup is needed, state "No template identity mismatches detected.".
 
-### 3.5 BDD/TDD Strategy
+### 5.5 BDD/TDD Strategy
 
 > Describe how this feature will use outside-in development. Define the business-facing Gherkin loop and the supporting TDD loop.
 
@@ -483,7 +536,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 > Property testing should be planned by default for large input domains such as parsers, serializers, normalization, versioning rules, combinatorial business logic, or boundary-heavy validation. Fuzzing is conditional for parser/protocol/unsafe/untrusted-input crash-safety work. Benchmarks are conditional for explicit performance-sensitive paths.
 
-### 3.6 BDD Scenario Inventory
+### 5.6 BDD Scenario Inventory
 
 > List every scenario that should be planned as a first-class acceptance artifact.
 
@@ -493,41 +546,41 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 ---
 
-## 4. Detailed Design
+## 6. Detailed Design
 
-### 4.1 Module Structure
+### 6.1 Module Structure
 
 > File/directory layout for new or modified code. If the repo still exposes scaffold placeholders, show the project-matching module/package/crate names after the planned rename.
 
-### 4.2 Data Structures & Types
+### 6.2 Data Structures & Types
 
 > Core data models, classes, enums, or schemas. Include code sketches.
 
-### 4.3 Interface Design
+### 6.3 Interface Design
 
 > Public APIs, function signatures, abstract interfaces this feature exposes or consumes.
 
-### 4.4 Logic Flow
+### 6.4 Logic Flow
 
 > Key workflows, state transitions, or processing pipelines.
 
-### 4.5 Configuration
+### 6.5 Configuration
 
 > New config values, environment variables, or feature flags.
 
-### 4.6 Error Handling
+### 6.6 Error Handling
 
 > Error types, failure modes, and recovery strategy.
 
 ---
 
-## 5. Verification & Testing Strategy
+## 7. Verification & Testing Strategy
 
-### 5.1 Unit Testing
+### 7.1 Unit Testing
 
 > What pure logic to test. Scope and tooling.
 
-### 5.2 Property Testing
+### 7.2 Property Testing
 
 > Identify where example-based tests leave too much input space uncovered. Use the language-appropriate property-testing tool (`Hypothesis`, `fast-check`, or `proptest`) unless you can justify that the logic is too trivial or already fully covered by a smaller deterministic domain.
 
@@ -535,11 +588,11 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 | :--- | :--- | :--- | :--- |
 | `[e.g., version string normalization]` | `[Large combinatorial input space]` | `[e.g., uv run pytest tests/test_version_properties.py -q]` | `[Round-trip, idempotence, monotonicity, etc.]` |
 
-### 5.3 Integration Testing
+### 7.3 Integration Testing
 
 > How modules work together. Mock strategies.
 
-### 5.4 Robustness & Performance Testing
+### 7.4 Robustness & Performance Testing
 
 > Plan these only when the task profile requires them.
 
@@ -548,7 +601,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 | **Fuzz** | `[Parser/protocol/unsafe/untrusted-input paths only]` | `[e.g., cargo fuzz run parser]` | `[Crash-safety target, or N/A with reason]` |
 | **Benchmark** | `[Explicit latency/throughput/hot-path requirements only]` | `[e.g., uv run pytest tests/benchmarks/test_cli.py --benchmark-only]` | `[Regression budget, or N/A with reason]` |
 
-### 5.5 Critical Path Verification (The "Harness")
+### 7.5 Critical Path Verification (The "Harness")
 
 > Define the exact command(s) or script(s) that prove this feature works end-to-end. The pb-build agent will use these to verify the final result.
 
@@ -557,7 +610,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 | **VP-01** | `[e.g., pytest tests/ -v]` | `[e.g., "All tests pass"]` |
 | **VP-02** | `[e.g., curl http://localhost:8000/health]` | `[e.g., "Response code 200"]` |
 
-### 5.6 Validation Rules
+### 7.6 Validation Rules
 
 | Test Case ID | Action | Expected Outcome | Verification Method |
 | :--- | :--- | :--- | :--- |
@@ -602,6 +655,8 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 ## Summary & Phasing
 
 > Brief implementation strategy.
+>
+> Note any subagent-produced requirement extraction or reconciliation findings that shape task ordering or coverage expectations.
 
 - **Property Testing Rule:** Add property-test coverage with `Hypothesis`, `fast-check`, or `proptest` for broad input-domain logic unless the task explicitly justifies why example-based tests are sufficient.
 - **Fuzzing Rule:** Add `Atheris`, `jazzer.js`, or `cargo-fuzz` only for parsers, protocols, unsafe/native boundaries, binary formats, or other untrusted-input crash-safety work.
@@ -627,6 +682,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 - **Priority:** P0 / P1 / P2
 - **Scope:** [Logical Unit of Work — e.g., "Model layer", "API endpoint", "Service integration"]
+- **Requirement Coverage:** `[Requirement IDs from Source Inputs & Normalization, or N/A with reason]`
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
@@ -652,6 +708,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 - **Priority:** P0
 - **Scope:** [Logical Unit of Work]
+- **Requirement Coverage:** `[Requirement IDs from Source Inputs & Normalization, or N/A with reason]`
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
@@ -677,6 +734,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 - **Priority:** P1
 - **Scope:** [Logical Unit of Work]
+- **Requirement Coverage:** `[Requirement IDs from Source Inputs & Normalization, or N/A with reason]`
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
@@ -702,6 +760,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 - **Priority:** P2
 - **Scope:** [Logical Unit of Work]
+- **Requirement Coverage:** `[Requirement IDs from Source Inputs & Normalization, or N/A with reason]`
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`

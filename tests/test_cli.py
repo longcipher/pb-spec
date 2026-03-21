@@ -19,9 +19,31 @@ VALID_FULL_DESIGN = """# Example Design
 
 Concrete summary.
 
+## Source Inputs & Normalization
+
+### 2.1 Source Materials
+
+Original design notes.
+
+### 2.2 Normalization Approach
+
+Normalized into a requirement ledger.
+
+### 2.3 Source Requirement Ledger
+
+| Requirement ID | Source Summary | Type | Notes |
+| :--- | :--- | :--- | :--- |
+| `R1` | `Support successful login` | `Functional` | `Must remain user-visible` |
+
 ## Requirements & Goals
 
 Concrete requirements.
+
+## Requirements Coverage Matrix
+
+| Requirement ID | Covered In Design | Scenario Coverage | Task Coverage | Status / Rationale |
+| :--- | :--- | :--- | :--- | :--- |
+| `R1` | `Detailed Design` | `auth.feature / User authenticates successfully` | `Task 1.1` | `Covered` |
 
 ## Architecture Overview
 
@@ -103,6 +125,7 @@ def test_validate_succeeds_for_minimal_valid_spec(tmp_path: Path) -> None:
 
 - **Status:** 🔴 TODO
 - **Loop Type:** BDD+TDD
+- **Requirement Coverage:** `R1`
 - **Scenario Coverage:** User authenticates successfully
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A

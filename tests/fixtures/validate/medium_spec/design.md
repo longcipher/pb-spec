@@ -4,11 +4,37 @@
 
 Add a sliding-window rate limiter middleware to the HTTP API that protects endpoints from abuse while allowing legitimate traffic through.
 
+## Source Inputs & Normalization
+
+### 2.1 Source Materials
+
+Rate limiting requirements, middleware notes, and distributed deployment constraints.
+
+### 2.2 Normalization Approach
+
+The incoming notes were reduced into concrete backend, rejection, and pass-through requirements.
+
+### 2.3 Source Requirement Ledger
+
+| Requirement ID | Source Summary | Type | Notes |
+| :--- | :--- | :--- | :--- |
+| `R1` | `Define a backend-agnostic store protocol for counters` | `Functional` | `Internal foundation` |
+| `R2` | `Return 429 when the limit is exceeded` | `Functional` | `User-visible` |
+| `R3` | `Allow requests under the limit to pass through` | `Functional` | `User-visible` |
+
 ## Requirements & Goals
 
 - Enforce per-client request limits using a sliding window algorithm
 - Return 429 Too Many Requests when limits are exceeded
 - Store counters in Redis for distributed deployments
+
+## Requirements Coverage Matrix
+
+| Requirement ID | Covered In Design | Scenario Coverage | Task Coverage | Status / Rationale |
+| :--- | :--- | :--- | :--- | :--- |
+| `R1` | `Detailed Design` | `N/A because this is internal protocol work` | `Task 1.1` | `Covered` |
+| `R2` | `Detailed Design` | `rate_limiter.feature / Rate limited request receives 429 response` | `Task 1.2` | `Covered` |
+| `R3` | `Detailed Design` | `rate_limiter.feature / Allowed request passes through rate limiter` | `Task 1.3` | `Covered` |
 
 ## Architecture Overview
 

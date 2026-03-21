@@ -172,6 +172,51 @@ def test_pb_plan_templates_require_gherkin_feature_generation():
         assert "Scenario Coverage" in content
 
 
+def test_pb_plan_templates_accept_arbitrary_source_material_without_prompt_recipes():
+    """pb-plan should accept raw design docs or rough requirements without special wording."""
+    for content in (load_skill_content("pb-plan"), load_prompt("pb-plan")):
+        assert "arbitrary format" in content
+        assert "rough notes" in content
+        assert "partial design" in content
+        assert "Do not require the user to provide pb-plan-specific prompt wording" in content
+
+
+def test_pb_plan_templates_require_subagent_backed_analysis_and_reconciliation():
+    """pb-plan should use fresh subagents to analyze inputs and reconcile output coverage."""
+    refs = load_references("pb-plan")
+
+    for content in (
+        load_skill_content("pb-plan"),
+        load_prompt("pb-plan"),
+        refs["design_template.md"],
+        refs["tasks_template.md"],
+    ):
+        assert "subagent" in content
+
+    for content in (load_skill_content("pb-plan"), load_prompt("pb-plan")):
+        assert "Source Requirements Analyst" in content
+        assert "Codebase Analyst" in content
+        assert "Spec Reconciliation Auditor" in content
+        assert "fresh, minimal context" in content
+        assert "Requirements Coverage Matrix" in content
+        assert (
+            "reconcile the extracted source requirements against the generated `design.md`"
+            in content
+        )
+
+
+def test_pb_plan_reference_templates_require_source_requirement_traceability():
+    """pb-plan reference templates should surface source inputs and traceability fields."""
+    refs = load_references("pb-plan")
+    design = refs["design_template.md"]
+    tasks = refs["tasks_template.md"]
+
+    assert "Source Inputs & Normalization" in design
+    assert "Requirements Coverage Matrix" in design
+    assert "Requirement ID" in design
+    assert "Requirement Coverage" in tasks
+
+
 def test_pb_plan_lightweight_templates_remain_pb_build_compatible():
     """Lightweight task examples must still satisfy pb-build task parsing rules."""
     for content in (load_skill_content("pb-plan"), load_prompt("pb-plan")):

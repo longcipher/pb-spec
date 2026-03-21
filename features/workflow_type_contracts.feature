@@ -12,6 +12,21 @@ Feature: Workflow artifacts carry executable contract meaning
     Then the builder reports the missing field before spawning implementation work
     And the builder does not continue to later tasks
 
+  Scenario: Validator rejects missing requirement traceability
+    Given a spec includes a source requirement ledger
+    When the validate command inspects a spec with missing requirement mappings
+    Then validation fails with requirement traceability findings before build work starts
+
+  Scenario: Validator rejects matrix scenario coverage that does not exist
+    Given a spec includes a requirements coverage matrix scenario reference
+    When the validate command inspects a spec with a missing matrix scenario target
+    Then validation fails with matrix scenario coverage findings before build work starts
+
+  Scenario: Validator rejects matrix task coverage that does not exist
+    Given a spec includes a requirements coverage matrix task reference
+    When the validate command inspects a spec with a missing matrix task target
+    Then validation fails with matrix task coverage findings before build work starts
+
   Scenario: Builder uses allowed task state transitions only
     Given a pending task in a build-eligible spec
     When the builder starts work on the task

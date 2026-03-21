@@ -5,16 +5,22 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import Final, cast
 
-PLACEHOLDER_RE = re.compile(r"^(?:TBD|\[To be written\]|\[[^\]]+\])$", re.IGNORECASE)
-BUILD_BLOCKED_HEADER_RE = re.compile(r"^🛑 Build Blocked — (Task \d+\.\d+: .+?)\s*$")
-DCR_HEADER_RE = re.compile(r"^🔄 Design Change Request — (Task \d+\.\d+: .+?)\s*$")
-QUOTED_TEXT_RE = re.compile(r'("[^"\n]{3,}"|\'[^\'\n]{3,}\'|`[^`\n]{3,}`)')
-GHERKIN_STEP_RE = re.compile(r"^(?:Given|When|Then|And|But)\b")
-TASK_REFERENCE_RE = re.compile(r"\bTask \d+\.\d+\b")
+PLACEHOLDER_RE: Final[re.Pattern[str]] = re.compile(
+    r"^(?:TBD|\[To be written\]|\[[^\]]+\])$", re.IGNORECASE
+)
+BUILD_BLOCKED_HEADER_RE: Final[re.Pattern[str]] = re.compile(
+    r"^🛑 Build Blocked — (Task \d+\.\d+: .+?)\s*$"
+)
+DCR_HEADER_RE: Final[re.Pattern[str]] = re.compile(
+    r"^🔄 Design Change Request — (Task \d+\.\d+: .+?)\s*$"
+)
+QUOTED_TEXT_RE: Final[re.Pattern[str]] = re.compile(r'("[^"\n]{3,}"|\'[^\'\n]{3,}\'|`[^`\n]{3,}`)')
+GHERKIN_STEP_RE: Final[re.Pattern[str]] = re.compile(r"^(?:Given|When|Then|And|But)\b")
+TASK_REFERENCE_RE: Final[re.Pattern[str]] = re.compile(r"\bTask \d+\.\d+\b")
 
-BUILD_BLOCKED_SECTIONS = (
+BUILD_BLOCKED_SECTIONS: Final[tuple[str, ...]] = (
     "Reason",
     "Loop Type",
     "Scenario Coverage",
@@ -25,7 +31,7 @@ BUILD_BLOCKED_SECTIONS = (
     "Impact",
     "Next Action",
 )
-DCR_SECTIONS = (
+DCR_SECTIONS: Final[tuple[str, ...]] = (
     "Scenario Coverage",
     "Problem",
     "What We Tried",
@@ -34,8 +40,8 @@ DCR_SECTIONS = (
     "Suggested Change",
     "Impact",
 )
-_SECTION_NAME_ITEMS: list[str] = [*BUILD_BLOCKED_SECTIONS, *DCR_SECTIONS]
-SECTION_NAMES: tuple[str, ...] = tuple(
+_SECTION_NAME_ITEMS: Final[list[str]] = [*BUILD_BLOCKED_SECTIONS, *DCR_SECTIONS]
+SECTION_NAMES: Final[tuple[str, ...]] = tuple(
     cast(str, section_name)
     for section_name in sorted(set(_SECTION_NAME_ITEMS), key=len, reverse=True)
 )
@@ -43,6 +49,8 @@ SECTION_NAMES: tuple[str, ...] = tuple(
 
 @dataclass(slots=True)
 class FeedbackPacket:
+    """A parsed feedback packet (Build Blocked or Design Change Request)."""
+
     kind: str
     task_label: str
     body_lines: list[str]

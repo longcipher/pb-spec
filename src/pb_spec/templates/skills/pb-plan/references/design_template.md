@@ -17,20 +17,38 @@
 
 ---
 
-## 2. Requirements & Goals
+## 2. Source Inputs & Normalization
 
-### 2.1 Problem Statement
+### 2.1 Source Materials
+
+> What did the planner consume? Capture raw design docs, rough notes, partial design drafts, issue threads, transcripts, or mixed-format requirement sources. The planner should accept arbitrary format input instead of requiring a special prompt recipe.
+
+### 2.2 Normalization Approach
+
+> Explain how the raw input was normalized into a source requirement ledger, what ambiguities were resolved via repo evidence, and which assumptions remain explicit. If subagent findings were used during intake or reconciliation, summarize the subagent roles and the evidence they contributed.
+
+### 2.3 Source Requirement Ledger
+
+| Requirement ID | Source Summary | Type | Notes |
+| :--- | :--- | :--- | :--- |
+| `R1` | `[Requirement or constraint extracted from the source]` | `Functional / Constraint / Non-goal / Assumption trigger` | `[Any wording that must be preserved]` |
+
+---
+
+## 3. Requirements & Goals
+
+### 3.1 Problem Statement
 
 > Describe current pain points or missing functionality. Be specific.
 
-### 2.2 Functional Goals
+### 3.2 Functional Goals
 
 > Must-have features. Numbered list.
 
 1. **[Goal A]:** Description...
 2. **[Goal B]:** Description...
 
-### 2.3 Non-Functional Goals
+### 3.3 Non-Functional Goals
 
 > Performance, reliability, security, observability, etc.
 
@@ -38,15 +56,15 @@
 - **Reliability:** ...
 - **Security:** ...
 
-### 2.4 Out of Scope
+### 3.4 Out of Scope
 
 > What is explicitly NOT being done. Prevents scope creep.
 
-### 2.5 Assumptions
+### 3.5 Assumptions
 
 > Any assumptions or constraints. List decisions made when requirements were ambiguous.
 
-### 2.6 Code Simplification Constraints
+### 3.6 Code Simplification Constraints
 
 > Document the maintainability rules that should shape implementation decisions.
 
@@ -58,17 +76,27 @@
 
 ---
 
-## 3. Architecture Overview
+## 4. Requirements Coverage Matrix
 
-### 3.1 System Context
+> Reconcile the normalized source requirements against the generated spec before finalizing the plan.
+
+| Requirement ID | Covered In Design | Scenario Coverage | Task Coverage | Status / Rationale |
+| :--- | :--- | :--- | :--- | :--- |
+| `R1` | `[Section references]` | `[Feature/scenario names or N/A]` | `[Task IDs or N/A]` | `[Covered / Out of scope / Deferred / Assumption-bound]` |
+
+---
+
+## 5. Architecture Overview
+
+### 5.1 System Context
 
 > How does this feature fit into the existing system? Describe interactions with other modules, services, or external systems. Use a diagram if helpful.
 
-### 3.2 Key Design Principles
+### 5.2 Key Design Principles
 
 > Core ideas guiding this design. Examples: "Separation of concerns", "Fail-fast", "Backward-compatible API".
 
-### 3.3 Existing Components to Reuse
+### 5.3 Existing Components to Reuse
 
 > **Mandatory:** Before designing new modules, search the existing codebase for reusable components. List any existing utilities, clients, base classes, or patterns that this feature MUST reuse instead of reimplementing.
 
@@ -79,7 +107,7 @@
 
 > If no reusable components exist, state "No existing components identified for reuse" and explain why.
 
-### 3.4 Architecture Decisions
+### 5.4 Architecture Decisions
 
 > Explicitly decide which architectural patterns or principles this feature will use before implementation begins. For any change likely to exceed **200 lines** of implementation or introduce a new module boundary, this section is mandatory and must be specific.
 
@@ -93,7 +121,7 @@
 - **Dependency Injection Plan:** All external dependencies should flow through interfaces or abstract classes unless the repo already has a documented alternative seam.
 - **Code Simplifier Alignment:** Explain how these decisions keep the implementation explicit and maintainable rather than clever.
 
-### 3.5 Project Identity Alignment
+### 5.5 Project Identity Alignment
 
 > If the repository appears to come from a template/scaffold, identify any generic crate/package/module names that must be renamed to match the current project or product identity before feature work is complete.
 
@@ -103,7 +131,7 @@
 
 > If no identity cleanup is needed, state "No template identity mismatches detected.".
 
-### 3.6 BDD/TDD Strategy
+### 5.6 BDD/TDD Strategy
 
 > Describe how this feature will use outside-in development. Define the business-facing Gherkin loop and the supporting TDD loop.
 
@@ -119,7 +147,7 @@
 
 > Property testing should be planned by default for large input domains such as parsers, serializers, normalization, versioning rules, combinatorial business logic, or boundary-heavy validation. Fuzzing is conditional for parser/protocol/unsafe/untrusted-input crash-safety work. Benchmarks are conditional for explicit performance-sensitive paths.
 
-### 3.7 BDD Scenario Inventory
+### 5.7 BDD Scenario Inventory
 
 > List every scenario that should be planned as a first-class acceptance artifact.
 
@@ -127,7 +155,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | `features/[feature-name].feature` | `[Scenario Name]` | `[User-visible result]` | `[BDD command or acceptance check]` | `[Unit/component logic to drive with TDD]` |
 
-### 3.8 Simplification Opportunities in Touched Code
+### 5.8 Simplification Opportunities in Touched Code
 
 > Identify the specific cleanup that should happen alongside the feature without broadening scope.
 
@@ -137,9 +165,9 @@
 
 ---
 
-## 4. Detailed Design
+## 6. Detailed Design
 
-### 4.1 Module Structure
+### 6.1 Module Structure
 
 > File/directory layout for the new or modified code. If the repo still exposes scaffold placeholders, show the project-matching module/package/crate names after the planned rename.
 
@@ -152,7 +180,7 @@ src/
 │   └── utils.py
 ```
 
-### 4.2 Data Structures & Types
+### 6.2 Data Structures & Types
 
 > Define core data models, classes, enums, or schemas.
 > The planner contract must stay in markdown. Define the contract types that make the planned artifact set build-eligible without inventing a parallel YAML or JSON schema.
@@ -195,7 +223,7 @@ DesignChangeRequestPacket
         Failure Evidence, Failing Step (or `N/A`), Suggested Change, Impact
 ```
 
-### 4.3 Interface Design
+### 6.3 Interface Design
 
 > Public APIs, function signatures, abstract interfaces, or protocols this feature exposes or consumes.
 
@@ -206,21 +234,21 @@ class FeatureInterface:
         ...
 ```
 
-### 4.4 Logic Flow
+### 6.4 Logic Flow
 
 > Describe key workflows, state transitions, or processing pipelines. Use step-by-step descriptions or diagrams.
 >
 > Keep the proposed flow explicit and easy to follow. Prefer straightforward branching and cohesive helper boundaries over compact but opaque control flow.
 
-### 4.5 Configuration
+### 6.5 Configuration
 
 > Any new config values, environment variables, or feature flags introduced.
 
-### 4.6 Error Handling
+### 6.6 Error Handling
 
 > Error types, failure modes, and recovery strategy.
 
-### 4.7 Maintainability Notes
+### 6.7 Maintainability Notes
 
 > Call out any implementation guardrails that keep the change readable and easy to extend.
 
@@ -230,15 +258,15 @@ class FeatureInterface:
 
 ---
 
-## 5. Verification & Testing Strategy
+## 7. Verification & Testing Strategy
 
-### 5.1 Unit Testing
+### 7.1 Unit Testing
 
 > What pure logic to test. Scope and tooling.
 >
 > Include regression checks that prove any planned simplification preserves behavior, not just happy-path outcomes.
 
-### 5.2 Property Testing
+### 7.2 Property Testing
 
 > Identify where example-based tests leave too much input space uncovered. Use the language-appropriate property-testing tool (`Hypothesis`, `fast-check`, or `proptest`) unless you can justify that the logic is too trivial or already fully covered by a smaller deterministic domain.
 
@@ -246,11 +274,11 @@ class FeatureInterface:
 | :--- | :--- | :--- | :--- |
 | `[e.g., version string normalization]` | `[Large combinatorial input space]` | `[e.g., uv run pytest tests/test_version_properties.py -q]` | `[Round-trip, idempotence, monotonicity, etc.]` |
 
-### 5.3 Integration Testing
+### 7.3 Integration Testing
 
 > How modules work together. Mock strategies, sandbox environments.
 
-### 5.4 BDD Acceptance Testing
+### 7.4 BDD Acceptance Testing
 
 > Which `.feature` files and scenarios must fail first and then pass. Include the exact BDD runner command.
 
@@ -258,7 +286,7 @@ class FeatureInterface:
 | :--- | :--- | :--- | :--- |
 | **BDD-01** | `[e.g., features/auth.feature]` | `[e.g., npm exec cucumber-js features/auth.feature]` | `[e.g., Scenario passes with 0 failed steps]` |
 
-### 5.5 Robustness & Performance Testing
+### 7.5 Robustness & Performance Testing
 
 > Plan these only when the task profile requires them.
 
@@ -267,7 +295,7 @@ class FeatureInterface:
 | **Fuzz** | `[Parser/protocol/unsafe/untrusted-input paths only]` | `[e.g., cargo fuzz run parser]` | `[Crash-safety target, or N/A with reason]` |
 | **Benchmark** | `[Explicit latency/throughput/hot-path requirements only]` | `[e.g., uv run pytest tests/benchmarks/test_cli.py --benchmark-only]` | `[Regression budget, or N/A with reason]` |
 
-### 5.6 Critical Path Verification (The "Harness")
+### 7.6 Critical Path Verification (The "Harness")
 
 > Define the exact command(s) or script(s) that prove this feature works end-to-end. The `pb-build` agent will use these to verify the final result. This acts as the acceptance test for the entire feature.
 

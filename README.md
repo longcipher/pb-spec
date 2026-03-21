@@ -91,13 +91,17 @@ pb-spec init --ai all -g       # install globally to each agent's home/config di
 
 ## Supported AI Tools
 
-| AI Tool | Target Directory | File Format |
-|---|---|---|
-| Claude Code | `.claude/skills/pb-<name>/SKILL.md` | YAML frontmatter + Markdown |
-| VS Code Copilot | `.github/prompts/pb-<name>.prompt.md` | Markdown (no frontmatter) |
-| OpenCode | `.opencode/skills/pb-<name>/SKILL.md` | YAML frontmatter + Markdown |
-| Gemini CLI | `.gemini/commands/pb-<name>.toml` | TOML (`description` + `prompt`) |
-| Codex | `.codex/prompts/pb-<name>.md` | YAML frontmatter + Markdown |
+All platform adapters are **fully implemented** and production-ready. Each platform has been tested for path generation, content rendering, and file installation.
+
+| AI Tool | Status | Target Directory | File Format | Global Install |
+|---|---|---|---|---|
+| Claude Code | ✅ Complete | `.claude/skills/pb-<name>/SKILL.md` | YAML frontmatter + Markdown | ✅ `~/.claude/skills/` |
+| VS Code Copilot | ✅ Complete | `.github/prompts/pb-<name>.prompt.md` | Markdown (no frontmatter) | ✅ `~/.copilot/prompts/` |
+| OpenCode | ✅ Complete | `.opencode/skills/pb-<name>/SKILL.md` | YAML frontmatter + Markdown | ✅ `~/.config/opencode/skills/` |
+| Gemini CLI | ✅ Complete | `.gemini/commands/pb-<name>.toml` | TOML (`description` + `prompt`) | ✅ `~/.gemini/commands/` |
+| Codex | ✅ Complete | `.codex/prompts/pb-<name>.md` | YAML frontmatter + Markdown | ✅ `~/.codex/prompts/` |
+
+For detailed implementation information, see [docs/platform-implementation-status.md](docs/platform-implementation-status.md).
 
 ## CLI Reference
 
@@ -158,7 +162,7 @@ This stronger contract does not add a new command or side-channel validator. The
 
 ### 2. `/pb-plan <requirement>` — Design & Task Planning
 
-Takes a natural-language requirement and produces a complete feature spec:
+Takes source material in arbitrary format and produces a complete feature spec. You can hand it raw design docs, rough notes, copied requirements, partial design drafts, or mixed-format planning input without wrapping that material in a special pb-plan prompt recipe:
 
 ```text
 specs/<YYYY-MM-DD-NO-feature-name>/
@@ -177,6 +181,8 @@ It also performs two additional planning audits before implementation starts:
 
 - Template identity alignment: if the repo still contains generic crate/package/module names from a scaffold, `pb-plan` must front-load renaming those identifiers to project-matching names.
 - Risk-based advanced testing: property testing is planned by default for broad input-domain logic, while fuzzing and benchmarks are added only when the feature profile justifies them. Tool selection follows repo language conventions: `Hypothesis` / `fast-check` / `proptest`, `Atheris` / `jazzer.js` / `cargo-fuzz`, and `pytest-benchmark` / `Vitest Bench` / `criterion`.
+
+It should also normalize the incoming source material into a source requirement ledger and use multiple fresh subagents when that improves quality, typically separating source requirement extraction, live codebase analysis, and spec reconciliation. Before finalizing the spec, `pb-plan` should reconcile the extracted source requirements against the generated `design.md`, `tasks.md`, and `features/*.feature` so missing requirements are closed in the planning phase instead of being discovered later during `pb-build`.
 
 It also adds an explicit **Architecture Decisions** section to `design.md`. For work that introduces a new boundary or is likely to exceed 200 lines, planning must evaluate **SRP**, **DIP**, and the classic patterns **Factory**, **Strategy**, **Observer**, **Adapter**, and **Decorator**. The chosen pattern must be justified against alternatives and checked against the code-simplification lens so the design stays simpler, not just more abstract.
 

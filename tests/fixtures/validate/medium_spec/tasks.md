@@ -9,6 +9,7 @@
 
 - **Status:** 🔴 TODO
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** `R1`
 - **Scenario Coverage:** N/A because this is internal protocol definition with no user-visible behavior
 - **Behavioral Contract:** The store protocol defines `increment`, `count`, and `reset` methods
 - **Simplification Focus:** Keep protocol minimal — three methods only
@@ -27,6 +28,7 @@
 
 - **Status:** 🔴 TODO
 - **Loop Type:** BDD+TDD
+- **Requirement Coverage:** `R2`
 - **Scenario Coverage:** Rate limited request receives 429 response
 - **Behavioral Contract:** The middleware returns 429 with Retry-After header when the limit is exceeded
 - **Simplification Focus:** N/A
@@ -43,6 +45,7 @@
 
 - **Status:** 🔴 TODO
 - **Loop Type:** BDD+TDD
+- **Requirement Coverage:** `R3`
 - **Scenario Coverage:** Allowed request passes through rate limiter
 - **Behavioral Contract:** Requests under the limit pass through with no added latency beyond the counting overhead
 - **Simplification Focus:** N/A

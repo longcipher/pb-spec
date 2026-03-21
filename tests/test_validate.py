@@ -16,6 +16,116 @@ from pb_spec.validation.tasks import (
 
 FIXTURES_ROOT = Path(__file__).resolve().parent / "fixtures" / "validate"
 
+VALID_TRACEABLE_FULL_DESIGN = """# Example Design
+
+## Executive Summary
+
+Concrete summary.
+
+## Source Inputs & Normalization
+
+### 2.1 Source Materials
+
+Original design notes.
+
+### 2.2 Normalization Approach
+
+Normalized into a requirement ledger.
+
+### 2.3 Source Requirement Ledger
+
+| Requirement ID | Source Summary | Type | Notes |
+| :--- | :--- | :--- | :--- |
+| `R1` | `Support successful login` | `Functional` | `Must remain user-visible` |
+
+## Requirements & Goals
+
+Concrete requirements.
+
+## Requirements Coverage Matrix
+
+| Requirement ID | Covered In Design | Scenario Coverage | Task Coverage | Status / Rationale |
+| :--- | :--- | :--- | :--- | :--- |
+| `R1` | `Detailed Design` | `auth.feature / User authenticates successfully` | `Task 1.1` | `Covered` |
+
+## Architecture Overview
+
+Concrete architecture overview.
+
+## Existing Components to Reuse
+
+No existing components identified for reuse.
+
+## Detailed Design
+
+Concrete design details.
+
+## Verification & Testing Strategy
+
+Concrete verification strategy.
+
+## Implementation Plan
+
+Concrete implementation plan.
+"""
+
+
+def test_validate_tasks_requires_requirement_coverage_field(tmp_path: Path) -> None:
+    tasks_file = tmp_path / "tasks.md"
+    tasks_file.write_text(
+        """# Example Tasks
+
+### Task 1.1: Add validator shell
+
+> **Context:** Add the first validator entry point.
+> **Verification:** Run the CLI help and verify the command is listed.
+
+- **Status:** 🔴 TODO
+- **Loop Type:** TDD-only
+- **Scenario Coverage:** N/A for CLI shell registration
+- **Behavioral Contract:** Preserve existing behavior
+- **Simplification Focus:** N/A
+- [ ] **Step 1:** Add the command module.
+- [ ] **BDD Verification:** N/A for CLI shell registration
+- [ ] **Advanced Test Verification:** N/A because no advanced tests apply
+- [ ] **Runtime Verification:** N/A because this is not runtime-facing work
+""",
+        encoding="utf-8",
+    )
+
+    errors = validate_task_file(tasks_file)
+
+    assert "Missing required task field in Task 1.1: Requirement Coverage" in errors
+
+
+def test_validate_tasks_rejects_unknown_requirement_coverage_ids(tmp_path: Path) -> None:
+    tasks_file = tmp_path / "tasks.md"
+    tasks_file.write_text(
+        """# Example Tasks
+
+### Task 1.1: Implement login
+
+> **Context:** Add login endpoint.
+> **Verification:** Run auth tests.
+
+- **Status:** 🔴 TODO
+- **Loop Type:** BDD+TDD
+- **Requirement Coverage:** `R2`
+- **Scenario Coverage:** User authenticates successfully
+- **Behavioral Contract:** Return token on valid credentials
+- **Simplification Focus:** N/A
+- [ ] **Step 1:** Implement login.
+- [ ] **BDD Verification:** Run auth scenario.
+- [ ] **Advanced Test Verification:** N/A because no advanced tests apply
+- [ ] **Runtime Verification:** N/A because this is not runtime-facing work
+""",
+        encoding="utf-8",
+    )
+
+    errors = validate_task_file(tasks_file, known_requirement_ids={"R1"})
+
+    assert errors == ["Unknown requirement reference in Task 1.1: R2"]
+
 
 def test_parse_tasks_extracts_task_blocks_and_required_fields(tmp_path: Path) -> None:
     tasks_file = tmp_path / "tasks.md"
@@ -63,6 +173,7 @@ def test_validate_tasks_reports_missing_required_field(tmp_path: Path) -> None:
 
 - **Status:** 🔴 TODO
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** N/A for CLI shell registration
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A
 - [ ] **Step 1:** Add the command module.
@@ -105,6 +216,7 @@ def test_validate_tasks_accepts_legacy_todo_as_pending_input(tmp_path: Path) -> 
 
 - **Status:** TODO
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** N/A for compatibility input
 - **Scenario Coverage:** N/A for compatibility input
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A
@@ -133,6 +245,7 @@ def test_validate_tasks_rejects_invalid_status_value(tmp_path: Path) -> None:
 
 - **Status:** COMPLETE-ish
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** N/A for compatibility input
 - **Scenario Coverage:** N/A for compatibility input
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A
@@ -161,6 +274,7 @@ def test_validate_tasks_rejects_done_without_required_verification_entries(tmp_p
 
 - **Status:** 🟢 DONE
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** N/A for compatibility input
 - **Scenario Coverage:** N/A for compatibility input
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A
@@ -193,6 +307,7 @@ def test_validate_tasks_accepts_done_with_unchecked_step(tmp_path: Path) -> None
 
 - **Status:** 🟢 DONE
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** N/A for compatibility input
 - **Scenario Coverage:** N/A for compatibility input
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A
@@ -223,6 +338,7 @@ def test_validate_tasks_rejects_done_with_incomplete_verification_evidence(
 
 - **Status:** 🟢 DONE
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** N/A for compatibility input
 - **Scenario Coverage:** N/A for compatibility input
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A
@@ -293,6 +409,7 @@ def test_validate_reports_missing_scenario_reference(tmp_path: Path) -> None:
 
 - **Status:** 🔴 TODO
 - **Loop Type:** BDD+TDD
+- **Requirement Coverage:** `R1`
 - **Scenario Coverage:** User receives an auth error
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A
@@ -322,6 +439,7 @@ def test_validate_rejects_noop_scenario_coverage_for_bdd_task(tmp_path: Path) ->
 
 - **Status:** 🔴 TODO
 - **Loop Type:** BDD+TDD
+- **Requirement Coverage:** `R1`
 - **Scenario Coverage:** N/A because this is not runtime-facing work
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A
@@ -369,6 +487,7 @@ def test_find_orphan_scenarios_detects_unreferenced_scenarios(tmp_path: Path) ->
 
 - **Status:** 🔴 TODO
 - **Loop Type:** BDD+TDD
+- **Requirement Coverage:** `R1`
 - **Scenario Coverage:** User authenticates successfully
 - **Behavioral Contract:** Return token on valid credentials
 - **Simplification Focus:** N/A
@@ -411,6 +530,7 @@ def test_find_orphan_scenarios_returns_empty_when_all_referenced(tmp_path: Path)
 
 - **Status:** 🔴 TODO
 - **Loop Type:** BDD+TDD
+- **Requirement Coverage:** `R1`
 - **Scenario Coverage:** User authenticates successfully
 - **Behavioral Contract:** Return token on valid credentials
 - **Simplification Focus:** N/A
@@ -453,6 +573,7 @@ def test_find_orphan_scenarios_ignores_na_task_coverage(tmp_path: Path) -> None:
 
 - **Status:** 🔴 TODO
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** N/A because this is internal scaffolding
 - **Scenario Coverage:** N/A because this is internal scaffolding
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A
@@ -492,39 +613,7 @@ def test_validate_command_rejects_unreferenced_scenarios(
 """,
         encoding="utf-8",
     )
-    (spec_dir / "design.md").write_text(
-        """# Example Design
-
-## Executive Summary
-
-Concrete summary.
-
-## Requirements & Goals
-
-Concrete requirements.
-
-## Architecture Overview
-
-Concrete architecture overview.
-
-## Existing Components to Reuse
-
-No existing components identified for reuse.
-
-## Detailed Design
-
-Concrete design details.
-
-## Verification & Testing Strategy
-
-Concrete verification strategy.
-
-## Implementation Plan
-
-Concrete implementation plan.
-""",
-        encoding="utf-8",
-    )
+    (spec_dir / "design.md").write_text(VALID_TRACEABLE_FULL_DESIGN, encoding="utf-8")
     (spec_dir / "tasks.md").write_text(
         """# Example Tasks
 
@@ -535,6 +624,7 @@ Concrete implementation plan.
 
 - **Status:** 🔴 TODO
 - **Loop Type:** BDD+TDD
+- **Requirement Coverage:** `R1`
 - **Scenario Coverage:** User authenticates successfully
 - **Behavioral Contract:** Return token on valid credentials
 - **Simplification Focus:** N/A
@@ -566,6 +656,7 @@ def test_validate_reports_missing_context_quote_field(tmp_path: Path) -> None:
 
 - **Status:** 🔴 TODO
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** N/A because this is internal work
 - **Scenario Coverage:** N/A because this is internal work
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A
@@ -594,6 +685,7 @@ def test_validate_reports_missing_behavioral_contract_field(tmp_path: Path) -> N
 
 - **Status:** 🔴 TODO
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** N/A because this is internal work
 - **Scenario Coverage:** N/A because this is internal work
 - **Simplification Focus:** N/A
 - [ ] **Step 1:** Parse the task.
@@ -621,6 +713,7 @@ def test_validate_reports_missing_checkbox_verification_entries(tmp_path: Path) 
 
 - **Status:** 🔴 TODO
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** N/A because this is internal work
 - **Scenario Coverage:** N/A because this is internal work
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A
@@ -650,6 +743,7 @@ def test_validate_rejects_invalid_loop_type_value(tmp_path: Path) -> None:
 
 - **Status:** 🔴 TODO
 - **Loop Type:** Manual-only
+- **Requirement Coverage:** N/A because this is internal work
 - **Scenario Coverage:** N/A because this is internal work
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A
@@ -678,6 +772,7 @@ def test_validate_rejects_duplicate_task_ids(tmp_path: Path) -> None:
 
 - **Status:** 🔴 TODO
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** N/A because this is internal work
 - **Scenario Coverage:** N/A because this is internal work
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A
@@ -693,6 +788,7 @@ def test_validate_rejects_duplicate_task_ids(tmp_path: Path) -> None:
 
 - **Status:** 🔴 TODO
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** N/A because this is internal work
 - **Scenario Coverage:** N/A because this is internal work
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A
@@ -721,6 +817,7 @@ def test_validate_rejects_bare_na_scenario_coverage(tmp_path: Path) -> None:
 
 - **Status:** 🔴 TODO
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** N/A because this is internal work
 - **Scenario Coverage:** N/A
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A
@@ -749,6 +846,7 @@ def test_validate_rejects_bare_na_bdd_verification(tmp_path: Path) -> None:
 
 - **Status:** 🔴 TODO
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** N/A because this is internal work
 - **Scenario Coverage:** N/A because this is internal work
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A
@@ -779,6 +877,7 @@ def test_validate_requires_advanced_test_coverage_when_verification_is_concrete(
 
 - **Status:** 🔴 TODO
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** N/A because this is internal work
 - **Scenario Coverage:** N/A because this is internal work
 - **Behavioral Contract:** Correctness guaranteed by property tests
 - **Simplification Focus:** N/A
@@ -811,6 +910,7 @@ def test_validate_accepts_advanced_test_coverage_with_concrete_verification(
 
 - **Status:** 🔴 TODO
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** N/A because this is internal work
 - **Scenario Coverage:** N/A because this is internal work
 - **Behavioral Contract:** Correctness guaranteed by property tests
 - **Simplification Focus:** N/A
@@ -842,6 +942,7 @@ def test_validate_skips_advanced_test_coverage_check_when_verification_is_na(
 
 - **Status:** 🔴 TODO
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** N/A because this is internal work
 - **Scenario Coverage:** N/A because this is internal work
 - **Behavioral Contract:** Preserve existing behavior
 - **Simplification Focus:** N/A
@@ -859,6 +960,15 @@ def test_validate_skips_advanced_test_coverage_check_when_verification_is_na(
 
 
 def test_validate_design_accepts_full_mode_sections(tmp_path: Path) -> None:
+    design_file = tmp_path / "design.md"
+    design_file.write_text(VALID_TRACEABLE_FULL_DESIGN, encoding="utf-8")
+
+    errors = validate_design_file(design_file)
+
+    assert errors == []
+
+
+def test_validate_design_requires_requirement_traceability_sections(tmp_path: Path) -> None:
     design_file = tmp_path / "design.md"
     design_file.write_text(
         """# Example Design
@@ -896,7 +1006,229 @@ Concrete implementation plan.
 
     errors = validate_design_file(design_file)
 
-    assert errors == []
+    assert "Missing required design section in design.md: Source Inputs & Normalization" in errors
+    assert "Missing required design section in design.md: Requirements Coverage Matrix" in errors
+
+
+def test_validate_design_rejects_unmapped_source_requirement_ids(tmp_path: Path) -> None:
+    design_file = tmp_path / "design.md"
+    design_file.write_text(
+        """# Example Design
+
+## Executive Summary
+
+Concrete summary.
+
+## Source Inputs & Normalization
+
+### 2.1 Source Materials
+
+Original design notes.
+
+### 2.2 Normalization Approach
+
+Normalized into a requirement ledger.
+
+### 2.3 Source Requirement Ledger
+
+| Requirement ID | Source Summary | Type | Notes |
+| :--- | :--- | :--- | :--- |
+| `R1` | `Support successful login` | `Functional` | `Must remain user-visible` |
+
+## Requirements & Goals
+
+Concrete requirements.
+
+## Requirements Coverage Matrix
+
+| Requirement ID | Covered In Design | Scenario Coverage | Task Coverage | Status / Rationale |
+| :--- | :--- | :--- | :--- | :--- |
+| `R2` | `Detailed Design` | `auth.feature / User authenticates successfully` | `Task 1.1` | `Covered` |
+
+## Architecture Overview
+
+Concrete architecture overview.
+
+## Existing Components to Reuse
+
+No existing components identified for reuse.
+
+## Detailed Design
+
+Concrete design details.
+
+## Verification & Testing Strategy
+
+Concrete verification strategy.
+
+## Implementation Plan
+
+Concrete implementation plan.
+""",
+        encoding="utf-8",
+    )
+
+    errors = validate_design_file(design_file)
+
+    assert (
+        "Requirement ID listed in Source Requirement Ledger but missing from Requirements Coverage Matrix: R1"
+        in errors
+    )
+    assert (
+        "Requirement ID listed in Requirements Coverage Matrix but missing from Source Requirement Ledger: R2"
+        in errors
+    )
+
+
+def test_validate_command_rejects_unknown_matrix_scenario_reference(tmp_path: Path) -> None:
+    spec_dir = tmp_path / "spec"
+    features_dir = spec_dir / "features"
+    features_dir.mkdir(parents=True)
+    (features_dir / "auth.feature").write_text(
+        """Feature: Authentication
+
+  Scenario: User authenticates successfully
+    Given the user has valid credentials
+    When the user signs in
+    Then access is granted
+""",
+        encoding="utf-8",
+    )
+    (spec_dir / "design.md").write_text(
+        VALID_TRACEABLE_FULL_DESIGN.replace(
+            "auth.feature / User authenticates successfully",
+            "auth.feature / User receives an auth error",
+        ),
+        encoding="utf-8",
+    )
+    (spec_dir / "tasks.md").write_text(
+        """# Example Tasks
+
+### Task 1.1: Implement login
+
+> **Context:** Add login endpoint.
+> **Verification:** Run auth tests.
+
+- **Status:** 🔴 TODO
+- **Loop Type:** BDD+TDD
+- **Requirement Coverage:** `R1`
+- **Scenario Coverage:** User authenticates successfully
+- **Behavioral Contract:** Return token on valid credentials
+- **Simplification Focus:** N/A
+- [ ] **Step 1:** Implement login.
+- [ ] **BDD Verification:** Run auth scenario.
+- [ ] **Advanced Test Verification:** N/A because no advanced tests apply
+- [ ] **Runtime Verification:** N/A because this is not runtime-facing work
+""",
+        encoding="utf-8",
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["validate", str(spec_dir)])
+
+    assert result.exit_code != 0
+    assert (
+        "Scenario reference not found in Requirements Coverage Matrix for R1: User receives an auth error"
+        in result.output
+    )
+
+
+def test_validate_command_rejects_unknown_matrix_task_reference(tmp_path: Path) -> None:
+    spec_dir = tmp_path / "spec"
+    features_dir = spec_dir / "features"
+    features_dir.mkdir(parents=True)
+    (features_dir / "auth.feature").write_text(
+        """Feature: Authentication
+
+  Scenario: User authenticates successfully
+    Given the user has valid credentials
+    When the user signs in
+    Then access is granted
+""",
+        encoding="utf-8",
+    )
+    (spec_dir / "design.md").write_text(
+        VALID_TRACEABLE_FULL_DESIGN.replace("Task 1.1", "Task 9.9"),
+        encoding="utf-8",
+    )
+    (spec_dir / "tasks.md").write_text(
+        """# Example Tasks
+
+### Task 1.1: Implement login
+
+> **Context:** Add login endpoint.
+> **Verification:** Run auth tests.
+
+- **Status:** 🔴 TODO
+- **Loop Type:** BDD+TDD
+- **Requirement Coverage:** `R1`
+- **Scenario Coverage:** User authenticates successfully
+- **Behavioral Contract:** Return token on valid credentials
+- **Simplification Focus:** N/A
+- [ ] **Step 1:** Implement login.
+- [ ] **BDD Verification:** Run auth scenario.
+- [ ] **Advanced Test Verification:** N/A because no advanced tests apply
+- [ ] **Runtime Verification:** N/A because this is not runtime-facing work
+""",
+        encoding="utf-8",
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["validate", str(spec_dir)])
+
+    assert result.exit_code != 0
+    assert (
+        "Task reference not found in Requirements Coverage Matrix for R1: Task 9.9" in result.output
+    )
+
+
+def test_validate_command_rejects_matrix_task_without_requirement_alignment(
+    tmp_path: Path,
+) -> None:
+    spec_dir = tmp_path / "spec"
+    features_dir = spec_dir / "features"
+    features_dir.mkdir(parents=True)
+    (features_dir / "auth.feature").write_text(
+        """Feature: Authentication
+
+  Scenario: User authenticates successfully
+    Given the user has valid credentials
+    When the user signs in
+    Then access is granted
+""",
+        encoding="utf-8",
+    )
+    (spec_dir / "design.md").write_text(VALID_TRACEABLE_FULL_DESIGN, encoding="utf-8")
+    (spec_dir / "tasks.md").write_text(
+        """# Example Tasks
+
+### Task 1.1: Implement login
+
+> **Context:** Add login endpoint.
+> **Verification:** Run auth tests.
+
+- **Status:** 🔴 TODO
+- **Loop Type:** BDD+TDD
+- **Requirement Coverage:** `R2`
+- **Scenario Coverage:** User authenticates successfully
+- **Behavioral Contract:** Return token on valid credentials
+- **Simplification Focus:** N/A
+- [ ] **Step 1:** Implement login.
+- [ ] **BDD Verification:** Run auth scenario.
+- [ ] **Advanced Test Verification:** N/A because no advanced tests apply
+- [ ] **Runtime Verification:** N/A because this is not runtime-facing work
+""",
+        encoding="utf-8",
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["validate", str(spec_dir)])
+
+    assert result.exit_code != 0
+    assert (
+        "Task reference does not cover requirement in Requirements Coverage Matrix for R1: Task 1.1"
+        in result.output
+    )
 
 
 def test_validate_design_accepts_lightweight_mode_sections(tmp_path: Path) -> None:
@@ -947,32 +1279,10 @@ Concrete verification plan.
 def test_validate_design_reports_missing_required_section(tmp_path: Path) -> None:
     design_file = tmp_path / "design.md"
     design_file.write_text(
-        """# Example Design
-
-## Executive Summary
-
-Concrete summary.
-
-## Requirements & Goals
-
-Concrete requirements.
-
-## Architecture Overview
-
-Concrete architecture overview.
-
-## Existing Components to Reuse
-
-No existing components identified for reuse.
-
-## Verification & Testing Strategy
-
-Concrete verification strategy.
-
-## Implementation Plan
-
-Concrete implementation plan.
-""",
+        VALID_TRACEABLE_FULL_DESIGN.replace(
+            "## Detailed Design\n\nConcrete design details.\n\n",
+            "",
+        ),
         encoding="utf-8",
     )
 
@@ -984,36 +1294,10 @@ Concrete implementation plan.
 def test_validate_design_rejects_placeholder_section_content(tmp_path: Path) -> None:
     design_file = tmp_path / "design.md"
     design_file.write_text(
-        """# Example Design
-
-## Executive Summary
-
-TBD
-
-## Requirements & Goals
-
-Concrete requirements.
-
-## Architecture Overview
-
-Concrete architecture overview.
-
-## Existing Components to Reuse
-
-No existing components identified for reuse.
-
-## Detailed Design
-
-Concrete design details.
-
-## Verification & Testing Strategy
-
-Concrete verification strategy.
-
-## Implementation Plan
-
-Concrete implementation plan.
-""",
+        VALID_TRACEABLE_FULL_DESIGN.replace(
+            "## Executive Summary\n\nConcrete summary.",
+            "## Executive Summary\n\nTBD",
+        ),
         encoding="utf-8",
     )
 
@@ -1027,32 +1311,10 @@ Concrete implementation plan.
 def test_validate_design_requires_existing_components_section(tmp_path: Path) -> None:
     design_file = tmp_path / "design.md"
     design_file.write_text(
-        """# Example Design
-
-## Executive Summary
-
-Concrete summary.
-
-## Requirements & Goals
-
-Concrete requirements.
-
-## Architecture Overview
-
-Concrete architecture overview.
-
-## Detailed Design
-
-Concrete design details.
-
-## Verification & Testing Strategy
-
-Concrete verification strategy.
-
-## Implementation Plan
-
-Concrete implementation plan.
-""",
+        VALID_TRACEABLE_FULL_DESIGN.replace(
+            "## Existing Components to Reuse\n\nNo existing components identified for reuse.\n\n",
+            "",
+        ),
         encoding="utf-8",
     )
 
@@ -1107,39 +1369,7 @@ Concrete verification plan.
 
 def test_validate_design_accepts_explicit_no_existing_components(tmp_path: Path) -> None:
     design_file = tmp_path / "design.md"
-    design_file.write_text(
-        """# Example Design
-
-## Executive Summary
-
-Concrete summary.
-
-## Requirements & Goals
-
-Concrete requirements.
-
-## Architecture Overview
-
-Concrete architecture overview.
-
-## Existing Components to Reuse
-
-No existing components identified for reuse.
-
-## Detailed Design
-
-Concrete design details.
-
-## Verification & Testing Strategy
-
-Concrete verification strategy.
-
-## Implementation Plan
-
-Concrete implementation plan.
-""",
-        encoding="utf-8",
-    )
+    design_file.write_text(VALID_TRACEABLE_FULL_DESIGN, encoding="utf-8")
 
     errors = validate_design_file(design_file)
 

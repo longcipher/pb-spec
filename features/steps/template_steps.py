@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import tempfile
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, cast
 
 from behave import given, then, when
+from click.testing import CliRunner
 
+from pb_spec.cli import main
 from pb_spec.templates import load_prompt, load_references, load_skill_content
 
 type BehaveContext = Any
@@ -206,6 +210,341 @@ def step_then_builder_stops_before_later_tasks(context: BehaveContext) -> None:
     assert "stop immediately and report the missing field instead of spawning a subagent" in (
         context.builder_prompt
     )
+
+
+@given_step("a spec includes a source requirement ledger")
+def step_given_spec_includes_source_requirement_ledger(context: BehaveContext) -> None:
+    temp_dir = tempfile.TemporaryDirectory()
+    context.traceability_temp_dir = temp_dir
+    spec_dir = Path(temp_dir.name) / "spec"
+    features_dir = spec_dir / "features"
+    features_dir.mkdir(parents=True)
+
+    (features_dir / "auth.feature").write_text(
+        """Feature: Authentication
+
+  Scenario: User authenticates successfully
+    Given the user has valid credentials
+    When the user signs in
+    Then access is granted
+""",
+        encoding="utf-8",
+    )
+    (spec_dir / "design.md").write_text(
+        """# Example Design
+
+## Executive Summary
+
+Concrete summary.
+
+## Source Inputs & Normalization
+
+### 2.1 Source Materials
+
+Original design notes.
+
+### 2.2 Normalization Approach
+
+Normalized into a requirement ledger.
+
+### 2.3 Source Requirement Ledger
+
+| Requirement ID | Source Summary | Type | Notes |
+| :--- | :--- | :--- | :--- |
+| `R1` | `Support successful login` | `Functional` | `Must remain user-visible` |
+
+## Requirements & Goals
+
+Concrete requirements.
+
+## Architecture Overview
+
+Concrete architecture overview.
+
+## Existing Components to Reuse
+
+No existing components identified for reuse.
+
+## Detailed Design
+
+Concrete design details.
+
+## Verification & Testing Strategy
+
+Concrete verification strategy.
+
+## Implementation Plan
+
+Concrete implementation plan.
+""",
+        encoding="utf-8",
+    )
+    (spec_dir / "tasks.md").write_text(
+        """# Example Tasks
+
+### Task 1.1: Implement login
+
+> **Context:** Add login endpoint.
+> **Verification:** Run auth tests.
+
+- **Status:** 🔴 TODO
+- **Loop Type:** BDD+TDD
+- **Scenario Coverage:** User authenticates successfully
+- **Behavioral Contract:** Return token on valid credentials
+- **Simplification Focus:** N/A
+- [ ] **Step 1:** Implement login.
+- [ ] **BDD Verification:** Run auth scenario.
+- [ ] **Advanced Test Verification:** N/A because no advanced tests apply
+- [ ] **Runtime Verification:** N/A because this is not runtime-facing work
+""",
+        encoding="utf-8",
+    )
+    context.traceability_spec_dir = spec_dir
+
+
+@when_step("the validate command inspects a spec with missing requirement mappings")
+def step_when_validate_inspects_traceability_gap(context: BehaveContext) -> None:
+    runner = CliRunner()
+    context.traceability_result = runner.invoke(
+        main, ["validate", str(context.traceability_spec_dir)]
+    )
+
+
+@then_step("validation fails with requirement traceability findings before build work starts")
+def step_then_validation_fails_with_traceability_findings(context: BehaveContext) -> None:
+    result = context.traceability_result
+    assert result.exit_code != 0
+    assert "Validation failed" in result.output
+    assert "Requirements Coverage Matrix" in result.output
+    assert "Requirement Coverage" in result.output
+
+
+@given_step("a spec includes a requirements coverage matrix scenario reference")
+def step_given_spec_includes_matrix_scenario_reference(context: BehaveContext) -> None:
+    temp_dir = tempfile.TemporaryDirectory()
+    context.matrix_scenario_temp_dir = temp_dir
+    spec_dir = Path(temp_dir.name) / "spec"
+    features_dir = spec_dir / "features"
+    features_dir.mkdir(parents=True)
+
+    (features_dir / "auth.feature").write_text(
+        """Feature: Authentication
+
+  Scenario: User authenticates successfully
+    Given the user has valid credentials
+    When the user signs in
+    Then access is granted
+""",
+        encoding="utf-8",
+    )
+    (spec_dir / "design.md").write_text(
+        """# Example Design
+
+## Executive Summary
+
+Concrete summary.
+
+## Source Inputs & Normalization
+
+### 2.1 Source Materials
+
+Original design notes.
+
+### 2.2 Normalization Approach
+
+Normalized into a requirement ledger.
+
+### 2.3 Source Requirement Ledger
+
+| Requirement ID | Source Summary | Type | Notes |
+| :--- | :--- | :--- | :--- |
+| `R1` | `Support successful login` | `Functional` | `Must remain user-visible` |
+
+## Requirements & Goals
+
+Concrete requirements.
+
+## Requirements Coverage Matrix
+
+| Requirement ID | Covered In Design | Scenario Coverage | Task Coverage | Status / Rationale |
+| :--- | :--- | :--- | :--- | :--- |
+| `R1` | `Detailed Design` | `auth.feature / User receives an auth error` | `Task 1.1` | `Covered` |
+
+## Architecture Overview
+
+Concrete architecture overview.
+
+## Existing Components to Reuse
+
+No existing components identified for reuse.
+
+## Detailed Design
+
+Concrete design details.
+
+## Verification & Testing Strategy
+
+Concrete verification strategy.
+
+## Implementation Plan
+
+Concrete implementation plan.
+""",
+        encoding="utf-8",
+    )
+    (spec_dir / "tasks.md").write_text(
+        """# Example Tasks
+
+### Task 1.1: Implement login
+
+> **Context:** Add login endpoint.
+> **Verification:** Run auth tests.
+
+- **Status:** 🔴 TODO
+- **Loop Type:** BDD+TDD
+- **Requirement Coverage:** `R1`
+- **Scenario Coverage:** User authenticates successfully
+- **Behavioral Contract:** Return token on valid credentials
+- **Simplification Focus:** N/A
+- [ ] **Step 1:** Implement login.
+- [ ] **BDD Verification:** Run auth scenario.
+- [ ] **Advanced Test Verification:** N/A because no advanced tests apply
+- [ ] **Runtime Verification:** N/A because this is not runtime-facing work
+""",
+        encoding="utf-8",
+    )
+    context.matrix_scenario_spec_dir = spec_dir
+
+
+@when_step("the validate command inspects a spec with a missing matrix scenario target")
+def step_when_validate_inspects_missing_matrix_scenario(context: BehaveContext) -> None:
+    runner = CliRunner()
+    context.matrix_scenario_result = runner.invoke(
+        main, ["validate", str(context.matrix_scenario_spec_dir)]
+    )
+
+
+@then_step("validation fails with matrix scenario coverage findings before build work starts")
+def step_then_validation_fails_with_matrix_scenario_findings(context: BehaveContext) -> None:
+    result = context.matrix_scenario_result
+    assert result.exit_code != 0
+    assert "Validation failed" in result.output
+    assert "Requirements Coverage Matrix" in result.output
+    assert "Scenario reference not found in Requirements Coverage Matrix" in result.output
+
+
+@given_step("a spec includes a requirements coverage matrix task reference")
+def step_given_spec_includes_matrix_task_reference(context: BehaveContext) -> None:
+    temp_dir = tempfile.TemporaryDirectory()
+    context.matrix_task_temp_dir = temp_dir
+    spec_dir = Path(temp_dir.name) / "spec"
+    features_dir = spec_dir / "features"
+    features_dir.mkdir(parents=True)
+
+    (features_dir / "auth.feature").write_text(
+        """Feature: Authentication
+
+  Scenario: User authenticates successfully
+    Given the user has valid credentials
+    When the user signs in
+    Then access is granted
+""",
+        encoding="utf-8",
+    )
+    (spec_dir / "design.md").write_text(
+        """# Example Design
+
+## Executive Summary
+
+Concrete summary.
+
+## Source Inputs & Normalization
+
+### 2.1 Source Materials
+
+Original design notes.
+
+### 2.2 Normalization Approach
+
+Normalized into a requirement ledger.
+
+### 2.3 Source Requirement Ledger
+
+| Requirement ID | Source Summary | Type | Notes |
+| :--- | :--- | :--- | :--- |
+| `R1` | `Support successful login` | `Functional` | `Must remain user-visible` |
+
+## Requirements & Goals
+
+Concrete requirements.
+
+## Requirements Coverage Matrix
+
+| Requirement ID | Covered In Design | Scenario Coverage | Task Coverage | Status / Rationale |
+| :--- | :--- | :--- | :--- | :--- |
+| `R1` | `Detailed Design` | `auth.feature / User authenticates successfully` | `Task 9.9` | `Covered` |
+
+## Architecture Overview
+
+Concrete architecture overview.
+
+## Existing Components to Reuse
+
+No existing components identified for reuse.
+
+## Detailed Design
+
+Concrete design details.
+
+## Verification & Testing Strategy
+
+Concrete verification strategy.
+
+## Implementation Plan
+
+Concrete implementation plan.
+""",
+        encoding="utf-8",
+    )
+    (spec_dir / "tasks.md").write_text(
+        """# Example Tasks
+
+### Task 1.1: Implement login
+
+> **Context:** Add login endpoint.
+> **Verification:** Run auth tests.
+
+- **Status:** 🔴 TODO
+- **Loop Type:** BDD+TDD
+- **Requirement Coverage:** `R1`
+- **Scenario Coverage:** User authenticates successfully
+- **Behavioral Contract:** Return token on valid credentials
+- **Simplification Focus:** N/A
+- [ ] **Step 1:** Implement login.
+- [ ] **BDD Verification:** Run auth scenario.
+- [ ] **Advanced Test Verification:** N/A because no advanced tests apply
+- [ ] **Runtime Verification:** N/A because this is not runtime-facing work
+""",
+        encoding="utf-8",
+    )
+    context.matrix_task_spec_dir = spec_dir
+
+
+@when_step("the validate command inspects a spec with a missing matrix task target")
+def step_when_validate_inspects_missing_matrix_task(context: BehaveContext) -> None:
+    runner = CliRunner()
+    context.matrix_task_result = runner.invoke(
+        main, ["validate", str(context.matrix_task_spec_dir)]
+    )
+
+
+@then_step("validation fails with matrix task coverage findings before build work starts")
+def step_then_validation_fails_with_matrix_task_findings(context: BehaveContext) -> None:
+    result = context.matrix_task_result
+    assert result.exit_code != 0
+    assert "Validation failed" in result.output
+    assert "Requirements Coverage Matrix" in result.output
+    assert "Task reference not found in Requirements Coverage Matrix" in result.output
 
 
 @given_step("a pending task in a build-eligible spec")

@@ -407,7 +407,42 @@ A spec is build-eligible when all of the following are true:
 
 Future validator versions may extend build eligibility checks to include stronger cross-link validation.
 
-## 12. Validator-Ready Priorities
+## 12. Validation Type System
+
+### 12.1 Structured Validation Results
+
+The validation system uses structured types for better error handling and reporting:
+
+| Type | Purpose |
+| :--- | :--- |
+| `ValidationResult` | Collection of errors and warnings with severity levels |
+| `ValidationError` | Single validation issue with file, line, column context |
+| `ErrorLevel` | Severity enum: `ERROR`, `WARNING`, `INFO` |
+
+### 12.2 Backward Compatibility
+
+For backward compatibility, the validation functions maintain two interfaces:
+
+| Function | Return Type | Purpose |
+| :--- | :--- | :--- |
+| `validate_design_file()` | `list[str]` | Legacy interface returning error strings |
+| `validate_design_file_structured()` | `ValidationResult` | New interface with structured errors |
+| `validate_task_file()` | `list[str]` | Legacy interface returning error strings |
+| `validate_task_file_structured()` | `ValidationResult` | New interface with structured errors |
+
+The legacy functions return `[error.message for error in result.errors]` to maintain backward compatibility with existing code and tests.
+
+### 12.3 Feature Parsing Types
+
+The feature parsing system uses structured types:
+
+| Type | Purpose |
+| :--- | :--- |
+| `FeatureScenario` | Parsed Gherkin scenario with file, line number, and outline flag |
+| `parse_feature_file()` | Returns `list[FeatureScenario]` for structured access |
+| `get_scenario_by_name()` | Finds a specific scenario by name |
+
+## 13. Validator-Ready Priorities
 
 The first validator tranche should prioritize the narrowest high-value checks:
 

@@ -9,6 +9,7 @@
 
 - **Status:** 🔴 TODO
 - **Loop Type:** TDD-only
+- **Requirement Coverage:** `R1`
 - **Scenario Coverage:** N/A because this is internal scaffolding with no user-visible behavior
 - **Behavioral Contract:** The User model stores email and hashed password without exposing raw credentials
 - **Simplification Focus:** N/A
@@ -25,6 +26,7 @@
 
 - **Status:** 🔴 TODO
 - **Loop Type:** BDD+TDD
+- **Requirement Coverage:** `R2`
 - **Scenario Coverage:** User authenticates successfully
 - **Behavioral Contract:** The endpoint returns 200 with a token on valid credentials and 401 on invalid credentials
 - **Simplification Focus:** N/A
@@ -41,6 +43,7 @@
 
 - **Status:** 🔴 TODO
 - **Loop Type:** BDD+TDD
+- **Requirement Coverage:** `R3`
 - **Scenario Coverage:** User receives an auth error
 - **Behavioral Contract:** The endpoint returns 401 with an error message on invalid credentials
 - **Simplification Focus:** N/A
