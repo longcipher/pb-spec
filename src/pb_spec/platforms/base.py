@@ -111,3 +111,23 @@ class Platform(ABC):
 
         template_content = load_skill_content(skill_name)
         return self.render_skill(skill_name, template_content)
+
+
+class PromptOnlyPlatform(Platform):
+    """Base for platforms using prompt files (no SKILL.md references)."""
+
+    def _load_and_render(self, skill_name: str) -> str:
+        """Load prompt template and render for this platform."""
+        from pb_spec.templates import load_prompt
+
+        return self.render_skill(skill_name, load_prompt(skill_name))
+
+    def _install_references(
+        self,
+        cwd: Path,
+        skill_name: str,
+        skill_target: Path,
+        force: bool,
+        installed: list[str],
+    ) -> None:
+        """Prompt-only platforms are self-contained — no references."""

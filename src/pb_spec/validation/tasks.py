@@ -7,13 +7,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
+from pb_spec.validation.patterns import (
+    CHECKBOX_LABEL_RE,
+    CHECKBOX_RE,
+    FIELD_RE,
+    QUOTE_FIELD_RE,
+    TASK_HEADING_RE,
+)
 from pb_spec.validation.types import ValidationResult
-
-TASK_HEADING_RE: Final[re.Pattern[str]] = re.compile(r"^### (Task \d+\.\d+):\s+(.+?)\s*$")
-FIELD_RE: Final[re.Pattern[str]] = re.compile(r"^- \*\*(.+?):\*\*\s*(.+?)\s*$")
-QUOTE_FIELD_RE: Final[re.Pattern[str]] = re.compile(r"^> \*\*(.+?):\*\*\s*(.+?)\s*$")
-CHECKBOX_RE: Final[re.Pattern[str]] = re.compile(r"^- \[[ xX]\] ")
-CHECKBOX_LABEL_RE: Final[re.Pattern[str]] = re.compile(r"^- \[[ xX]\] \*\*(.+?):\*\*\s*(.+?)\s*$")
 
 MINIMUM_REQUIRED_FIELDS: Final[tuple[str, ...]] = (
     "Context",
@@ -53,8 +54,10 @@ ALLOWED_STATUSES: Final[frozenset[str]] = frozenset(
 ALLOWED_LOOP_TYPES: Final[frozenset[str]] = frozenset({"BDD+TDD", "TDD-only"})
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class TaskBlock:
+    """Parsed task block with structured data."""
+
     task_id: str
     name: str
     body_lines: list[str]

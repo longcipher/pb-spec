@@ -102,9 +102,7 @@ def validate_design_file_structured(design_file: Path) -> ValidationResult:
             )
 
     if _select_required_sections(section_names, sections) == FULL_MODE_REQUIRED_SECTIONS:
-        traceability_result = _validate_requirement_traceability_structured(
-            section_map, design_file
-        )
+        traceability_result = _validate_requirement_traceability(section_map, design_file)
         result.merge(traceability_result)
 
     return result
@@ -163,13 +161,7 @@ def _normalize_heading(heading: str) -> str:
     return normalized_heading
 
 
-def _validate_requirement_traceability(section_map: dict[str, str]) -> list[str]:
-    """Legacy function for backward compatibility."""
-    result = _validate_requirement_traceability_structured(section_map, Path("design.md"))
-    return result.to_error_strings()
-
-
-def _validate_requirement_traceability_structured(
+def _validate_requirement_traceability(
     section_map: dict[str, str], design_file: Path
 ) -> ValidationResult:
     """Validate requirement traceability between ledger and matrix."""

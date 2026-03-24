@@ -137,7 +137,7 @@ def test_gemini_render_toml_prompt():
     p = GeminiPlatform()
     result = p.render_skill("pb-init", "# Hello")
     assert result.startswith('description = "')
-    assert "prompt = '''" in result
+    assert 'prompt = """' in result
     assert "# Hello" in result
 
 

@@ -41,10 +41,11 @@ class ValidationError:
 
 @dataclass(slots=True)
 class ValidationResult:
-    """Collection of validation errors and warnings."""
+    """Collection of validation errors, warnings, and info messages."""
 
     errors: list[ValidationError] = field(default_factory=list)
     warnings: list[ValidationError] = field(default_factory=list)
+    infos: list[ValidationError] = field(default_factory=list)
 
     def add_error(
         self,
@@ -93,7 +94,7 @@ class ValidationResult:
         column: int | None = None,
     ) -> None:
         """Add an info-level validation issue."""
-        self.warnings.append(
+        self.infos.append(
             ValidationError(
                 level=ErrorLevel.INFO,
                 message=message,
@@ -108,12 +109,12 @@ class ValidationResult:
         return len(self.errors) == 0
 
     def has_warnings(self) -> bool:
-        """Check if there are any warnings."""
+        """Check if there are any warnings (excluding info)."""
         return len(self.warnings) > 0
 
     def get_all_issues(self) -> list[ValidationError]:
-        """Get all issues sorted by severity (errors first)."""
-        return self.errors + self.warnings
+        """Get all issues sorted by severity (errors, warnings, infos)."""
+        return self.errors + self.warnings + self.infos
 
     def to_error_strings(self) -> list[str]:
         """Convert all errors to string list for backward compatibility."""
@@ -127,6 +128,7 @@ class ValidationResult:
         """Merge another validation result into this one."""
         self.errors.extend(other.errors)
         self.warnings.extend(other.warnings)
+        self.infos.extend(other.infos)
 
     def summary(self) -> str:
         """Get a summary of validation results."""
@@ -135,45 +137,11 @@ class ValidationResult:
             parts.append(f"{len(self.errors)} error(s)")
         if self.warnings:
             parts.append(f"{len(self.warnings)} warning(s)")
+        if self.infos:
+            parts.append(f"{len(self.infos)} info(s)")
         if not parts:
             return "Validation passed"
         return f"Validation failed: {', '.join(parts)}"
-
-
-@dataclass(slots=True, frozen=True)
-class TaskField:
-    """A parsed task field with metadata."""
-
-    name: str
-    value: str
-    is_required: bool = True
-    allows_na: bool = False
-    na_requires_reason: bool = True
-
-
-@dataclass(slots=True, frozen=True)
-class TaskBlock:
-    """Parsed task block with structured data."""
-
-    task_id: str
-    name: str
-    fields: dict[str, str]
-    checkbox_fields: dict[str, str]
-    step_checkboxes: list[str]
-    verification_checkboxes: list[str]
-
-    def get_field(self, name: str) -> str | None:
-        """Get a field value by name."""
-        return self.fields.get(name)
-
-    def get_checkbox_field(self, name: str) -> str | None:
-        """Get a checkbox field value by name."""
-        return self.checkbox_fields.get(name)
-
-    def is_done(self) -> bool:
-        """Check if task is marked as done."""
-        status = self.get_field("Status")
-        return status in ("🟢 DONE", "DONE")
 
 
 @dataclass(slots=True, frozen=True)

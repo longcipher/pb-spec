@@ -3,10 +3,10 @@
 import os
 from pathlib import Path
 
-from pb_spec.platforms.base import SKILL_METADATA, Platform
+from pb_spec.platforms.base import SKILL_METADATA, PromptOnlyPlatform
 
 
-class CodexPlatform(Platform):
+class CodexPlatform(PromptOnlyPlatform):
     """Codex — custom prompts in .codex/prompts/<name>.md."""
 
     name = "codex"
@@ -23,15 +23,3 @@ class CodexPlatform(Platform):
         description = SKILL_METADATA.get(skill_name, "").replace('"', '\\"')
         frontmatter = f'---\ndescription: "{description}"\n---\n\n'
         return frontmatter + template_content
-
-    def _load_and_render(self, skill_name: str) -> str:
-        """Codex uses prompt files, not SKILL.md."""
-        from pb_spec.templates import load_prompt
-
-        prompt = load_prompt(skill_name)
-        return self.render_skill(skill_name, prompt)
-
-    def _install_references(
-        self, cwd: Path, skill_name: str, skill_target: Path, force: bool, installed: list[str]
-    ) -> None:
-        """Codex prompt files are self-contained — no references."""

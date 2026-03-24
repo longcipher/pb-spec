@@ -126,7 +126,7 @@ def test_e2e_gemini_toml_format(tmp_path, monkeypatch, runner):
     for command in ["pb-init", "pb-plan", "pb-refine", "pb-build"]:
         content = (tmp_path / ".gemini" / "commands" / f"{command}.toml").read_text()
         assert content.startswith('description = "'), f"Gemini {command} missing description field"
-        assert "\nprompt = '''\n" in content, f"Gemini {command} missing prompt field"
+        assert '\nprompt = """\n' in content, f"Gemini {command} missing prompt field"
 
 
 def test_e2e_codex_frontmatter(tmp_path, monkeypatch, runner):

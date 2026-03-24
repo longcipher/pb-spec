@@ -151,6 +151,23 @@ After the subagent succeeds, update `tasks.md`:
 - Mark `🟢 DONE` only when every required evidence checkbox in that task block is either `- [x]` or explicitly marked `N/A`.
 - **Completion gate:** Mark done only when `BDD Verification` is satisfied for `BDD+TDD` tasks, task Verification is satisfied, tests are green, and runtime checks (when applicable) are evidence-backed.
 
+**Automatic Status Sync:** After marking checkboxes, run `pb-spec sync specs/<spec-dir>` to automatically synchronize task status based on checkbox completion. This ensures the Status field accurately reflects the actual completion state:
+
+```bash
+# Sync task status (will fix any mismatches)
+pb-spec sync specs/<spec-dir>
+
+# Dry run to preview changes
+pb-spec sync specs/<spec-dir> --dry-run
+```
+
+The sync command will:
+
+- Check each task's checkbox completion state
+- Update Status to `🟢 DONE` if all steps are checked
+- Update Status to `🟡 IN PROGRESS` if some steps are checked
+- Report any changes made
+
 > **⚠️ Context Reset:** After completing all tasks (or when context grows large), output: "Recommend starting a fresh session. Run `/pb-build <feature-name>` again to continue from where you left off."
 
 ### Step 4: Handle Failures (The Recovery Loop)

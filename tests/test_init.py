@@ -241,7 +241,7 @@ def test_init_gemini_toml_shape(tmp_path, monkeypatch, runner):
 
     content = (tmp_path / ".gemini" / "commands" / "pb-init.toml").read_text()
     assert content.startswith('description = "')
-    assert "\nprompt = '''\n" in content
+    assert '\nprompt = """\n' in content
 
 
 def test_init_codex_has_frontmatter(tmp_path, monkeypatch, runner):

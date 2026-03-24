@@ -446,3 +446,250 @@ def test_update_subprocess_error_returns_error_exit_code():
 def test_dunder_version_matches_project_version():
     """pb_spec.__version__ should match pyproject.toml project.version."""
     assert package_version == get_project_version()
+
+
+def test_status_shows_task_statuses(tmp_path: Path):
+    """status command shows task statuses."""
+    # Create a minimal spec with tasks
+    spec_dir = tmp_path / "specs" / "test-feature"
+    spec_dir.mkdir(parents=True)
+
+    (spec_dir / "design.md").write_text(
+        "# Summary\nTest design\n## Architecture Decisions\nTest decisions\n## Verification\nTest verification\n"
+    )
+
+    (spec_dir / "tasks.md").write_text(
+        "# Test Tasks\n\n### Task 1.1: Test Task\n"
+        "> **Context:** Test context\n"
+        "- **Status:** 🟢 DONE\n"
+        "- **Loop Type:** TDD-only\n"
+        "- **Requirement Coverage:** REQ-1\n"
+        "- **Scenario Coverage:** N/A\n"
+        "- **Behavioral Contract:** Test contract\n"
+        "- **Simplification Focus:** Test focus\n"
+        "- **Verification:** Test verification\n"
+        "- **BDD Verification:** N/A\n"
+        "- **Advanced Test Verification:** N/A\n"
+        "- **Runtime Verification:** N/A\n"
+        "- [x] **Step 1:** Test step\n"
+    )
+
+    features_dir = spec_dir / "features"
+    features_dir.mkdir()
+    (features_dir / "test.feature").write_text(
+        "Feature: Test\n  Scenario: Test scenario\n    Given test\n"
+    )
+
+    result = subprocess.run(
+        ["uv", "run", "pb-spec", "status", str(spec_dir)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "📊 Task Status" in result.stdout
+    assert "Task 1.1: Test Task" in result.stdout
+    assert "🟢 DONE" in result.stdout
+
+
+def test_sync_dry_run_shows_changes(tmp_path: Path):
+    """sync --dry-run shows what would be changed."""
+    # Create a spec with mismatched status
+    spec_dir = tmp_path / "specs" / "test-feature"
+    spec_dir.mkdir(parents=True)
+
+    (spec_dir / "design.md").write_text(
+        "# Summary\nTest design\n## Architecture Decisions\nTest decisions\n## Verification\nTest verification\n"
+    )
+
+    (spec_dir / "tasks.md").write_text(
+        "# Test Tasks\n\n### Task 1.1: Test Task\n"
+        "> **Context:** Test context\n"
+        "- **Status:** 🔴 TODO\n"
+        "- **Loop Type:** TDD-only\n"
+        "- **Requirement Coverage:** REQ-1\n"
+        "- **Scenario Coverage:** N/A\n"
+        "- **Behavioral Contract:** Test contract\n"
+        "- **Simplification Focus:** Test focus\n"
+        "- **Verification:** Test verification\n"
+        "- **BDD Verification:** N/A\n"
+        "- **Advanced Test Verification:** N/A\n"
+        "- **Runtime Verification:** N/A\n"
+        "- [x] **Step 1:** Test step\n"
+    )
+
+    features_dir = spec_dir / "features"
+    features_dir.mkdir()
+    (features_dir / "test.feature").write_text(
+        "Feature: Test\n  Scenario: Test scenario\n    Given test\n"
+    )
+
+    result = subprocess.run(
+        ["uv", "run", "pb-spec", "sync", str(spec_dir), "--dry-run"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "🔍 Dry Run" in result.stdout
+    assert "🔴 TODO -> 🟢 DONE" in result.stdout
+
+
+def test_sync_fixes_mismatched_status(tmp_path: Path):
+    """sync command fixes mismatched task status."""
+    # Create a spec with mismatched status
+    spec_dir = tmp_path / "specs" / "test-feature"
+    spec_dir.mkdir(parents=True)
+
+    (spec_dir / "design.md").write_text(
+        "# Summary\nTest design\n## Architecture Decisions\nTest decisions\n## Verification\nTest verification\n"
+    )
+
+    tasks_file = spec_dir / "tasks.md"
+    tasks_file.write_text(
+        "# Test Tasks\n\n### Task 1.1: Test Task\n"
+        "> **Context:** Test context\n"
+        "- **Status:** 🔴 TODO\n"
+        "- **Loop Type:** TDD-only\n"
+        "- **Requirement Coverage:** REQ-1\n"
+        "- **Scenario Coverage:** N/A\n"
+        "- **Behavioral Contract:** Test contract\n"
+        "- **Simplification Focus:** Test focus\n"
+        "- **Verification:** Test verification\n"
+        "- **BDD Verification:** N/A\n"
+        "- **Advanced Test Verification:** N/A\n"
+        "- **Runtime Verification:** N/A\n"
+        "- [x] **Step 1:** Test step\n"
+    )
+
+    features_dir = spec_dir / "features"
+    features_dir.mkdir()
+    (features_dir / "test.feature").write_text(
+        "Feature: Test\n  Scenario: Test scenario\n    Given test\n"
+    )
+
+    result = subprocess.run(
+        ["uv", "run", "pb-spec", "sync", str(spec_dir)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "🔧" in result.stdout
+    assert "🔴 TODO -> 🟢 DONE" in result.stdout
+
+    # Verify the file was actually updated
+    content = tasks_file.read_text()
+    assert "- **Status:** 🟢 DONE" in content
+
+
+def test_status_with_feature_name(tmp_path: Path):
+    """status command supports feature name resolution."""
+    # Create a spec with date-prefixed directory
+    spec_dir = tmp_path / "specs" / "2026-03-09-01-test-feature"
+    spec_dir.mkdir(parents=True)
+
+    (spec_dir / "design.md").write_text(
+        "# Summary\nTest design\n## Architecture Decisions\nTest decisions\n## Verification\nTest verification\n"
+    )
+
+    (spec_dir / "tasks.md").write_text(
+        "# Test Tasks\n\n### Task 1.1: Test Task\n"
+        "> **Context:** Test context\n"
+        "- **Status:** 🟢 DONE\n"
+        "- **Loop Type:** TDD-only\n"
+        "- **Requirement Coverage:** REQ-1\n"
+        "- **Scenario Coverage:** N/A\n"
+        "- **Behavioral Contract:** Test contract\n"
+        "- **Simplification Focus:** Test focus\n"
+        "- **Verification:** Test verification\n"
+        "- **BDD Verification:** N/A\n"
+        "- **Advanced Test Verification:** N/A\n"
+        "- **Runtime Verification:** N/A\n"
+        "- [x] **Step 1:** Test step\n"
+    )
+
+    features_dir = spec_dir / "features"
+    features_dir.mkdir()
+    (features_dir / "test.feature").write_text(
+        "Feature: Test\n  Scenario: Test scenario\n    Given test\n"
+    )
+
+    # Change to tmp_path directory so specs/ is found
+    import os
+
+    original_cwd = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        result = subprocess.run(
+            ["uv", "run", "pb-spec", "status", "test-feature"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        assert result.returncode == 0
+        assert "📊 Task Status" in result.stdout
+        assert "Task 1.1: Test Task" in result.stdout
+    finally:
+        os.chdir(original_cwd)
+
+
+def test_sync_with_feature_name(tmp_path: Path):
+    """sync command supports feature name resolution."""
+    # Create a spec with date-prefixed directory
+    spec_dir = tmp_path / "specs" / "2026-03-09-01-test-feature"
+    spec_dir.mkdir(parents=True)
+
+    (spec_dir / "design.md").write_text(
+        "# Summary\nTest design\n## Architecture Decisions\nTest decisions\n## Verification\nTest verification\n"
+    )
+
+    tasks_file = spec_dir / "tasks.md"
+    tasks_file.write_text(
+        "# Test Tasks\n\n### Task 1.1: Test Task\n"
+        "> **Context:** Test context\n"
+        "- **Status:** 🔴 TODO\n"
+        "- **Loop Type:** TDD-only\n"
+        "- **Requirement Coverage:** REQ-1\n"
+        "- **Scenario Coverage:** N/A\n"
+        "- **Behavioral Contract:** Test contract\n"
+        "- **Simplification Focus:** Test focus\n"
+        "- **Verification:** Test verification\n"
+        "- **BDD Verification:** N/A\n"
+        "- **Advanced Test Verification:** N/A\n"
+        "- **Runtime Verification:** N/A\n"
+        "- [x] **Step 1:** Test step\n"
+    )
+
+    features_dir = spec_dir / "features"
+    features_dir.mkdir()
+    (features_dir / "test.feature").write_text(
+        "Feature: Test\n  Scenario: Test scenario\n    Given test\n"
+    )
+
+    # Change to tmp_path directory so specs/ is found
+    import os
+
+    original_cwd = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        result = subprocess.run(
+            ["uv", "run", "pb-spec", "sync", "test-feature"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        assert result.returncode == 0
+        assert "🔧" in result.stdout
+        assert "🔴 TODO -> 🟢 DONE" in result.stdout
+
+        # Verify the file was actually updated
+        content = tasks_file.read_text()
+        assert "- **Status:** 🟢 DONE" in content
+    finally:
+        os.chdir(original_cwd)
