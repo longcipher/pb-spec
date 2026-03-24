@@ -100,6 +100,28 @@ Extract the full task block from `tasks.md` — including Context, Scenario Cove
 - Identify files most relevant to this task.
 - Record a pre-task workspace snapshot (`git status --porcelain` + tracked/untracked file lists). This baseline is used for safe recovery if the task fails.
 
+#### 3b-i. Pre-Spawn State Gate (Mandatory)
+
+Before spawning a subagent for the current task, **verify that all previously processed tasks are properly marked in `tasks.md`**. This catches any state drift carried over from earlier iterations.
+
+1. Re-read `tasks.md` and scan all `### Task X.Y:` blocks that precede the current task.
+2. For each previously processed task, confirm:
+   - If it was reported as completed: Status is `🟢 DONE` and all evidence checkboxes are `- [x]`.
+   - If it was reported as skipped: Status is `⏭️ SKIPPED`.
+   - If it was reported as DCR-blocked: Status is `🔄 DCR`.
+3. **If any discrepancy is found** — a task was processed but not properly marked:
+   - Apply the correct mark immediately (update Status and checkboxes).
+   - Run `pb-spec sync specs/<spec-dir>`.
+   - Log the fix:
+
+     ```text
+     🔧 Auto-fixed: Task X.Y status was [old state], corrected to [new state].
+     ```
+
+4. Only proceed to spawn the subagent after all prior tasks are in consistent state.
+
+> **Why this gate exists:** If a previous subagent completed but the orchestrator failed to mark it (due to context loss, edit failure, etc.), this gate catches it before the next subagent starts. It ensures the orchestrator always has an accurate view of what's done.
+
 #### 3c. Spawn Subagent
 
 Create a **fresh subagent** for this task. Pass it the implementer prompt template from `references/implementer_prompt.md`, filled with:
@@ -168,6 +190,28 @@ The sync command will:
 - Update Status to `🟡 IN PROGRESS` if some steps are checked
 - Report any changes made
 
+#### 3e-i. Post-Mark Verification (Mandatory)
+
+After updating `tasks.md` and running `pb-spec sync`, **verify the mark actually took effect** before proceeding to the next task. This prevents silent state drift where the orchestrator believes it updated the file but the edit did not persist.
+
+1. **Re-read** the specific `### Task X.Y` block from `tasks.md`.
+2. **Confirm** that:
+   - The Status line shows `🟢 DONE` (not `🔴 TODO` or `🟡 IN PROGRESS`).
+   - All `- [ ]` evidence checkboxes in the block are now `- [x]`.
+3. **If verification fails** — the task subagent reported success but `tasks.md` was not updated:
+   - Apply the mark immediately: update Status to `🟢 DONE` and all checkboxes to `- [x]`.
+   - Re-run `pb-spec sync specs/<spec-dir>`.
+   - Re-verify.
+   - If it still fails after a second attempt, report the discrepancy and halt:
+
+     ```text
+     ⚠️ Task State Drift — Task X.Y
+     Subagent reported success but tasks.md was not updated.
+     Auto-fix applied. If this recurs, inspect the file for write conflicts.
+     ```
+
+> **Why this step exists:** Long-running orchestrator sessions can lose track of whether they actually wrote the mark. This verification step closes the loop by checking disk state, not memory state.
+>
 > **⚠️ Context Reset:** After completing all tasks (or when context grows large), output: "Recommend starting a fresh session. Run `/pb-build <feature-name>` again to continue from where you left off."
 
 ### Step 4: Handle Failures (The Recovery Loop)
@@ -242,9 +286,37 @@ If during implementation a subagent discovers that the design is **infeasible or
    - **Override** — user provides an alternative approach.
    - **Abort** — stop the build.
 
-### Step 5: Output Completion Summary
+### Step 5: Final State Verification & Output Completion Summary
 
-After all tasks are processed, output:
+#### 5a. Final State Sweep (Mandatory)
+
+Before outputting the summary, perform a **full reconciliation** of `tasks.md` against the build session's execution log. This catches any tasks that were processed but never marked.
+
+1. Re-read the entire `tasks.md`.
+2. Cross-check each `### Task X.Y:` block against the orchestrator's session record:
+   - If the session shows a task was **completed** (subagent reported success, tests passed) but `tasks.md` still shows `🔴 TODO` or `🟡 IN PROGRESS` with unchecked steps → **auto-fix**: update Status to `🟢 DONE`, mark all checkboxes `- [x]`.
+   - If the session shows a task was **skipped** but `tasks.md` does not show `⏭️ SKIPPED` → **auto-fix**: update Status to `⏭️ SKIPPED`.
+   - If the session shows a task triggered a **DCR** but `tasks.md` does not show `🔄 DCR` → **auto-fix**: update Status to `🔄 DCR`.
+3. Run `pb-spec sync specs/<spec-dir>` after all fixes to ensure Status fields are consistent.
+4. Report any auto-fixes applied:
+
+   ```text
+   🔧 Final Sweep Auto-Fixes:
+   - Task X.Y: Status [old] → 🟢 DONE (subagent completed, mark was missing)
+   - Task A.B: Status [old] → ⏭️ SKIPPED (mark was missing)
+   ```
+
+5. If no fixes were needed, report:
+
+   ```text
+   ✅ Final Sweep: All task states in tasks.md are consistent with execution log.
+   ```
+
+> **Why this sweep exists:** Even with per-task verification (Step 3e-i) and pre-spawn gates (Step 3b-i), edge cases can still cause drift (e.g., context truncation, partial edits, session interruptions). This final sweep is the last line of defense before the user sees the summary.
+
+#### 5b. Output Completion Summary
+
+After all tasks are processed and the final sweep is complete, output:
 
 ```text
 📊 pb-build Summary: specs/<spec-dir>/
