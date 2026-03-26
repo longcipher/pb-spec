@@ -52,12 +52,23 @@ def run_spec_validation(spec_dir: Path) -> ValidationResult:
         return result
 
     from pb_spec.validation.design import (
-        parse_requirements_coverage_matrix,
-        parse_source_requirement_ids,
+        _parse_design_sections,
+        _parse_requirement_ids_from_table,
+        _parse_requirement_matrix_rows,
     )
 
-    requirement_ids = parse_source_requirement_ids(design_file)
-    requirement_matrix = parse_requirements_coverage_matrix(design_file)
+    # Read design file once and reuse parsed sections
+    design_sections = _parse_design_sections(design_file)
+    section_map = {name: content for name, content, _ in design_sections}
+
+    # Use parsed sections for requirement extraction
+    requirement_ids = _parse_requirement_ids_from_table(
+        section_map.get("Source Requirement Ledger", "")
+    )
+    requirement_matrix_rows = _parse_requirement_matrix_rows(
+        section_map.get("Requirements Coverage Matrix", "")
+    )
+    requirement_matrix = requirement_matrix_rows
 
     design_result = validate_design_file_structured(design_file)
     result.merge(design_result)
@@ -120,9 +131,8 @@ def run_feedback_validation(feedback_file: Path) -> ValidationResult:
         )
         return result
 
-    errors = validate_feedback_file(feedback_file)
-    for error in errors:
-        result.add_error(error, file=str(feedback_file))
+    feedback_result = validate_feedback_file(feedback_file)
+    result.merge(feedback_result)
 
     return result
 
@@ -150,7 +160,7 @@ def _validate_requirement_task_alignment(
     referenced_requirements = find_referenced_requirements(task_blocks)
 
     for requirement_id, row in requirement_matrix.items():
-        status_rationale = getattr(row, "status_rationale", "").strip().lower()
+        status_rationale = row.status_rationale.strip().lower()
         if any(kw in status_rationale for kw in ("out of scope", "deferred", "non-goal")):
             continue
         if requirement_id not in referenced_requirements:
@@ -170,11 +180,11 @@ def _validate_requirement_matrix_scenario_alignment(
     result = ValidationResult()
 
     for requirement_id, row in requirement_matrix.items():
-        status_rationale = getattr(row, "status_rationale", "").strip().lower()
+        status_rationale = row.status_rationale.strip().lower()
         if any(kw in status_rationale for kw in ("out of scope", "deferred", "non-goal")):
             continue
 
-        scenario_coverage = getattr(row, "scenario_coverage", "")
+        scenario_coverage = row.scenario_coverage
         for feature_name, scenario_name in extract_requirement_matrix_scenario_refs(
             scenario_coverage
         ):
@@ -204,11 +214,11 @@ def _validate_requirement_matrix_task_alignment(
     task_blocks_by_id = {task_block.task_id: task_block for task_block in task_blocks}
 
     for requirement_id, row in requirement_matrix.items():
-        status_rationale = getattr(row, "status_rationale", "").strip().lower()
+        status_rationale = row.status_rationale.strip().lower()
         if any(kw in status_rationale for kw in ("out of scope", "deferred", "non-goal")):
             continue
 
-        task_coverage = getattr(row, "task_coverage", "")
+        task_coverage = row.task_coverage
         task_refs = extract_requirement_matrix_task_refs(task_coverage)
         if not task_refs and not is_not_applicable_matrix_value(task_coverage):
             result.add_error(

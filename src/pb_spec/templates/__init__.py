@@ -1,5 +1,7 @@
 """Template loading system using importlib.resources."""
 
+from __future__ import annotations
+
 import importlib.resources
 
 

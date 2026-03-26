@@ -9,7 +9,11 @@ from typing import Final
 
 import click
 
-from pb_spec.validation.tasks import parse_task_blocks
+from pb_spec.validation.tasks import (
+    STATUS_DONE,
+    STATUS_IN_PROGRESS,
+    parse_task_blocks,
+)
 
 TASK_HEADING_RE: Final[re.Pattern[str]] = re.compile(r"^### (Task \d+\.\d+):\s+(.+?)\s*$")
 STATUS_RE: Final[re.Pattern[str]] = re.compile(r"^- \*\*Status:\*\*\s*(.+?)\s*$")
@@ -45,7 +49,7 @@ def scan_task_statuses(spec_dir: Path) -> list[TaskStatus]:
             for line in block.checkbox_lines
             if line.startswith("- [x]") or line.startswith("- [X]")
         )
-        is_complete = status == "🟢 DONE" and completed_steps == total_steps and total_steps > 0
+        is_complete = status == STATUS_DONE and completed_steps == total_steps and total_steps > 0
 
         statuses.append(
             TaskStatus(
@@ -120,7 +124,7 @@ def fix_task_status(spec_dir: Path, task_id: str, *, dry_run: bool = False) -> d
 
     # Determine correct status
     all_steps_complete = completed_steps == total_steps and total_steps > 0
-    correct_status = "🟢 DONE" if all_steps_complete else "🟡 IN PROGRESS"
+    correct_status = STATUS_DONE if all_steps_complete else STATUS_IN_PROGRESS
 
     # Check if status needs fixing
     needs_fix = status_value != correct_status

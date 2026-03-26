@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 
@@ -15,6 +16,7 @@ def resolve_spec_dir(feature_or_path: str, base_dir: Path = Path(".")) -> Path:
     Supports:
     - Full path: specs/2026-03-09-01-workflow-type-contracts
     - Feature name: workflow-type-contracts (resolves to matching spec dir)
+    - Configurable via PB_SPEC_SPECS_DIR environment variable
     """
     path = Path(feature_or_path)
 
@@ -24,7 +26,10 @@ def resolve_spec_dir(feature_or_path: str, base_dir: Path = Path(".")) -> Path:
     if feature_or_path.startswith("specs/"):
         return Path(feature_or_path)
 
-    specs_dir = base_dir / "specs"
+    # Allow configurable specs directory via environment variable
+    specs_dir_env = os.environ.get("PB_SPEC_SPECS_DIR")
+    specs_dir = Path(specs_dir_env) if specs_dir_env else base_dir / "specs"
+
     if not specs_dir.exists():
         raise SpecResolutionError(
             f"specs/ directory not found. Cannot resolve feature name: {feature_or_path}"

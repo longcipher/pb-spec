@@ -1406,9 +1406,10 @@ Next Action:
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == []
+    assert result.is_valid()
+    assert result.to_error_strings() == []
 
 
 def test_validate_feedback_reports_missing_build_blocked_sections(tmp_path: Path) -> None:
@@ -1434,9 +1435,10 @@ Impact:
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == [
+    assert not result.is_valid()
+    assert [e.message for e in result.errors] == [
         "Incomplete 🛑 Build Blocked packet. Missing required section(s): Failure Evidence, Next Action"
     ]
 
@@ -1460,9 +1462,10 @@ Impact:
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == [
+    assert not result.is_valid()
+    assert [e.message for e in result.errors] == [
         "Incomplete 🔄 Design Change Request packet. Missing required section(s): Failing Step, Suggested Change"
     ]
 
@@ -1486,9 +1489,10 @@ Impact: Task 2.4 must change before packet-aware refinement works.
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == [
+    assert not result.is_valid()
+    assert [e.message for e in result.errors] == [
         "Required packet section is empty or placeholder in 🔄 Design Change Request: Failure Evidence"
     ]
 
@@ -1522,9 +1526,10 @@ Next Action:
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == [
+    assert not result.is_valid()
+    assert [e.message for e in result.errors] == [
         "Failure Evidence must include concrete command output or quoted error text in 🛑 Build Blocked"
     ]
 
@@ -1550,9 +1555,10 @@ Impact: Task 2.4 must change before packet-aware refinement works.
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == []
+    assert result.is_valid()
+    assert result.to_error_strings() == []
 
 
 def test_validate_feedback_rejects_non_gherkin_failing_step(tmp_path: Path) -> None:
@@ -1584,9 +1590,12 @@ Next Action:
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == ["Failing Step must be a Gherkin step or N/A in 🛑 Build Blocked"]
+    assert not result.is_valid()
+    assert [e.message for e in result.errors] == [
+        "Failing Step must be a Gherkin step or N/A in 🛑 Build Blocked"
+    ]
 
 
 def test_validate_feedback_accepts_na_failing_step(tmp_path: Path) -> None:
@@ -1609,9 +1618,10 @@ Impact: Task 2.4 must change before packet-aware refinement works.
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == []
+    assert result.is_valid()
+    assert result.to_error_strings() == []
 
 
 def test_validate_feedback_rejects_generic_build_blocked_next_action(tmp_path: Path) -> None:
@@ -1643,9 +1653,10 @@ Next Action:
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == [
+    assert not result.is_valid()
+    assert [e.message for e in result.errors] == [
         "Next Action must include concrete /pb-refine and /pb-build follow-up commands in 🛑 Build Blocked"
     ]
 
@@ -1679,9 +1690,10 @@ Next Action:
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == []
+    assert result.is_valid()
+    assert result.to_error_strings() == []
 
 
 def test_validate_feedback_rejects_generic_suggested_design_change(tmp_path: Path) -> None:
@@ -1713,9 +1725,10 @@ Next Action:
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == [
+    assert not result.is_valid()
+    assert [e.message for e in result.errors] == [
         "Suggested Design Change must reference design.md or tasks.md in 🛑 Build Blocked"
     ]
 
@@ -1740,9 +1753,12 @@ Impact: Task 2.4 must change before packet-aware refinement works.
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == ["Suggested Change must reference design.md in 🔄 Design Change Request"]
+    assert not result.is_valid()
+    assert [e.message for e in result.errors] == [
+        "Suggested Change must reference design.md in 🔄 Design Change Request"
+    ]
 
 
 def test_validate_feedback_accepts_artifact_targeted_suggested_changes(tmp_path: Path) -> None:
@@ -1788,9 +1804,10 @@ Impact: Task 2.4 must change before packet-aware refinement works.
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == []
+    assert result.is_valid()
+    assert result.to_error_strings() == []
 
 
 def test_validate_feedback_rejects_generic_build_blocked_impact(tmp_path: Path) -> None:
@@ -1822,9 +1839,10 @@ Next Action:
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == [
+    assert not result.is_valid()
+    assert [e.message for e in result.errors] == [
         "Impact must reference affected tasks or explicitly say no other tasks are affected in 🛑 Build Blocked"
     ]
 
@@ -1849,9 +1867,10 @@ Impact: This refinement has broader downstream consequences.
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == [
+    assert not result.is_valid()
+    assert [e.message for e in result.errors] == [
         "Impact must reference affected tasks or explicitly say no other tasks are affected in 🔄 Design Change Request"
     ]
 
@@ -1876,9 +1895,10 @@ Impact: No other tasks are affected beyond Task 2.4.
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == []
+    assert result.is_valid()
+    assert result.to_error_strings() == []
 
 
 def test_validate_feedback_rejects_generic_build_blocked_scenario_coverage(
@@ -1912,9 +1932,10 @@ Next Action:
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == [
+    assert not result.is_valid()
+    assert [e.message for e in result.errors] == [
         "Scenario Coverage must reference a .feature file and scenario name in 🛑 Build Blocked"
     ]
 
@@ -1939,9 +1960,10 @@ Impact: No other tasks are affected beyond Task 2.4.
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == [
+    assert not result.is_valid()
+    assert [e.message for e in result.errors] == [
         "Scenario Coverage must reference a .feature file and scenario name in 🔄 Design Change Request"
     ]
 
@@ -1966,9 +1988,10 @@ Impact: No other tasks are affected beyond Task 2.4.
         encoding="utf-8",
     )
 
-    errors = validate_feedback_file(feedback_file)
+    result = validate_feedback_file(feedback_file)
 
-    assert errors == []
+    assert result.is_valid()
+    assert result.to_error_strings() == []
 
 
 # --- Generated-artifact build eligibility tests ---

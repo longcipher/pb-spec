@@ -1,5 +1,7 @@
 """Platform registry and factory functions."""
 
+from __future__ import annotations
+
 from pb_spec.platforms.base import Platform
 from pb_spec.platforms.claude import ClaudePlatform
 from pb_spec.platforms.codex import CodexPlatform

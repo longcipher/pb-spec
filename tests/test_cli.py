@@ -440,7 +440,7 @@ def test_update_subprocess_error_returns_error_exit_code():
     with patch("pb_spec.commands.update.subprocess.run", side_effect=error):
         result = runner.invoke(main, ["update"])
         assert result.exit_code != 0
-        assert "exit code 2" in result.output
+        assert "exited with code 2" in result.output
 
 
 def test_dunder_version_matches_project_version():

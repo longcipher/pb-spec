@@ -53,6 +53,24 @@ ALLOWED_STATUSES: Final[frozenset[str]] = frozenset(
 )
 ALLOWED_LOOP_TYPES: Final[frozenset[str]] = frozenset({"BDD+TDD", "TDD-only"})
 
+# Status constants for better maintainability
+STATUS_TODO: Final[str] = "TODO"
+STATUS_TODO_EMOJI: Final[str] = "🔴 TODO"
+STATUS_IN_PROGRESS: Final[str] = "🟡 IN PROGRESS"
+STATUS_DONE: Final[str] = "🟢 DONE"
+STATUS_SKIPPED: Final[str] = "⏭️ SKIPPED"
+STATUS_DCR: Final[str] = "🔄 DCR"
+STATUS_OBSOLETE: Final[str] = "⛔ OBSOLETE"
+
+# Terminal status constants
+TERMINAL_STATUSES: Final[frozenset[str]] = frozenset(
+    {
+        STATUS_DONE,
+        STATUS_SKIPPED,
+        STATUS_OBSOLETE,
+    }
+)
+
 
 @dataclass(slots=True, frozen=True)
 class TaskBlock:
@@ -189,7 +207,7 @@ def validate_task_file_structured(
                     file=str(tasks_file),
                 )
 
-        if status == "🟢 DONE":
+        if status == STATUS_DONE:
             incomplete_verification = []
             for field_name in REQUIRED_CHECKBOX_FIELDS:
                 field_value = task_block.checkbox_fields.get(field_name)

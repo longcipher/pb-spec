@@ -1,5 +1,7 @@
 """GitHub Copilot platform adapter."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from pb_spec.platforms.base import PromptOnlyPlatform

@@ -1,5 +1,7 @@
 """Update command for pb-spec CLI."""
 
+from __future__ import annotations
+
 import subprocess
 
 import click
@@ -16,4 +18,6 @@ def update_cmd():
             "uv is not installed. Install it first: https://docs.astral.sh/uv/"
         ) from exc
     except subprocess.CalledProcessError as e:
-        raise click.ClickException(f"update failed with exit code {e.returncode}") from e
+        raise click.ClickException(
+            f"update failed: uv tool upgrade pb-spec exited with code {e.returncode}"
+        ) from e

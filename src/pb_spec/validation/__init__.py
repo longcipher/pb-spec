@@ -64,4 +64,13 @@ __all__ = [
     "validate_feedback_file",
     "validate_task_file",
     "validate_task_file_structured",
+    # Status constants
+    "STATUS_TODO",
+    "STATUS_TODO_EMOJI",
+    "STATUS_IN_PROGRESS",
+    "STATUS_DONE",
+    "STATUS_SKIPPED",
+    "STATUS_DCR",
+    "STATUS_OBSOLETE",
+    "TERMINAL_STATUSES",
 ]

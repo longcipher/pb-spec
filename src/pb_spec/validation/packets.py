@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, cast
 
+from pb_spec.validation.types import ValidationResult
+
 PLACEHOLDER_RE: Final[re.Pattern[str]] = re.compile(
     r"^(?:TBD|\[To be written\]|\[[^\]]+\])$", re.IGNORECASE
 )
@@ -56,10 +58,17 @@ class FeedbackPacket:
     body_lines: list[str]
 
 
-def validate_feedback_file(feedback_file: Path) -> list[str]:
-    """Validate markdown-carried build-block or DCR packets in a feedback file."""
+def validate_feedback_file(feedback_file: Path) -> ValidationResult:
+    """Validate markdown-carried build-block or DCR packets in a feedback file.
+
+    Returns structured ValidationResult with errors and warnings.
+    """
+    result = ValidationResult()
     packets = parse_feedback_packets(feedback_file)
-    errors: list[str] = []
+
+    if not packets:
+        result.add_error(f"No feedback packets found in {feedback_file}")
+        return result
 
     for packet in packets:
         sections = _parse_packet_sections(packet.body_lines)
@@ -75,8 +84,9 @@ def validate_feedback_file(feedback_file: Path) -> list[str]:
 
             is_placeholder = _is_placeholder_content(sections[section_name])
             if is_placeholder:
-                errors.append(
-                    f"Required packet section is empty or placeholder in {packet.kind}: {section_name}"
+                result.add_error(
+                    f"Required packet section is empty or placeholder in {packet.kind}: {section_name}",
+                    file=str(feedback_file),
                 )
 
             if (
@@ -84,8 +94,9 @@ def validate_feedback_file(feedback_file: Path) -> list[str]:
                 and not is_placeholder
                 and not _has_concrete_packet_scenario_coverage(sections[section_name])
             ):
-                errors.append(
-                    f"Scenario Coverage must reference a .feature file and scenario name in {packet.kind}"
+                result.add_error(
+                    f"Scenario Coverage must reference a .feature file and scenario name in {packet.kind}",
+                    file=str(feedback_file),
                 )
 
             if (
@@ -93,8 +104,9 @@ def validate_feedback_file(feedback_file: Path) -> list[str]:
                 and not is_placeholder
                 and not _has_concrete_failure_evidence(sections[section_name])
             ):
-                errors.append(
-                    f"Failure Evidence must include concrete command output or quoted error text in {packet.kind}"
+                result.add_error(
+                    f"Failure Evidence must include concrete command output or quoted error text in {packet.kind}",
+                    file=str(feedback_file),
                 )
 
             if (
@@ -102,7 +114,10 @@ def validate_feedback_file(feedback_file: Path) -> list[str]:
                 and not is_placeholder
                 and not _is_valid_failing_step(sections[section_name])
             ):
-                errors.append(f"Failing Step must be a Gherkin step or N/A in {packet.kind}")
+                result.add_error(
+                    f"Failing Step must be a Gherkin step or N/A in {packet.kind}",
+                    file=str(feedback_file),
+                )
 
             if (
                 packet.kind == "🛑 Build Blocked"
@@ -110,8 +125,9 @@ def validate_feedback_file(feedback_file: Path) -> list[str]:
                 and not is_placeholder
                 and not _has_concrete_build_blocked_next_action(sections[section_name])
             ):
-                errors.append(
-                    "Next Action must include concrete /pb-refine and /pb-build follow-up commands in 🛑 Build Blocked"
+                result.add_error(
+                    "Next Action must include concrete /pb-refine and /pb-build follow-up commands in 🛑 Build Blocked",
+                    file=str(feedback_file),
                 )
 
             if (
@@ -120,8 +136,9 @@ def validate_feedback_file(feedback_file: Path) -> list[str]:
                 and not is_placeholder
                 and not _references_build_blocked_change_artifacts(sections[section_name])
             ):
-                errors.append(
-                    "Suggested Design Change must reference design.md or tasks.md in 🛑 Build Blocked"
+                result.add_error(
+                    "Suggested Design Change must reference design.md or tasks.md in 🛑 Build Blocked",
+                    file=str(feedback_file),
                 )
 
             if (
@@ -130,8 +147,9 @@ def validate_feedback_file(feedback_file: Path) -> list[str]:
                 and not is_placeholder
                 and not _references_dcr_change_artifacts(sections[section_name])
             ):
-                errors.append(
-                    "Suggested Change must reference design.md in 🔄 Design Change Request"
+                result.add_error(
+                    "Suggested Change must reference design.md in 🔄 Design Change Request",
+                    file=str(feedback_file),
                 )
 
             if (
@@ -139,17 +157,19 @@ def validate_feedback_file(feedback_file: Path) -> list[str]:
                 and not is_placeholder
                 and not _has_concrete_impact(sections[section_name])
             ):
-                errors.append(
-                    f"Impact must reference affected tasks or explicitly say no other tasks are affected in {packet.kind}"
+                result.add_error(
+                    f"Impact must reference affected tasks or explicitly say no other tasks are affected in {packet.kind}",
+                    file=str(feedback_file),
                 )
 
         if missing_sections:
-            errors.append(
+            result.add_error(
                 f"Incomplete {packet.kind} packet. Missing required section(s): "
-                + ", ".join(missing_sections)
+                + ", ".join(missing_sections),
+                file=str(feedback_file),
             )
 
-    return errors
+    return result
 
 
 def parse_feedback_packets(feedback_file: Path) -> list[FeedbackPacket]:

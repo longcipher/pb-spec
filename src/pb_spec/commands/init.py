@@ -1,5 +1,7 @@
 """Init command — install pb-spec skill files into the current project."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 import click
