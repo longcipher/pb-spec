@@ -26,6 +26,7 @@ pb-spec follows a **harness-first** philosophy: reliability comes from process d
 | [openai/symphony](https://github.com/openai/symphony) | Long-running agents need explicit observability and deterministic escalation | `pb-build` enforces bounded retries and emits standardized DCR packets for `pb-refine` |
 | [Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) | Grounding, context hygiene, recovery, observability | State checks, minimal context handoff, task-local rollback guidance |
 | [Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) | Prefer simple composable workflows over framework complexity | Small adapter-based CLI + explicit workflow prompts |
+| [Harness Design for Long-Running Application Development](https://www.anthropic.com/engineering/harness-design-long-running-apps) | Generator/Evaluator separation; adversarial evaluation with MCP-driven live verification | `pb-build` dual-persona: Generator builds, independent Evaluator audits with fresh context; adaptive evaluation by task complexity |
 | [Stop Using /init for AGENTS.md](https://addyosmani.com/blog/agents-md/) | Keep AGENTS.md focused and maintainable | `/pb-init` updates a managed snapshot block in `AGENTS.md` while preserving all user-authored constraints outside that block |
 | [Ensuring Correctness Through the Type System](https://lindbakk.com/blog/ensuring-correctness-through-the-type-system) | Use the type system to encode invariants and catch errors early | Encode contracts as type-level assertions in `design.md` and add type checks to verification; `pb-plan` adds type guidance and `pb-build` runs the type checker when applicable. |
 
@@ -202,6 +203,28 @@ Reads `specs/<YYYY-MM-DD-NO-feature-name>/tasks.md` and implements each task seq
 
 Before parsing tasks or spawning subagents, `/pb-build` now runs a mandatory Phase 0 validation gate against the existing markdown contract: required design sections, required `Task X.Y` fields, and at least one feature scenario. If any item is missing, the build stops before implementation work starts. The builder still manages explicit task-state transitions during execution, while the current static validator focuses on allowed status values and evidence-backed completion gates rather than reconstructing prior state history from a single markdown snapshot.
 
+#### Generator/Evaluator Dual-Persona Flow
+
+Each task in `/pb-build` follows a dual-persona workflow inspired by [Anthropic's GAN-inspired harness research](https://www.anthropic.com/engineering/harness-design-long-running-apps). The agent that builds cannot be the agent that judges:
+
+```text
+Generator (subagent) → READY_FOR_EVAL → Evaluator (independent context) → PASS / FAIL
+                                                ├── Diff Audit (git diff + scope + architecture)
+                                                ├── MCP Live Verification (Playwright / HTTP / CLI)
+                                                └── Edge Case Probing (boundaries, errors, security)
+
+On PASS  → Orchestrator marks task DONE in tasks.md
+On FAIL  → Evaluator feedback → fresh Generator subagent → retry loop (max 3)
+```
+
+The Generator's sole objective is to make tests green. The Evaluator starts with **fresh context** (no Generator conversation history) and performs three independent checks:
+
+1. **Diff Audit** — scope compliance, architecture conformance (SRP/DIP), code quality red flags
+2. **MCP Live Verification** — browser automation for frontend tasks, HTTP endpoint testing for backend tasks
+3. **Edge Case Probing** — boundary values, missing inputs, error paths, security basics
+
+Evaluation intensity adapts to task complexity: `BDD+TDD` and runtime-facing tasks get full adversarial evaluation; simple `TDD-only` tasks use a lightweight diff review.
+
 ## Skills Overview
 
 | Skill | Trigger | Output | Description |
@@ -209,7 +232,7 @@ Before parsing tasks or spawning subagents, `/pb-build` now runs a mandatory Pha
 | `pb-init` | `/pb-init` | `AGENTS.md` | Audit repo and safely update/append a managed snapshot block without rewriting user-authored constraints |
 | `pb-plan` | `/pb-plan <requirement>` | `specs/<YYYY-MM-DD-NO-feature-name>/design.md` + `tasks.md` + `features/*.feature` | Design proposal + Gherkin scenarios + ordered task breakdown |
 | `pb-refine` | `/pb-refine <feature>` | Revised spec files | Apply feedback or Design Change Requests |
-| `pb-build` | `/pb-build <feature-name>` | Code + tests | BDD outer loop + TDD inner loop via subagents |
+| `pb-build` | `/pb-build <feature-name>` | Code + tests | BDD+TDD via Generator (builds) + Evaluator (adversarial review) dual-persona workflow |
 
 ## Design Philosophy: Agent Harness
 
@@ -228,12 +251,14 @@ pb-spec's prompt design is inspired by Anthropic's research on [Effective Harnes
 | **Observability as Context** | Task verification includes runtime signals (logs/health) for service-facing work, and build closure requires command-backed evidence |
 | **Escalation Loop** | Three consecutive failures trigger task suspension + standardized DCR handoff to `pb-refine` |
 | **Agent Rules** | `AGENTS.md` is treated as free-form policy context: `pb-init` manages only its marker block; `pb-plan`/`pb-refine`/`pb-build` read it without rewriting |
+| **Generator/Evaluator Isolation** | Generator builds (makes tests green), Evaluator judges (finds what Generator missed) — with fresh context separation to prevent self-evaluation bias |
 
 ### Where Each Principle Lives
 
-- **Worker (Implementer):** `implementer_prompt.md` enforces grounding-first workflow and error quoting
+- **Worker (Generator):** `implementer_prompt.md` enforces grounding-first workflow, error quoting, and the `READY_FOR_EVAL` signal (no self-marking authority)
+- **Critic (Evaluator):** `evaluator_prompt.md` enforces adversarial review with diff audit, MCP live verification, and edge case probing — fresh context, no Generator empathy
 - **Architect (Planner):** `design_template.md` + `tasks_template.md` enforce verification criteria, including runtime signals when applicable
-- **Orchestrator (Builder):** `pb-build` SKILL enforces context hygiene, runtime verification gates, bounded retries, and DCR escalation
+- **Orchestrator (Builder):** `pb-build` SKILL enforces context hygiene, runtime verification gates, bounded retries, DCR escalation, and Generator/Evaluator persona switching
 - **Foundation (Init):** `pb-init` updates only the managed marker block in `AGENTS.md`, preserving all external user-authored constraints
 
 ## Library API
