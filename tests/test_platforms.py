@@ -49,7 +49,7 @@ def test_opencode_skill_path():
 def test_gemini_skill_path():
     p = GeminiPlatform()
     cwd = Path("/project")
-    assert p.get_skill_path(cwd, "pb-init") == Path("/project/.gemini/commands/pb-init.toml")
+    assert p.get_skill_path(cwd, "pb-init") == Path("/project/.gemini/skills/pb-init/SKILL.md")
 
 
 def test_codex_skill_path():
@@ -94,7 +94,7 @@ def test_gemini_global_skill_path(monkeypatch):
     p = GeminiPlatform()
     cwd = Path("/project")
     assert p.get_skill_path(cwd, "pb-init", global_install=True) == Path(
-        "/users/alice/.gemini/commands/pb-init.toml"
+        "/users/alice/.gemini/skills/pb-init/SKILL.md"
     )
 
 
@@ -133,11 +133,11 @@ def test_opencode_render_has_yaml_frontmatter():
     assert "# Hello" in result
 
 
-def test_gemini_render_toml_prompt():
+def test_gemini_render_has_yaml_frontmatter():
     p = GeminiPlatform()
     result = p.render_skill("pb-init", "# Hello")
-    assert result.startswith('description = "')
-    assert 'prompt = """' in result
+    assert result.startswith("---\n")
+    assert "name: pb-init" in result
     assert "# Hello" in result
 
 

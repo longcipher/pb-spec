@@ -72,10 +72,19 @@ def test_e2e_init_all_creates_complete_structure(tmp_path, monkeypatch, runner):
     ).exists()
 
     # Gemini files
-    assert (tmp_path / ".gemini" / "commands" / "pb-init.toml").exists()
-    assert (tmp_path / ".gemini" / "commands" / "pb-plan.toml").exists()
-    assert (tmp_path / ".gemini" / "commands" / "pb-refine.toml").exists()
-    assert (tmp_path / ".gemini" / "commands" / "pb-build.toml").exists()
+    assert (tmp_path / ".gemini" / "skills" / "pb-init" / "SKILL.md").exists()
+    assert (tmp_path / ".gemini" / "skills" / "pb-plan" / "SKILL.md").exists()
+    assert (tmp_path / ".gemini" / "skills" / "pb-refine" / "SKILL.md").exists()
+    assert (tmp_path / ".gemini" / "skills" / "pb-build" / "SKILL.md").exists()
+    assert (
+        tmp_path / ".gemini" / "skills" / "pb-plan" / "references" / "design_template.md"
+    ).exists()
+    assert (
+        tmp_path / ".gemini" / "skills" / "pb-plan" / "references" / "tasks_template.md"
+    ).exists()
+    assert (
+        tmp_path / ".gemini" / "skills" / "pb-build" / "references" / "implementer_prompt.md"
+    ).exists()
 
     # Codex files
     assert (tmp_path / ".codex" / "prompts" / "pb-init.md").exists()
@@ -118,15 +127,16 @@ def test_e2e_copilot_no_frontmatter(tmp_path, monkeypatch, runner):
         assert not content.startswith("---"), f"Copilot {prompt} should not have frontmatter"
 
 
-def test_e2e_gemini_toml_format(tmp_path, monkeypatch, runner):
-    """Verify Gemini command files are TOML with description and prompt fields."""
+def test_e2e_gemini_frontmatter(tmp_path, monkeypatch, runner):
+    """Verify Gemini SKILL.md files have YAML frontmatter."""
     monkeypatch.chdir(tmp_path)
     runner.invoke(main, ["init", "--ai", "gemini"])
 
-    for command in ["pb-init", "pb-plan", "pb-refine", "pb-build"]:
-        content = (tmp_path / ".gemini" / "commands" / f"{command}.toml").read_text()
-        assert content.startswith('description = "'), f"Gemini {command} missing description field"
-        assert '\nprompt = """\n' in content, f"Gemini {command} missing prompt field"
+    for skill in ["pb-init", "pb-plan", "pb-refine", "pb-build"]:
+        content = (tmp_path / ".gemini" / "skills" / skill / "SKILL.md").read_text()
+        assert content.startswith("---\n"), f"Gemini {skill} missing frontmatter"
+        assert "name:" in content, f"Gemini {skill} missing name: in frontmatter"
+        assert "description:" in content, f"Gemini {skill} missing description: in frontmatter"
 
 
 def test_e2e_codex_frontmatter(tmp_path, monkeypatch, runner):
@@ -152,6 +162,9 @@ def test_e2e_references_exist(tmp_path, monkeypatch, runner):
         ".opencode/skills/pb-plan/references/design_template.md",
         ".opencode/skills/pb-plan/references/tasks_template.md",
         ".opencode/skills/pb-build/references/implementer_prompt.md",
+        ".gemini/skills/pb-plan/references/design_template.md",
+        ".gemini/skills/pb-plan/references/tasks_template.md",
+        ".gemini/skills/pb-build/references/implementer_prompt.md",
     }
     for ref in expected_refs:
         ref_path = tmp_path / ref
@@ -215,18 +228,15 @@ def test_e2e_copilot_no_references_dir(tmp_path, monkeypatch, runner):
         assert child.is_file(), f"Unexpected directory in Copilot prompts: {child}"
 
 
-def test_e2e_gemini_and_codex_no_references_dir(tmp_path, monkeypatch, runner):
-    """Verify Gemini/Codex platforms do not create references directories."""
+def test_e2e_codex_no_references_dir(tmp_path, monkeypatch, runner):
+    """Verify Codex platform does not create references directories."""
     monkeypatch.chdir(tmp_path)
-    runner.invoke(main, ["init", "--ai", "all"])
+    runner.invoke(main, ["init", "--ai", "codex"])
 
-    for directory in [
-        tmp_path / ".gemini" / "commands",
-        tmp_path / ".codex" / "prompts",
-    ]:
-        assert directory.exists()
-        for child in directory.iterdir():
-            assert child.is_file(), f"Unexpected directory in prompt folder: {child}"
+    prompts_dir = tmp_path / ".codex" / "prompts"
+    assert prompts_dir.exists()
+    for child in prompts_dir.iterdir():
+        assert child.is_file(), f"Unexpected directory in Codex prompts: {child}"
 
 
 def test_e2e_rendered_platforms_preserve_workflow_contract_language(tmp_path, monkeypatch, runner):
@@ -251,11 +261,6 @@ def test_e2e_rendered_platforms_preserve_workflow_contract_language(tmp_path, mo
             "pb-plan": tmp_path / ".github" / "prompts" / "pb-plan.prompt.md",
             "pb-build": tmp_path / ".github" / "prompts" / "pb-build.prompt.md",
             "pb-refine": tmp_path / ".github" / "prompts" / "pb-refine.prompt.md",
-        },
-        "gemini": {
-            "pb-plan": tmp_path / ".gemini" / "commands" / "pb-plan.toml",
-            "pb-build": tmp_path / ".gemini" / "commands" / "pb-build.toml",
-            "pb-refine": tmp_path / ".gemini" / "commands" / "pb-refine.toml",
         },
         "codex": {
             "pb-plan": tmp_path / ".codex" / "prompts" / "pb-plan.md",

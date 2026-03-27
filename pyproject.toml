@@ -1,10 +1,10 @@
 [build-system]
-requires = ["uv_build>=0.10.2,<0.11.1"]
+requires = ["uv-build>=0.10.2,<0.11.2"]
 build-backend = "uv_build"
 
 [project]
 name = "pb-spec"
-version = "0.8.8"
+version = "0.8.9"
 description = "Plan-Build Spec (pb-spec): A CLI tool for managing AI coding assistant skills"
 readme = "README.md"
 license = "Apache-2.0"

@@ -95,16 +95,29 @@ def test_init_opencode(tmp_path, monkeypatch, runner):
 
 
 def test_init_gemini(tmp_path, monkeypatch, runner):
-    """pb-spec init --ai gemini creates .gemini command TOML files."""
+    """pb-spec init --ai gemini creates .gemini/skills/ SKILL.md files with references."""
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(main, ["init", "--ai", "gemini"])
 
     assert result.exit_code == 0, result.output
 
-    assert (tmp_path / ".gemini" / "commands" / "pb-init.toml").exists()
-    assert (tmp_path / ".gemini" / "commands" / "pb-plan.toml").exists()
-    assert (tmp_path / ".gemini" / "commands" / "pb-refine.toml").exists()
-    assert (tmp_path / ".gemini" / "commands" / "pb-build.toml").exists()
+    assert (tmp_path / ".gemini" / "skills" / "pb-init" / "SKILL.md").exists()
+    assert (tmp_path / ".gemini" / "skills" / "pb-plan" / "SKILL.md").exists()
+    assert (tmp_path / ".gemini" / "skills" / "pb-refine" / "SKILL.md").exists()
+    assert (tmp_path / ".gemini" / "skills" / "pb-build" / "SKILL.md").exists()
+
+    # Reference files for pb-plan
+    assert (
+        tmp_path / ".gemini" / "skills" / "pb-plan" / "references" / "design_template.md"
+    ).exists()
+    assert (
+        tmp_path / ".gemini" / "skills" / "pb-plan" / "references" / "tasks_template.md"
+    ).exists()
+
+    # Reference files for pb-build
+    assert (
+        tmp_path / ".gemini" / "skills" / "pb-build" / "references" / "implementer_prompt.md"
+    ).exists()
 
 
 # --- pb init --ai codex ---
@@ -140,7 +153,7 @@ def test_init_all(tmp_path, monkeypatch, runner):
     # OpenCode
     assert (tmp_path / ".opencode" / "skills" / "pb-init" / "SKILL.md").exists()
     # Gemini
-    assert (tmp_path / ".gemini" / "commands" / "pb-init.toml").exists()
+    assert (tmp_path / ".gemini" / "skills" / "pb-init" / "SKILL.md").exists()
     # Codex
     assert (tmp_path / ".codex" / "prompts" / "pb-init.md").exists()
 
@@ -168,7 +181,7 @@ def test_init_all_global_installs_to_agent_home_dirs(tmp_path, monkeypatch, runn
     # OpenCode
     assert (config_home / "opencode" / "skills" / "pb-init" / "SKILL.md").exists()
     # Gemini
-    assert (home / ".gemini" / "commands" / "pb-init.toml").exists()
+    assert (home / ".gemini" / "skills" / "pb-init" / "SKILL.md").exists()
     # Codex
     assert (home / ".codex" / "prompts" / "pb-init.md").exists()
 
@@ -234,14 +247,13 @@ def test_init_copilot_no_frontmatter(tmp_path, monkeypatch, runner):
     assert not content.startswith("---")
 
 
-def test_init_gemini_toml_shape(tmp_path, monkeypatch, runner):
-    """Gemini command files should be TOML with description and prompt fields."""
+def test_init_gemini_has_frontmatter(tmp_path, monkeypatch, runner):
+    """Gemini SKILL.md files should start with YAML frontmatter."""
     monkeypatch.chdir(tmp_path)
     runner.invoke(main, ["init", "--ai", "gemini"])
 
-    content = (tmp_path / ".gemini" / "commands" / "pb-init.toml").read_text()
-    assert content.startswith('description = "')
-    assert '\nprompt = """\n' in content
+    content = (tmp_path / ".gemini" / "skills" / "pb-init" / "SKILL.md").read_text()
+    assert content.startswith("---")
 
 
 def test_init_codex_has_frontmatter(tmp_path, monkeypatch, runner):
@@ -267,7 +279,6 @@ def test_init_prompt_only_pb_build_contains_shared_implementer_contract(
     ).read_text()
     rendered_prompt_only_outputs = {
         "copilot": (tmp_path / ".github" / "prompts" / "pb-build.prompt.md").read_text(),
-        "gemini": (tmp_path / ".gemini" / "commands" / "pb-build.toml").read_text(),
         "codex": (tmp_path / ".codex" / "prompts" / "pb-build.md").read_text(),
     }
 
