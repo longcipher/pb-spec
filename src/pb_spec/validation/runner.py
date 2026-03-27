@@ -146,9 +146,8 @@ def _validate_embedded_packets(*files: Path) -> ValidationResult:
         packets = parse_feedback_packets(file_path)
         if not packets:
             continue
-        errors = validate_feedback_file(file_path)
-        for error in errors:
-            result.add_error(error, file=str(file_path))
+        feedback_result = validate_feedback_file(file_path)
+        result.merge(feedback_result)
     return result
 
 
