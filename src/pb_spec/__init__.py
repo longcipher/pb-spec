@@ -1,5 +1,5 @@
-"""pb-spec (Plan-Build Spec) - A CLI tool for managing AI coding assistant skills."""
+"""Plan-Build Spec (pb-spec): A CLI tool for managing AI coding assistant skills."""
 
-from pb_spec.versioning import get_version
+from __future__ import annotations
 
-__version__ = get_version()
+__version__ = "0.9.0"

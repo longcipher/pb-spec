@@ -30,24 +30,45 @@
 
 When introducing new dependencies, prefer these unless compatibility requires a change:
 
-- `orjson >= 3.10` — fast JSON serialization/deserialization
-- `msgspec >= 0.19` — high-performance struct-based serialization
-- `httpx >= 0.28` — async-first HTTP client
-- `uvloop >= 0.21` — drop-in asyncio event loop replacement (Linux/macOS)
-- `structlog >= 25.1` — structured logging
-- `pydantic >= 2.11` — data validation (only when full validation is needed)
-- `click >= 8.1` — CLI framework (for complex CLIs; `argparse` for simple ones)
-- `polars >= 1.30` — DataFrame operations
-- `anyio >= 4.9` — structured concurrency
-- `grpcio >= 1.71` — gRPC
-- `sqlalchemy >= 2.0` — database ORM (async mode preferred)
-- `aiosqlite >= 0.21` — async SQLite
-- `asyncpg >= 0.30` — async PostgreSQL
-- `redis >= 6.0` — async Redis client
-- `prometheus-client >= 0.22` — metrics
-- `opentelemetry-api >= 1.33` — OpenTelemetry tracing
-- `opentelemetry-sdk >= 1.33` — OpenTelemetry SDK
-- `cachetools >= 5.5` — in-process caching utilities
+```json
+// python
+// fast JSON serialization/deserialization
+orjson >= 3.11.7
+// high-performance struct-based serialization
+msgspec >= 0.20.0
+// async-first HTTP client
+httpx >= 0.28.1
+// drop-in asyncio event loop replacement (Linux/macOS)
+uvloop >= 0.22.1
+// structured logging
+structlog >= 25.5.0
+// data validation (only when full validation is needed)
+pydantic >= 2.12.5-security
+// CLI framework (for complex CLIs; argparse for simple ones)
+click >= 8.3.1
+// DataFrame operations
+polars >= 1.39.3
+// structured concurrency
+anyio >= 4.12.1
+// gRPC
+grpcio >= 1.78.0
+// database ORM (async mode preferred)
+sqlalchemy >= 2.0.48
+// async SQLite
+aiosqlite >= 0.22.1
+// async PostgreSQL
+asyncpg >= 0.31.0
+// async Redis client
+redis >= 7.4.0
+// metrics
+prometheus-client >= 0.24.1
+// OpenTelemetry tracing
+opentelemetry-api >= 1.40.0
+// OpenTelemetry SDK
+opentelemetry-sdk >= 1.40.0
+// in-process caching utilities
+cachetools >= 7.0.5
+```
 
 ## Dependency Priority and Forbidden Choices
 
@@ -91,7 +112,7 @@ When introducing new dependencies, prefer these unless compatibility requires a 
 ### Key Design Principles
 
 - Modularity: Design each module so it can be imported independently with clear boundaries and minimal hidden coupling.
-- Performance: Prefer zero-copy patterns, memory-mapped I/O when appropriate, vectorized operations, and pre-allocated buffers.
+- Performance: Prefer zero-copy patterns, memory-mapped I/O for large datasets, vectorized operations, and pre-allocated buffers.
 - Extensibility: Use Protocols (`typing.Protocol`) and abstract base classes for pluggable implementations.
 - Type Safety: Maintain strong static typing across interfaces and internals; minimize use of `Any`.
 
@@ -110,8 +131,8 @@ When introducing new dependencies, prefer these unless compatibility requires a 
 - Use `concurrent.futures.ProcessPoolExecutor` for CPU-bound parallelism.
 - Use `asyncio.to_thread()` to offload blocking calls from the event loop.
 - Prefer `asyncio.Queue` for async producer-consumer patterns.
-- Never perform blocking I/O (file reads, DNS, HTTP) directly in async coroutines.
-- Use `anyio` when portability across asyncio/trio is required.
+- Offload blocking I/O (file reads, DNS, HTTP) via `asyncio.to_thread()` or dedicated async libraries instead of running it directly in async coroutines.
+- Use `anyio` for cross-runtime portability (asyncio and trio).
 - Limit concurrent connections with `asyncio.Semaphore` to prevent resource exhaustion.
 - Channel selection:
   - Async-to-Async: `asyncio.Queue` / `anyio.create_memory_object_stream`
@@ -120,7 +141,7 @@ When introducing new dependencies, prefer these unless compatibility requires a 
 
 ### Memory and Allocation
 
-- Use `__slots__` on frequently instantiated classes; can reduce memory by 40–60%.
+- Use `__slots__` on data-heavy classes to reduce per-instance memory overhead.
 - Use `msgspec.Struct` over `dataclasses` / `pydantic.BaseModel` for high-throughput data objects.
 - Prefer `bytes` / `bytearray` / `memoryview` over `str` for binary data; avoid repeated encode/decode.
 - Use `orjson` for JSON serialization — it returns `bytes` directly, avoiding intermediate string allocation.
@@ -159,11 +180,11 @@ When introducing new dependencies, prefer these unless compatibility requires a 
 
 ### Common Pitfalls
 
-- Do not block the event loop with synchronous I/O.
-- Do not use mutable default arguments (`def f(x=[]):`).
-- Do not catch broad exceptions without re-raising.
-- Do not use `global` or module-level mutable state in library code.
-- Do not import inside functions unless lazy loading is intentional and documented.
+- Do not block the event loop with synchronous I/O — use `asyncio.to_thread()` or async libraries instead.
+- Do not use mutable default arguments — use `None` and initialize inside the function body instead.
+- Catch specific exceptions with `except SpecificError` and re-raise when propagating errors.
+- Pass state via function parameters or dependency injection instead of using `global` or module-level mutable state in library code.
+- Keep imports at the module top level; lazy imports inside functions are only acceptable when intentionally documented.
 - Handle `KeyboardInterrupt` and `SystemExit` separately from `Exception`.
 
 ### What to Avoid

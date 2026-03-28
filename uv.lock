@@ -100,7 +100,7 @@ wheels = [
 
 [[package]]
 name = "pb-spec"
-version = "0.9.0"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
