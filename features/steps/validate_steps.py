@@ -39,10 +39,23 @@ def step_valid_design_md(context) -> None:
     )
     context.design_file = design_file
 
-    # Also create tasks.md and features directory for complete validation
+    # Also create tasks.md (with all required fields per contract §7.2) and features directory
     tasks_file = context.spec_dir / "tasks.md"
     tasks_file.write_text(
-        "# Tasks\n\n### Task 1.1: Test Task\nStatus: 🟢 DONE\n- [x] Step 1: Complete\n"
+        "# Tasks\n"
+        "\n"
+        "### Task 1.1: Test Task\n"
+        "Context: Test context.\n"
+        "Verification: Run tests.\n"
+        "Scenario Coverage: Test scenario.\n"
+        "Loop Type: TDD-only\n"
+        "Behavioral Contract: Must pass.\n"
+        "Simplification Focus: Keep minimal.\n"
+        "BDD Verification: N/A — TDD-only task.\n"
+        "Advanced Test Verification: N/A — no advanced tests planned.\n"
+        "Runtime Verification: N/A — no runtime changes.\n"
+        "Status: 🟢 DONE\n"
+        "- [x] Step 1: Complete\n"
     )
 
     features_dir = context.spec_dir / "features"
@@ -84,7 +97,20 @@ def step_valid_tasks_md(context) -> None:
     """Create a valid tasks.md file."""
     tasks_file = context.spec_dir / "tasks.md"
     tasks_file.write_text(
-        "# Tasks\n\n### Task 1.1: Test Task\nStatus: 🟢 DONE\n- [x] Step 1: Complete\n"
+        "# Tasks\n"
+        "\n"
+        "### Task 1.1: Test Task\n"
+        "Context: Test context.\n"
+        "Verification: Run tests.\n"
+        "Scenario Coverage: Test scenario.\n"
+        "Loop Type: TDD-only\n"
+        "Behavioral Contract: Must pass.\n"
+        "Simplification Focus: Keep minimal.\n"
+        "BDD Verification: N/A — TDD-only task.\n"
+        "Advanced Test Verification: N/A — no advanced tests planned.\n"
+        "Runtime Verification: N/A — no runtime changes.\n"
+        "Status: 🟢 DONE\n"
+        "- [x] Step 1: Complete\n"
     )
     context.tasks_file = tasks_file
 
@@ -177,20 +203,51 @@ def step_task_unchecked_step(context, checkbox: str) -> None:
     context.tasks_file.write_text(content)
 
 
+def _init_git_repo(context) -> None:
+    """Initialize a git repo with an initial commit so scanner can find files."""
+    subprocess.run(["git", "init"], cwd=context.temp_dir, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"],
+        cwd=context.temp_dir,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test"],
+        cwd=context.temp_dir,
+        capture_output=True,
+    )
+    subprocess.run(["git", "add", "-A"], cwd=context.temp_dir, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "initial", "--allow-empty"],
+        cwd=context.temp_dir,
+        capture_output=True,
+        check=True,
+    )
+
+
 @given("I have a clean codebase without issues")
 def step_clean_codebase(context) -> None:
     """Create a clean codebase."""
     src_dir = Path(context.temp_dir) / "src"
     src_dir.mkdir()
     (src_dir / "clean.py").write_text("def foo():\n    return 42\n")
+    _init_git_repo(context)
 
 
 @given('I have a codebase with "{issue}" comment')
 def step_codebase_with_issue(context, issue: str) -> None:
-    """Create a codebase with a specific issue."""
+    """Create a codebase with a specific issue.
+
+    Files are created, committed, then modified so they appear as git changes.
+    """
     src_dir = Path(context.temp_dir) / "src"
     src_dir.mkdir()
-    # Create different file types based on issue
+    if "console.log" in issue:
+        (src_dir / "test.js").write_text("function foo() {}\n")
+    else:
+        (src_dir / "test.py").write_text("pass\n")
+    _init_git_repo(context)
+    # Now modify the file so it shows up as a git modification
     if "console.log" in issue:
         (src_dir / "test.js").write_text(f"function foo() {{ {issue}('debug'); }}\n")
     else:
@@ -202,6 +259,8 @@ def step_codebase_with_pytest_skip(context) -> None:
     """Create a codebase with pytest skip decorator."""
     src_dir = Path(context.temp_dir) / "src"
     src_dir.mkdir()
+    (src_dir / "test.py").write_text("def test_foo():\n    pass\n")
+    _init_git_repo(context)
     (src_dir / "test.py").write_text("@pytest.mark.skip\ndef test_foo():\n    pass\n")
 
 
@@ -210,6 +269,8 @@ def step_codebase_with_console_log(context) -> None:
     """Create a codebase with console.log."""
     src_dir = Path(context.temp_dir) / "src"
     src_dir.mkdir()
+    (src_dir / "test.js").write_text("function foo() {}\n")
+    _init_git_repo(context)
     (src_dir / "test.js").write_text("function foo() {\n  console.log('debug');\n}\n")
 
 
@@ -218,6 +279,8 @@ def step_codebase_with_not_implemented(context) -> None:
     """Create a codebase with NotImplementedError."""
     src_dir = Path(context.temp_dir) / "src"
     src_dir.mkdir()
+    (src_dir / "test.py").write_text("def foo():\n    pass\n")
+    _init_git_repo(context)
     (src_dir / "test.py").write_text("def foo():\n    raise NotImplementedError\n")
 
 

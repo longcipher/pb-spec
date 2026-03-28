@@ -407,36 +407,37 @@ A spec is build-eligible when all of the following are true:
 
 Future validator versions may extend build eligibility checks to include stronger cross-link validation.
 
-## 12. Validation Type System
+## 12. Future Validation Architecture (Roadmap)
 
-### 12.1 Structured Validation Results
+This section describes the intended evolution of the validation system. The types and
+functions listed here are **roadmap targets**, not yet implemented in the current CLI.
 
-The validation system uses structured types for better error handling and reporting:
+### 12.1 Planned Structured Validation Results
 
-| Type | Purpose |
+A future validation system should use structured types for better error handling and reporting:
+
+| Planned Type | Purpose |
 | :--- | :--- |
 | `ValidationResult` | Collection of errors and warnings with severity levels |
 | `ValidationError` | Single validation issue with file, line, column context |
 | `ErrorLevel` | Severity enum: `ERROR`, `WARNING`, `INFO` |
 
-### 12.2 Backward Compatibility
+### 12.2 Planned Validation Interfaces
 
-For backward compatibility, the validation functions maintain two interfaces:
+A future refactoring should expose validation as a library with both legacy and structured interfaces:
 
-| Function | Return Type | Purpose |
+| Planned Function | Return Type | Purpose |
 | :--- | :--- | :--- |
 | `validate_design_file()` | `list[str]` | Legacy interface returning error strings |
 | `validate_design_file_structured()` | `ValidationResult` | New interface with structured errors |
 | `validate_task_file()` | `list[str]` | Legacy interface returning error strings |
 | `validate_task_file_structured()` | `ValidationResult` | New interface with structured errors |
 
-The legacy functions return `[error.message for error in result.errors]` to maintain backward compatibility with existing code and tests.
+### 12.3 Planned Feature Parsing Types
 
-### 12.3 Feature Parsing Types
+A future feature parser should expose structured access to Gherkin scenarios:
 
-The feature parsing system uses structured types:
-
-| Type | Purpose |
+| Planned Type | Purpose |
 | :--- | :--- |
 | `FeatureScenario` | Parsed Gherkin scenario with file, line number, and outline flag |
 | `parse_feature_file()` | Returns `list[FeatureScenario]` for structured access |

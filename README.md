@@ -1,8 +1,14 @@
 # pb-spec — Plan-Build Spec
 
-pb-spec is a set of [Agent Skills Specification](https://agentskills.io) compliant AI Coding assistant workflow skill packages. It provides a structured process — `init` → `plan` → `build` — that turns natural-language requirements into well-architected, TDD/BDD-driven, tested code.
-
+[![DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/longcipher/pb-spec)
+[![Context7](https://img.shields.io/badge/Website-context7.com-blue)](https://context7.com/longcipher/pb-spec)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/pb-spec.svg)](https://pypi.org/project/pb-spec/)
+
+![pb-spec](https://socialify.git.ci/longcipher/pb-spec/image?font=Source+Code+Pro&language=1&name=1&owner=1&pattern=Circuit+Board&theme=Auto)
+
+pb-spec is a set of [Agent Skills Specification](https://agentskills.io) compliant AI Coding assistant workflow skill packages. It provides a structured process — `plan` → `build` — that turns natural-language requirements into well-architected, TDD/BDD-driven, tested code.
 
 ## Design Philosophy
 
@@ -155,28 +161,6 @@ pb-spec's design is inspired by Anthropic's research on [Effective Harnesses for
 | **Observability as Context** | Task verification includes runtime signals (logs/health) |
 | **Escalation Loop** | 3 consecutive failures → DCR handoff to `pb-refine` |
 | **Generator/Evaluator Isolation** | Generator builds; Evaluator judges with fresh context |
-
-## Project Structure
-
-```text
-pb-spec/
-├── README.md
-├── LICENSE
-├── pb-init/
-│   └── SKILL.md
-├── pb-plan/
-│   ├── SKILL.md
-│   └── references/
-│       ├── design_template.md
-│       └── tasks_template.md
-├── pb-build/
-│   ├── SKILL.md
-│   └── references/
-│       ├── implementer_prompt.md
-│       └── evaluator_prompt.md
-└── pb-refine/
-    └── SKILL.md
-```
 
 ## License
 

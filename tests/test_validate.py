@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
@@ -44,12 +43,21 @@ def valid_spec_dir(tmp_path: Path) -> Path:
         "Tests will verify the implementation\n"
     )
 
-    # Create tasks.md with valid structure
+    # Create tasks.md with valid structure (all required fields per contract §7.2)
     tasks_file = spec_dir / "tasks.md"
     tasks_file.write_text(
         "# Tasks\n"
         "\n"
         "### Task 1.1: Implement feature\n"
+        "Context: Implement the core feature logic.\n"
+        "Verification: Run the full test suite.\n"
+        "Scenario Coverage: Test scenario in test.feature.\n"
+        "Loop Type: TDD-only\n"
+        "Behavioral Contract: Must pass all tests.\n"
+        "Simplification Focus: Keep implementation minimal.\n"
+        "BDD Verification: N/A — TDD-only task.\n"
+        "Advanced Test Verification: N/A — no advanced tests planned.\n"
+        "Runtime Verification: N/A — no runtime changes.\n"
         "Status: 🟢 DONE\n"
         "- [x] Step 1: Write test\n"
         "- [x] Step 2: Implement\n"
@@ -220,7 +228,12 @@ class TestValidateBuild:
         src_dir.mkdir()
         (src_dir / "clean.py").write_text("def foo():\n    return 42\n")
 
-        # Patch Path to use tmp_path as root
+        # Initialize a git repo so scanner can find files via git ls-files
+        import subprocess
+
+        subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+
         monkeypatch.chdir(tmp_path)
         result = validate_build(spec_dir)
         assert result is True
@@ -298,20 +311,46 @@ class TestValidateTask:
         src_dir.mkdir()
         (src_dir / "clean.py").write_text("def foo():\n    return 42\n")
 
+        # Initialize a git repo so git ls-files finds our file
+        import subprocess
+
+        subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+
         monkeypatch.chdir(tmp_path)
         result = validate_task()
         assert result is True
 
-    def test_codebase_with_todos_fails(self, tmp_path: Path) -> None:
+    def test_codebase_with_todos_fails(self, tmp_path: Path, monkeypatch) -> None:
         """Test that codebase with TODOs fails validation."""
         src_dir = tmp_path / "src"
         src_dir.mkdir()
-        (src_dir / "dirty.py").write_text("# TODO: fix this\n")
+        dirty_file = src_dir / "dirty.py"
+        dirty_file.write_text("# TODO: fix this\n")
 
-        with patch("pb_spec.commands.validate.Path") as mock_path:
-            mock_path.return_value = tmp_path
-            result = validate_task()
+        # Initialize a git repo with an initial commit, then modify the file
+        # so that get_git_modified_files() detects it as changed
+        import subprocess
 
+        subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True
+        )
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True)
+        # Commit a clean version first
+        clean_file = src_dir / "clean.py"
+        clean_file.write_text("pass\n")
+        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True)
+        # Now dirty.py is an untracked file that git diff won't see,
+        # so we mock get_git_modified_files to include it
+        monkeypatch.setattr(
+            "pb_spec.commands.validate.get_git_modified_files",
+            lambda: {dirty_file},
+        )
+
+        monkeypatch.chdir(tmp_path)
+        result = validate_task()
         assert result is False
 
 

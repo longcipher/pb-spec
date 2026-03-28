@@ -155,7 +155,8 @@ You are the **Generator** — your job is to make tests pass, not to judge quali
 
 1. Run the command: `pb-spec validate --task`
 2. If the command outputs ANY `❌` errors (such as leftover `TODO`s, `NotImplementedError`, `@pytest.mark.skip`, or `console.log`), **you must fix the code, run the tests again, and re-run the validation command.**
-3. Only when `pb-spec validate --task` outputs `🎉 All validations passed successfully!` are you allowed to proceed.
+3. **Validation Escape Hatch:** If you have attempted to fix validation errors **2 times** and cannot pass the check, or if the code legitimately requires a pattern that triggers a false positive (e.g., a framework-mandated `NotImplementedError` stub in an abstract base class), do NOT get stuck in an infinite retry loop. Stop and output a **Design Change Request (DCR)** explaining why the validation cannot be satisfied, quoting the specific error output and why it is a false positive or unfixable constraint. The orchestrator will evaluate the DCR and decide next steps.
+4. Only when `pb-spec validate --task` outputs `🎉 All validations passed successfully!` **OR** you have triggered an Escape Hatch DCR, are you allowed to proceed.
 
 **Scope verification (quick check before signaling):**
 

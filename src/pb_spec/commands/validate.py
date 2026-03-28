@@ -12,6 +12,43 @@ import click
 from pb_spec.validation import CodeScanner, IssueType
 
 
+def get_git_modified_files(root_dir: Path | str = ".") -> set[Path]:
+    """Get files with staged, unstaged, or untracked changes.
+
+    Uses `git status --porcelain` which works even on initial commits
+    (no HEAD yet) and covers all change categories in a single command.
+    Falls back to an empty set if not in a git repository.
+    """
+    root = Path(root_dir)
+    files: set[Path] = set()
+
+    try:
+        result = subprocess.run(
+            ["git", "-c", "core.quotePath=false", "status", "--porcelain", "-uall"],
+            capture_output=True,
+            text=True,
+            cwd=root,
+            encoding="utf-8",
+        )
+        for line in result.stdout.splitlines():
+            if len(line) < 4:
+                continue
+            # git status --porcelain output: XY <path> or XY <path> -> <new_path>
+            # XY are the staged (col 1) and unstaged (col 2) status codes
+            path_str = line[3:].strip()
+            # Handle renamed files: "R  old -> new"
+            if " -> " in path_str:
+                path_str = path_str.split(" -> ", 1)[1].strip()
+            # Strip surrounding quotes (git adds them for special-char paths)
+            if path_str.startswith('"') and path_str.endswith('"'):
+                path_str = path_str[1:-1]
+            files.add(root / path_str)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+    return files
+
+
 class Colors:
     """ANSI color codes for terminal output."""
 
@@ -61,22 +98,36 @@ def get_latest_spec_dir(specs_dir: Path | None = None) -> Path:
 
 
 def run_rumdl_format(spec_dir: Path) -> None:
-    """Format markdown files using rumdl."""
+    """Format markdown files using rumdl.
+
+    rumdl is an optional external formatter. If it is not installed, this
+    step is skipped with a warning rather than failing the pipeline, since
+    markdown formatting is not a structural contract requirement.
+    """
     md_files = list(spec_dir.rglob("*.md"))
     if not md_files:
         return
 
     print_info(f"Formatting markdown files using 'rumdl' in {spec_dir}...")
+    try:
+        # Check once if rumdl is available before iterating files
+        subprocess.run(["rumdl", "--version"], capture_output=True, check=True)
+    except FileNotFoundError:
+        print_warning(
+            "Command 'rumdl' not found — skipping markdown auto-format. "
+            "Install it with: cargo install rumdl  (or: pip install rumdl) "
+            "to enable automatic markdown formatting."
+        )
+        return
+    except subprocess.CalledProcessError:
+        pass  # rumdl exists but --version may not be supported; proceed anyway
+
     for md_file in md_files:
-        try:
-            result = subprocess.run(["rumdl", "fmt", str(md_file)], capture_output=True, text=True)
-            if result.returncode == 0:
-                print_success(f"Formatted: {md_file.name}")
-            else:
-                print_warning(f"rumdl failed on {md_file.name}: {result.stderr.strip()}")
-        except FileNotFoundError:
-            print_error("Command 'rumdl' not found. Please ensure it is installed and in PATH.")
-            break
+        result = subprocess.run(["rumdl", "fmt", str(md_file)], capture_output=True, text=True)
+        if result.returncode == 0:
+            print_success(f"Formatted: {md_file.name}")
+        else:
+            print_warning(f"rumdl failed on {md_file.name}: {result.stderr.strip()}")
 
 
 def validate_plan(spec_dir: Path) -> bool:
@@ -120,6 +171,29 @@ def validate_plan(spec_dir: Path) -> bool:
         if "Status:" not in content:
             print_error("tasks.md tasks are missing 'Status:' fields.")
             passed = False
+
+        # Validate each task block has all required fields per contract §7.2
+        task_blocks = re.split(r"(?=#{2,3} Task \d+\.\d+:)", content)
+        task_blocks = [b for b in task_blocks if re.match(r"#{2,3} Task \d+", b)]
+        required_task_fields = [
+            "Context:",
+            "Verification:",
+            "Scenario Coverage:",
+            "Loop Type:",
+            "Behavioral Contract:",
+            "Simplification Focus:",
+            "BDD Verification:",
+            "Advanced Test Verification:",
+            "Runtime Verification:",
+        ]
+        for block in task_blocks:
+            task_name_match = re.search(r"#{2,3} Task (\d+\.\d+.*)", block)
+            task_name = task_name_match.group(1).strip() if task_name_match else "Unknown Task"
+            for field in required_task_fields:
+                if field not in block:
+                    print_error(f"Task '{task_name}' is missing required field: '{field}'")
+                    passed = False
+
         if passed:
             print_success("tasks.md structural checks passed.")
 
@@ -145,9 +219,9 @@ def validate_build(spec_dir: Path) -> bool:
 
     content = tasks_file.read_text(encoding="utf-8")
 
-    # Parse task blocks and check completion
-    task_blocks = re.split(r"(?=### Task \d+\.\d+:)", content)
-    task_blocks = [b for b in task_blocks if b.startswith("### Task")]
+    # Parse task blocks and check completion (use #{2,3} to match ## or ### headings)
+    task_blocks = re.split(r"(?=#{2,3} Task \d+\.\d+:)", content)
+    task_blocks = [b for b in task_blocks if re.match(r"^#{2,3} Task \d+", b)]
 
     for block in task_blocks:
         task_name_match = re.search(r"#{2,3} Task (\d+\.\d+.*)", block)
@@ -156,6 +230,8 @@ def validate_build(spec_dir: Path) -> bool:
         if "🟢 DONE" not in block:
             if "⏭️ SKIPPED" in block:
                 print_warning(f"Task Skipped: {task_name}. (Ignored in strict completion check)")
+            elif "⛔ OBSOLETE" in block:
+                print_info(f"Task Obsolete: {task_name}. (Ignored in strict completion check)")
             elif "🔴 TODO" in block or "🟡 IN PROGRESS" in block:
                 print_error(f"Task Unfinished: {task_name} is not marked as DONE.")
                 passed = False
@@ -173,6 +249,15 @@ def validate_build(spec_dir: Path) -> bool:
             print_error(
                 f"Task '{task_name}' is marked DONE but has incomplete steps:\n  "
                 + "\n  ".join(unchecked)
+            )
+            passed = False
+
+        # Check that at least one step checkbox exists (prevents LLM from deleting all steps)
+        all_checkboxes = re.findall(r"^[ \t]*- \[[ xX]\].*", block, re.MULTILINE)
+        if not all_checkboxes:
+            print_error(
+                f"Task '{task_name}' is marked DONE but contains no step checkboxes. "
+                "Contract requires at least one step."
             )
             passed = False
 
@@ -207,16 +292,26 @@ def scan_codebase(mode: str) -> bool:
 
     Args:
         mode: "build" for full scan, "task" for subagent self-check.
+            In task mode, scanning is scoped to git-modified files only
+            to prevent subagents from chasing historical tech debt.
     """
     print_info(f"Scanning codebase for code quality issues (mode={mode})...")
 
-    # For task mode, also check debug artifacts
+    target_files: set[Path] | None = None
+    if mode == "task":
+        target_files = get_git_modified_files()
+        if target_files:
+            print_info(f"Task mode: scanning only {len(target_files)} git-modified file(s).")
+        else:
+            print_info("Task mode: no git modifications detected; scanning all tracked files.")
+
     scanner = CodeScanner(
         root_dir=".",
         check_skipped_tests=True,
         check_not_implemented=True,
         check_todos=True,
         check_debug_artifacts=True,
+        target_files=target_files,
     )
 
     result = scanner.scan()

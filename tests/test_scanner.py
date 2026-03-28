@@ -247,12 +247,12 @@ class TestCodeScanner:
     def test_scan_multiple_issues_same_line(self, tmp_path: Path) -> None:
         """Test that multiple issues on same line are all reported."""
         test_file = tmp_path / "test.py"
-        test_file.write_text("TODO: fix this NotImplementedError\n")
+        test_file.write_text("TODO: fix this; raise NotImplementedError\n")
 
         scanner = CodeScanner(root_dir=tmp_path)
         result = scanner.scan()
 
-        # Both TODO and NotImplementedError should be reported
+        # Both TODO and NotImplementedError (raised) should be reported
         assert len(result.issues) == 2
         issue_types = {i.issue_type for i in result.issues}
         assert IssueType.TODO in issue_types
