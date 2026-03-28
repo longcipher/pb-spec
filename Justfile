@@ -24,7 +24,7 @@ lint-fix:
 
 # Run type checker
 type-check:
-    uv run ty check
+    uv run ty check src tests
 
 # Run format, lint, and type-check
 check: format lint type-check
@@ -50,7 +50,7 @@ ci:
     uv run ruff format --check .
     uv run ruff check .
     rumdl check .
-    uv run ty check
+    uv run ty check src tests
     uv run pytest
 
 # Build and publish to PyPI
