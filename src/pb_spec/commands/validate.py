@@ -148,11 +148,27 @@ def validate_plan(spec_dir: Path) -> bool:
     # 2. Validate design.md required sections
     if design_file.exists():
         content = design_file.read_text(encoding="utf-8")
-        required_sections = [
-            "Architecture Decisions",
-            "BDD/TDD Strategy",
-            "Verification",
-        ]
+
+        # Detect mode: full mode has "Executive Summary" or "Requirements & Goals"
+        is_full_mode = "Executive Summary" in content or "Requirements & Goals" in content
+
+        if is_full_mode:
+            required_sections = [
+                "Executive Summary",
+                "Requirements & Goals",
+                "Architecture Overview",
+                "Detailed Design",
+                "Verification & Testing Strategy",
+                "Implementation Plan",
+            ]
+        else:
+            # Lightweight mode (per contract §6.4)
+            required_sections = [
+                "Architecture Decisions",
+                "BDD/TDD Strategy",
+                "Verification",
+            ]
+
         for sec in required_sections:
             if sec not in content:
                 print_error(f"design.md is missing required section: '{sec}'")
