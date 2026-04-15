@@ -9,6 +9,7 @@ from click.testing import CliRunner
 
 from pb_spec.cli import main
 from pb_spec.commands.validate import (
+    SpecNotFoundError,
     get_latest_spec_dir,
     validate_build,
     validate_plan,
@@ -133,18 +134,18 @@ class TestGetLatestSpecDir:
         assert result.name == "2026-03-28-new-feature"
 
     def test_exits_when_no_specs_dir(self, tmp_path: Path) -> None:
-        """Test that it exits when specs directory doesn't exist."""
+        """Test that it raises SpecNotFoundError when specs directory doesn't exist."""
         specs_dir = tmp_path / "specs"
 
-        with pytest.raises(SystemExit):
+        with pytest.raises(SpecNotFoundError):
             get_latest_spec_dir(specs_dir)
 
     def test_exits_when_no_spec_dirs(self, tmp_path: Path) -> None:
-        """Test that it exits when specs directory is empty."""
+        """Test that it raises SpecNotFoundError when specs directory is empty."""
         specs_dir = tmp_path / "specs"
         specs_dir.mkdir()
 
-        with pytest.raises(SystemExit):
+        with pytest.raises(SpecNotFoundError):
             get_latest_spec_dir(specs_dir)
 
 
@@ -154,7 +155,7 @@ class TestValidatePlan:
     def test_valid_spec_passes(self, valid_spec_dir: Path) -> None:
         """Test that a valid spec passes validation."""
         result = validate_plan(valid_spec_dir)
-        assert result is True
+        assert result.is_valid is True
 
     def test_missing_design_file_fails(self, tmp_path: Path) -> None:
         """Test that missing design.md fails validation."""
@@ -165,7 +166,7 @@ class TestValidatePlan:
         tasks_file.write_text("### Task 1.1: Test\nStatus: TODO\n")
 
         result = validate_plan(spec_dir)
-        assert result is False
+        assert result.is_valid is False
 
     def test_missing_tasks_file_fails(self, tmp_path: Path) -> None:
         """Test that missing tasks.md fails validation."""
@@ -176,7 +177,7 @@ class TestValidatePlan:
         design_file.write_text("## Architecture Decisions\n## BDD/TDD Strategy\n## Verification\n")
 
         result = validate_plan(spec_dir)
-        assert result is False
+        assert result.is_valid is False
 
     def test_missing_design_section_fails(self, tmp_path: Path) -> None:
         """Test that missing required design section fails validation."""
@@ -190,7 +191,7 @@ class TestValidatePlan:
         tasks_file.write_text("### Task 1.1: Test\nStatus: TODO\n")
 
         result = validate_plan(spec_dir)
-        assert result is False
+        assert result.is_valid is False
 
     def test_invalid_tasks_structure_fails(self, tmp_path: Path) -> None:
         """Test that invalid tasks.md structure fails validation."""
@@ -204,7 +205,7 @@ class TestValidatePlan:
         tasks_file.write_text("# Tasks\nSome content without task definitions\n")
 
         result = validate_plan(spec_dir)
-        assert result is False
+        assert result.is_valid is False
 
 
 class TestValidateBuild:
@@ -236,7 +237,7 @@ class TestValidateBuild:
 
         monkeypatch.chdir(tmp_path)
         result = validate_build(spec_dir)
-        assert result is True
+        assert result.is_valid is True
 
     def test_todo_task_fails(self, tmp_path: Path) -> None:
         """Test that TODO task fails validation."""
@@ -247,7 +248,7 @@ class TestValidateBuild:
         tasks_file.write_text("### Task 1.1: Test Task\nStatus: 🔴 TODO\n- [ ] Step 1: Not done\n")
 
         result = validate_build(spec_dir)
-        assert result is False
+        assert result.is_valid is False
 
     def test_in_progress_task_fails(self, tmp_path: Path) -> None:
         """Test that IN PROGRESS task fails validation."""
@@ -260,7 +261,7 @@ class TestValidateBuild:
         )
 
         result = validate_build(spec_dir)
-        assert result is False
+        assert result.is_valid is False
 
     def test_dcr_task_fails(self, tmp_path: Path) -> None:
         """Test that DCR task fails validation."""
@@ -271,7 +272,7 @@ class TestValidateBuild:
         tasks_file.write_text("### Task 1.1: Test Task\nStatus: 🔄 DCR\n- [ ] Step 1: Blocked\n")
 
         result = validate_build(spec_dir)
-        assert result is False
+        assert result.is_valid is False
 
     def test_unchecked_steps_fails(self, tmp_path: Path) -> None:
         """Test that DONE task with unchecked steps fails validation."""
@@ -287,7 +288,7 @@ class TestValidateBuild:
         )
 
         result = validate_build(spec_dir)
-        assert result is False
+        assert result.is_valid is False
 
     def test_skipped_task_warns(self, tmp_path: Path, monkeypatch) -> None:
         """Test that skipped task warns but passes."""
@@ -299,7 +300,7 @@ class TestValidateBuild:
 
         monkeypatch.chdir(tmp_path)
         result = validate_build(spec_dir)
-        assert result is True
+        assert result.is_valid is True
 
 
 class TestValidateTask:
@@ -341,7 +342,9 @@ class TestValidateTask:
         clean_file = src_dir / "clean.py"
         clean_file.write_text("pass\n")
         subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
-        subprocess.run(["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "--no-gpg-sign", "-m", "init"], cwd=tmp_path, capture_output=True
+        )
         # Now dirty.py is an untracked file that git diff won't see,
         # so we mock get_git_modified_files to include it
         monkeypatch.setattr(

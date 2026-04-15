@@ -13,7 +13,7 @@ Feature: Validate pb-spec workflow artifacts
     And design.md contains "Verification" section
     When I run "pb-spec validate --plan"
     Then the command should succeed
-    And I should see "design.md structural checks passed"
+    And I should see "design.md (lightweight mode) structural checks passed"
 
   Scenario: Validate plan mode fails on missing design section
     Given I have a spec directory with an incomplete design.md

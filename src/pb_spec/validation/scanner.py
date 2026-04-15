@@ -10,6 +10,13 @@ from enum import Enum
 from pathlib import Path
 
 
+def get_timeout_config() -> dict[str, int]:
+    """Get timeout configuration from environment variables with defaults."""
+    return {
+        "git_ls_files": int(os.getenv("PB_SPEC_GIT_TIMEOUT", "60")),
+    }
+
+
 class IssueType(Enum):
     """Types of code issues that can be detected."""
 
@@ -106,6 +113,7 @@ SKIP_TEST_PATTERNS: list[re.Pattern[str]] = [
 # which are legitimate exception handling and test code patterns.
 # Bare `NotImplemented` is a valid Python singleton used in __eq__, __add__ etc.
 NOT_IMPLEMENTED_PATTERNS: list[re.Pattern[str]] = [
+    # Python: raise NotImplementedError (but not in test contexts)
     re.compile(r"raise NotImplementedError\b"),
     re.compile(r"unimplemented!"),  # Rust
     re.compile(r"todo!"),  # Rust todo! macro
@@ -176,12 +184,14 @@ class CodeScanner:
             None if git is unavailable or the directory is not a git repo.
         """
         try:
+            timeouts = get_timeout_config()
             result = subprocess.run(
                 ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
                 capture_output=True,
                 text=True,
                 check=True,
                 cwd=self.root_dir,
+                timeout=timeouts["git_ls_files"],
             )
             files = []
             for line in result.stdout.splitlines():

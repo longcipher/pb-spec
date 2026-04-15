@@ -87,8 +87,11 @@ Analyze the git diff against the task contract.
 
 You MUST verify the implementation works at runtime. Do NOT rely on test logs alone.
 
-**For frontend tasks (UI behavior, components, pages):**
+**For Frontend Tasks (UI Fidelity Check):**
 
+- You MUST take a screenshot of the rendered UI using Playwright/Puppeteer.
+- If a design mock or PPT reference was provided, you MUST compare your rendered screenshot against the reference using your Vision capabilities.
+- Verdict MUST include: "Visual layout matches constraints. No unintended offset found."
 - Use Playwright MCP (or equivalent browser automation) to:
   1. Navigate to the running application URL
   2. Screenshot the relevant UI state(s)
