@@ -116,6 +116,13 @@ You MUST verify the implementation works at runtime. Do NOT rely on test logs al
 - Check that configuration files are syntactically valid
 - Verify no regressions in existing tooling
 
+**Resource cleanup requirement:**
+
+- Close any browser page/context/session you open for verification.
+- Stop any local server, subprocess, tunnel, or watcher you start for verification.
+- Release MCP/tool sessions even when a verification step fails.
+- If cleanup cannot be verified, report that limitation in the verdict.
+
 **Output:** Document every verification step taken and its result. Include MCP tool commands and responses.
 
 ### Check C — Edge Case Probing

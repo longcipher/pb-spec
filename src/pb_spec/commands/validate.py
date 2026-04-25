@@ -42,6 +42,74 @@ class TaskBlock:
     fields: dict[str, str]
 
 
+@dataclass(frozen=True)
+class ContractBlock:
+    """Represents a markdown-carried workflow contract block."""
+
+    kind: str
+    task_id: str
+    name: str
+    sections: dict[str, str]
+
+
+TASK_HEADING_RE = re.compile(r"^(#{2,3})\s+Task\s+(\d+\.\d+):\s*(.*)$", re.MULTILINE)
+TASK_CHECKBOX_RE = re.compile(r"^[ \t]*- \[[ xX]\].*", re.MULTILINE)
+UNCHECKED_TASK_CHECKBOX_RE = re.compile(r"^[ \t]*- \[ \].*", re.MULTILINE)
+CONTRACT_BLOCK_HEADER_RE = re.compile(
+    r"^(🛑 Build Blocked|🔄 Design Change Request)\s+—\s+Task\s+(\d+\.\d+):\s*(.*)$",
+    re.MULTILINE,
+)
+
+ALLOWED_LOOP_TYPES = frozenset({"BDD+TDD", "TDD-only"})
+ALLOWED_TASK_STATUSES = frozenset(
+    {
+        "🔴 TODO",
+        "🟡 IN PROGRESS",
+        "🟢 DONE",
+        "⏭️ SKIPPED",
+        "🔄 DCR",
+        "⛔ OBSOLETE",
+        "TODO",
+    }
+)
+NA_REASON_FIELDS = frozenset(
+    {
+        "Scenario Coverage:",
+        "BDD Verification:",
+        "Advanced Test Verification:",
+        "Runtime Verification:",
+    }
+)
+BUILD_BLOCKED_REQUIRED_SECTIONS = (
+    "Reason",
+    "Loop Type",
+    "Scenario Coverage",
+    "What We Tried",
+    "Failure Evidence",
+    "Failing Step",
+    "Suggested Design Change",
+    "Impact",
+    "Next Action",
+)
+DCR_REQUIRED_SECTIONS = (
+    "Scenario Coverage",
+    "Problem",
+    "What We Tried",
+    "Failure Evidence",
+    "Failing Step",
+    "Suggested Change",
+    "Impact",
+)
+CONTRACT_SECTION_NAMES = frozenset(BUILD_BLOCKED_REQUIRED_SECTIONS + DCR_REQUIRED_SECTIONS)
+
+
+def required_sections_for_contract_block(kind: str) -> tuple[str, ...]:
+    """Return required section names for a workflow contract block kind."""
+    if kind == "🛑 Build Blocked":
+        return BUILD_BLOCKED_REQUIRED_SECTIONS
+    return DCR_REQUIRED_SECTIONS
+
+
 class MarkdownParser:
     """Simple markdown parser for extracting task blocks."""
 
@@ -55,11 +123,14 @@ class MarkdownParser:
 
         for line in lines:
             # Check for task heading
-            task_match = re.match(r"^(#{2,3})\s+Task\s+(\d+\.\d+):\s*(.*)$", line)
+            task_match = TASK_HEADING_RE.match(line)
             if task_match:
                 # Save previous task if exists
                 if current_task:
-                    current_task.fields[current_field] = "\n".join(current_field_content).strip()
+                    if current_field:
+                        current_task.fields[current_field] = "\n".join(
+                            current_field_content
+                        ).strip()
                     task_blocks.append(current_task)
 
                 # Start new task
@@ -92,16 +163,104 @@ class MarkdownParser:
                 current_field = field_name
                 current_task.fields[current_field] = field_value
                 current_field_content = [field_value] if field_value else []
-            elif current_field and line.strip():  # Additional content lines for current field
+            elif current_field and line.strip() and not TASK_CHECKBOX_RE.match(line):
                 current_field_content.append(line)
                 current_task.fields[current_field] = "\n".join(current_field_content).strip()
 
         # Save last task
-        if current_task and current_field:
-            current_task.fields[current_field] = "\n".join(current_field_content).strip()
+        if current_task:
+            if current_field:
+                current_task.fields[current_field] = "\n".join(current_field_content).strip()
             task_blocks.append(current_task)
 
         return task_blocks
+
+
+def task_display_name(task_block: TaskBlock) -> str:
+    """Return a stable task display name for diagnostics."""
+    return f"{task_block.id}: {task_block.name}" if task_block.name else task_block.id
+
+
+def is_bare_na(value: str) -> bool:
+    """Return True when a field says N/A without a meaningful reason."""
+    stripped = value.strip()
+    if not stripped.lower().startswith("n/a"):
+        return False
+
+    remainder = stripped[3:].strip(" \t-—:;,.()[]")
+    return not remainder
+
+
+def parse_contract_sections(block_body: str) -> dict[str, str]:
+    """Parse colon-delimited sections from a DCR or build-blocked body."""
+    sections: dict[str, list[str]] = {}
+    current_section = ""
+
+    for raw_line in block_body.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        section_name, separator, value = line.partition(":")
+        if separator and section_name in CONTRACT_SECTION_NAMES:
+            current_section = section_name
+            sections.setdefault(current_section, [])
+            if value.strip():
+                sections[current_section].append(value.strip())
+            continue
+
+        if current_section:
+            sections[current_section].append(line)
+
+    return {name: "\n".join(lines).strip() for name, lines in sections.items()}
+
+
+def parse_contract_blocks(content: str) -> list[ContractBlock]:
+    """Parse markdown-carried DCR and build-blocked packets from tasks.md."""
+    matches = list(CONTRACT_BLOCK_HEADER_RE.finditer(content))
+    blocks: list[ContractBlock] = []
+
+    for index, match in enumerate(matches):
+        kind, task_id, name = match.groups()
+        end_candidates = [len(content)]
+
+        if index + 1 < len(matches):
+            end_candidates.append(matches[index + 1].start())
+
+        next_task = TASK_HEADING_RE.search(content, match.end())
+        if next_task:
+            end_candidates.append(next_task.start())
+
+        block_body = content[match.end() : min(end_candidates)]
+        blocks.append(
+            ContractBlock(
+                kind=kind,
+                task_id=task_id,
+                name=name.strip(),
+                sections=parse_contract_sections(block_body),
+            )
+        )
+
+    return blocks
+
+
+def validate_contract_blocks(content: str) -> list[str]:
+    """Validate required sections for markdown workflow contract blocks."""
+    errors = []
+
+    for block in parse_contract_blocks(content):
+        missing_sections = [
+            section
+            for section in required_sections_for_contract_block(block.kind)
+            if not block.sections.get(section, "").strip()
+        ]
+        if missing_sections:
+            errors.append(
+                f"Incomplete {block.kind} packet for Task {block.task_id}: "
+                f"Missing required section(s): {', '.join(missing_sections)}"
+            )
+
+    return errors
 
 
 def combine_validation_results(*results: ValidationResult) -> ValidationResult:
@@ -337,9 +496,7 @@ def validate_tasks_structure(spec_dir: Path) -> ValidationResult:
         )
         return ValidationResult(is_valid=False, errors=errors)
 
-    # Check for status fields globally
-    if "Status:" not in content:
-        errors.append("tasks.md tasks are missing 'Status:' fields.")
+    errors.extend(validate_contract_blocks(content))
 
     required_task_fields = [
         "Context:",
@@ -348,25 +505,54 @@ def validate_tasks_structure(spec_dir: Path) -> ValidationResult:
         "Loop Type:",
         "Behavioral Contract:",
         "Simplification Focus:",
+        "Status:",
         "BDD Verification:",
         "Advanced Test Verification:",
         "Runtime Verification:",
     ]
 
+    seen_task_ids: set[str] = set()
+
     for task_block in task_blocks:
-        task_display_name = (
-            f"{task_block.id}: {task_block.name}" if task_block.name else task_block.id
-        )
+        display_name = task_display_name(task_block)
+
+        if task_block.id in seen_task_ids:
+            errors.append(f"Duplicate task ID found in tasks.md: Task {task_block.id}")
+        seen_task_ids.add(task_block.id)
 
         for required_field in required_task_fields:
             if required_field not in task_block.fields:
                 errors.append(
-                    f"Task '{task_display_name}' is missing required field: '{required_field}'"
+                    f"Task '{display_name}' is missing required field: '{required_field}'"
                 )
             elif not task_block.fields[required_field].strip():
+                errors.append(f"Task '{display_name}' has empty required field: '{required_field}'")
+            elif required_field in NA_REASON_FIELDS and is_bare_na(
+                task_block.fields[required_field]
+            ):
                 errors.append(
-                    f"Task '{task_display_name}' has empty required field: '{required_field}'"
+                    f"Task '{display_name}' field '{required_field}' must be N/A with a brief reason."
                 )
+
+        loop_type = task_block.fields.get("Loop Type:", "").strip()
+        if loop_type and loop_type not in ALLOWED_LOOP_TYPES:
+            errors.append(
+                f"Task '{display_name}' has invalid Loop Type: '{loop_type}'. "
+                f"Allowed values: {', '.join(sorted(ALLOWED_LOOP_TYPES))}"
+            )
+
+        status = task_block.fields.get("Status:", "").strip()
+        if status and status not in ALLOWED_TASK_STATUSES:
+            errors.append(
+                f"Task '{display_name}' has invalid Status: '{status}'. "
+                "Use one of the contract task state markers."
+            )
+
+        if not TASK_CHECKBOX_RE.search(task_block.content):
+            errors.append(
+                f"Task '{display_name}' contains no step checkboxes. "
+                "Contract requires at least one checkbox step."
+            )
 
     if not errors:
         warnings.append("tasks.md structural checks passed.")
@@ -476,42 +662,38 @@ def validate_build(spec_dir: Path) -> ValidationResult:
     task_blocks = parser.parse_task_blocks(content)
 
     for task_block in task_blocks:
-        task_display_name = (
-            f"{task_block.id}: {task_block.name}" if task_block.name else task_block.id
-        )
+        display_name = task_display_name(task_block)
 
         # Check task status
         status_field = task_block.fields.get("Status:", "")
         if "🟢 DONE" not in status_field:
             if "⏭️ SKIPPED" in status_field:
                 warnings.append(
-                    f"Task Skipped: {task_display_name}. (Ignored in strict completion check)"
+                    f"Task Skipped: {display_name}. (Ignored in strict completion check)"
                 )
             elif "⛔ OBSOLETE" in status_field:
-                infos.append(
-                    f"Task Obsolete: {task_display_name}. (Ignored in strict completion check)"
-                )
+                infos.append(f"Task Obsolete: {display_name}. (Ignored in strict completion check)")
             elif "🔴 TODO" in status_field or "🟡 IN PROGRESS" in status_field:
-                errors.append(f"Task Unfinished: {task_display_name} is not marked as DONE.")
+                errors.append(f"Task Unfinished: {display_name} is not marked as DONE.")
             elif "🔄 DCR" in status_field:
-                errors.append(f"Task Blocked by DCR: {task_display_name}. Needs design refinement.")
+                errors.append(f"Task Blocked by DCR: {display_name}. Needs design refinement.")
             else:
-                errors.append(f"Task Invalid Status: {task_display_name}. Missing 🟢 DONE.")
+                errors.append(f"Task Invalid Status: {display_name}. Missing 🟢 DONE.")
             continue
 
         # Check for unchecked steps
-        unchecked = re.findall(r"^[ \t]*- \[ \].*", task_block.content, re.MULTILINE)
+        unchecked = UNCHECKED_TASK_CHECKBOX_RE.findall(task_block.content)
         if unchecked:
             errors.append(
-                f"Task '{task_display_name}' is marked DONE but has incomplete steps:\n  "
+                f"Task '{display_name}' is marked DONE but has incomplete steps:\n  "
                 + "\n  ".join(unchecked)
             )
 
         # Check that at least one step checkbox exists (prevents LLM from deleting all steps)
-        all_checkboxes = re.findall(r"^[ \t]*- \[[ xX]\].*", task_block.content, re.MULTILINE)
+        all_checkboxes = TASK_CHECKBOX_RE.findall(task_block.content)
         if not all_checkboxes:
             errors.append(
-                f"Task '{task_display_name}' is marked DONE but contains no step checkboxes. "
+                f"Task '{display_name}' is marked DONE but contains no step checkboxes. "
                 "Contract requires at least one step."
             )
 

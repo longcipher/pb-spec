@@ -14,6 +14,7 @@ from pb_spec.commands.validate import (
     validate_build,
     validate_plan,
     validate_task,
+    validate_tasks_structure,
 )
 
 
@@ -206,6 +207,249 @@ class TestValidatePlan:
 
         result = validate_plan(spec_dir)
         assert result.is_valid is False
+
+    def test_duplicate_task_ids_fail(self, tmp_path: Path) -> None:
+        """Test that duplicate task IDs violate the task contract."""
+        spec_dir = tmp_path / "specs" / "test"
+        spec_dir.mkdir(parents=True)
+
+        tasks_file = spec_dir / "tasks.md"
+        tasks_file.write_text(
+            "# Tasks\n"
+            "\n"
+            "### Task 1.1: First task\n"
+            "Context: Build first piece.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: N/A — internal task.\n"
+            "Loop Type: TDD-only\n"
+            "Behavioral Contract: Must pass.\n"
+            "Simplification Focus: Keep minimal.\n"
+            "BDD Verification: N/A — TDD-only task.\n"
+            "Advanced Test Verification: N/A — no advanced tests planned.\n"
+            "Runtime Verification: N/A — no runtime changes.\n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1: Write test\n"
+            "\n"
+            "### Task 1.1: Duplicate task\n"
+            "Context: Build second piece.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: N/A — internal task.\n"
+            "Loop Type: TDD-only\n"
+            "Behavioral Contract: Must pass.\n"
+            "Simplification Focus: Keep minimal.\n"
+            "BDD Verification: N/A — TDD-only task.\n"
+            "Advanced Test Verification: N/A — no advanced tests planned.\n"
+            "Runtime Verification: N/A — no runtime changes.\n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1: Write test\n"
+        )
+
+        result = validate_tasks_structure(spec_dir)
+
+        assert result.is_valid is False
+        assert any("Duplicate task ID" in error for error in result.errors)
+
+    def test_task_missing_status_fails_even_when_other_task_has_status(
+        self, tmp_path: Path
+    ) -> None:
+        """Test that Status is required per task, not just somewhere in tasks.md."""
+        spec_dir = tmp_path / "specs" / "test"
+        spec_dir.mkdir(parents=True)
+
+        tasks_file = spec_dir / "tasks.md"
+        tasks_file.write_text(
+            "# Tasks\n"
+            "\n"
+            "### Task 1.1: Has status\n"
+            "Context: Build first piece.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: N/A — internal task.\n"
+            "Loop Type: TDD-only\n"
+            "Behavioral Contract: Must pass.\n"
+            "Simplification Focus: Keep minimal.\n"
+            "BDD Verification: N/A — TDD-only task.\n"
+            "Advanced Test Verification: N/A — no advanced tests planned.\n"
+            "Runtime Verification: N/A — no runtime changes.\n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1: Write test\n"
+            "\n"
+            "### Task 1.2: Missing status\n"
+            "Context: Build second piece.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: N/A — internal task.\n"
+            "Loop Type: TDD-only\n"
+            "Behavioral Contract: Must pass.\n"
+            "Simplification Focus: Keep minimal.\n"
+            "BDD Verification: N/A — TDD-only task.\n"
+            "Advanced Test Verification: N/A — no advanced tests planned.\n"
+            "Runtime Verification: N/A — no runtime changes.\n"
+            "- [ ] Step 1: Write test\n"
+        )
+
+        result = validate_tasks_structure(spec_dir)
+
+        assert result.is_valid is False
+        assert any(
+            error == "Task '1.2: Missing status' is missing required field: 'Status:'"
+            for error in result.errors
+        )
+
+    def test_invalid_task_status_fails(self, tmp_path: Path) -> None:
+        """Test that task statuses must use the contract's allowed markers."""
+        spec_dir = tmp_path / "specs" / "test"
+        spec_dir.mkdir(parents=True)
+
+        tasks_file = spec_dir / "tasks.md"
+        tasks_file.write_text(
+            "# Tasks\n"
+            "\n"
+            "### Task 1.1: Invalid status\n"
+            "Context: Build piece.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: N/A — internal task.\n"
+            "Loop Type: TDD-only\n"
+            "Behavioral Contract: Must pass.\n"
+            "Simplification Focus: Keep minimal.\n"
+            "BDD Verification: N/A — TDD-only task.\n"
+            "Advanced Test Verification: N/A — no advanced tests planned.\n"
+            "Runtime Verification: N/A — no runtime changes.\n"
+            "Status: DONE\n"
+            "- [ ] Step 1: Write test\n"
+        )
+
+        result = validate_tasks_structure(spec_dir)
+
+        assert result.is_valid is False
+        assert any("invalid Status" in error for error in result.errors)
+
+    def test_task_without_checkbox_fails(self, tmp_path: Path) -> None:
+        """Test that every task block must include at least one checkbox step."""
+        spec_dir = tmp_path / "specs" / "test"
+        spec_dir.mkdir(parents=True)
+
+        tasks_file = spec_dir / "tasks.md"
+        tasks_file.write_text(
+            "# Tasks\n"
+            "\n"
+            "### Task 1.1: No checkbox\n"
+            "Context: Build piece.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: N/A — internal task.\n"
+            "Loop Type: TDD-only\n"
+            "Behavioral Contract: Must pass.\n"
+            "Simplification Focus: Keep minimal.\n"
+            "BDD Verification: N/A — TDD-only task.\n"
+            "Advanced Test Verification: N/A — no advanced tests planned.\n"
+            "Runtime Verification: N/A — no runtime changes.\n"
+            "Status: 🔴 TODO\n"
+        )
+
+        result = validate_tasks_structure(spec_dir)
+
+        assert result.is_valid is False
+        assert any("contains no step checkboxes" in error for error in result.errors)
+
+    def test_na_required_field_without_reason_fails(self, tmp_path: Path) -> None:
+        """Test that N/A placeholders must include a reason."""
+        spec_dir = tmp_path / "specs" / "test"
+        spec_dir.mkdir(parents=True)
+
+        tasks_file = spec_dir / "tasks.md"
+        tasks_file.write_text(
+            "# Tasks\n"
+            "\n"
+            "### Task 1.1: Bare N/A\n"
+            "Context: Build piece.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: N/A\n"
+            "Loop Type: TDD-only\n"
+            "Behavioral Contract: Must pass.\n"
+            "Simplification Focus: Keep minimal.\n"
+            "BDD Verification: N/A\n"
+            "Advanced Test Verification: N/A\n"
+            "Runtime Verification: N/A\n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1: Write test\n"
+        )
+
+        result = validate_tasks_structure(spec_dir)
+
+        assert result.is_valid is False
+        assert any("N/A with a brief reason" in error for error in result.errors)
+
+    def test_incomplete_dcr_block_fails(self, tmp_path: Path) -> None:
+        """Test that DCR packets must contain all required sections."""
+        spec_dir = tmp_path / "specs" / "test"
+        spec_dir.mkdir(parents=True)
+
+        tasks_file = spec_dir / "tasks.md"
+        tasks_file.write_text(
+            "# Tasks\n"
+            "\n"
+            "### Task 1.1: Blocked task\n"
+            "Context: Build piece.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: Feature file + scenario.\n"
+            "Loop Type: BDD+TDD\n"
+            "Behavioral Contract: Must pass.\n"
+            "Simplification Focus: Keep minimal.\n"
+            "BDD Verification: uv run behave features/example.feature\n"
+            "Advanced Test Verification: N/A — no advanced tests planned.\n"
+            "Runtime Verification: N/A — no runtime changes.\n"
+            "Status: 🔄 DCR\n"
+            "- [ ] Step 1: Resolve design issue\n"
+            "\n"
+            "🔄 Design Change Request — Task 1.1: Blocked task\n"
+            "Scenario Coverage: Feature file + scenario.\n"
+            "Problem: Current design is infeasible.\n"
+            "What We Tried: Ran the failing scenario.\n"
+            "Failure Evidence: AssertionError: expected success.\n"
+            "Failing Step: When the user submits the form.\n"
+            "Suggested Change: Update the design boundary.\n"
+        )
+
+        result = validate_tasks_structure(spec_dir)
+
+        assert result.is_valid is False
+        assert any("Incomplete 🔄 Design Change Request packet" in error for error in result.errors)
+
+    def test_incomplete_build_blocked_packet_fails(self, tmp_path: Path) -> None:
+        """Test that build-block packets must contain all required sections."""
+        spec_dir = tmp_path / "specs" / "test"
+        spec_dir.mkdir(parents=True)
+
+        tasks_file = spec_dir / "tasks.md"
+        tasks_file.write_text(
+            "# Tasks\n"
+            "\n"
+            "### Task 1.1: Failed task\n"
+            "Context: Build piece.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: Feature file + scenario.\n"
+            "Loop Type: BDD+TDD\n"
+            "Behavioral Contract: Must pass.\n"
+            "Simplification Focus: Keep minimal.\n"
+            "BDD Verification: uv run behave features/example.feature\n"
+            "Advanced Test Verification: N/A — no advanced tests planned.\n"
+            "Runtime Verification: N/A — no runtime changes.\n"
+            "Status: 🔄 DCR\n"
+            "- [ ] Step 1: Resolve design issue\n"
+            "\n"
+            "🛑 Build Blocked — Task 1.1: Failed task\n"
+            "Reason: 3 consecutive failed attempts.\n"
+            "Loop Type: BDD+TDD\n"
+            "Scenario Coverage: Feature file + scenario.\n"
+            "What We Tried: Attempted three implementations.\n"
+            "Failure Evidence: AssertionError: expected success.\n"
+            "Failing Step: When the user submits the form.\n"
+            "Suggested Design Change: Update the design boundary.\n"
+            "Impact: Task 1.1 remains blocked.\n"
+        )
+
+        result = validate_tasks_structure(spec_dir)
+
+        assert result.is_valid is False
+        assert any("Incomplete 🛑 Build Blocked packet" in error for error in result.errors)
 
 
 class TestValidateBuild:

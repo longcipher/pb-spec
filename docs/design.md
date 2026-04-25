@@ -181,6 +181,9 @@ The validator enforces the pb-spec markdown contract:
 - Required fields: Context, Verification, Scenario Coverage, Loop Type, Behavioral Contract, Simplification Focus, Status, BDD Verification, Advanced Test Verification, Runtime Verification
 - Valid statuses: 🔴 TODO, 🟡 IN PROGRESS, 🟢 DONE, ⏭️ SKIPPED, 🔄 DCR, ⛔ OBSOLETE
 - At least one checkbox step per task
+- Duplicate task IDs are rejected
+- `N/A` verification placeholders must include a reason
+- Markdown-carried `🛑 Build Blocked` and `🔄 Design Change Request` packets are checked for required sections when present
 
 **features/ Contract:**
 
@@ -252,7 +255,7 @@ All external operations are protected with appropriate timeouts:
 
 ## 10. Known Constraints and Future Enhancements
 
-1. **Markdown parsing**: Current implementation uses regex matching; future versions may adopt AST-based parsing for better accuracy
+1. **Markdown parsing**: Current implementation uses a contract-specific line parser with regex token boundaries; future versions may adopt AST-based parsing if lossless editing becomes a requirement
 2. **Language support**: Additional programming languages can be added by extending scanner patterns
 3. **Performance**: For very large codebases, consider implementing parallel scanning or incremental validation
 4. **Integration**: Future versions may integrate with CI/CD pipelines for automated quality gates

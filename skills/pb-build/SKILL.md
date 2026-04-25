@@ -192,6 +192,7 @@ After the Generator signals `READY_FOR_EVAL`, the orchestrator must perform an *
    - The task description from `tasks.md`
    - The relevant `.feature` file scenarios
    - The `design.md` architecture decisions for this task
+   - If the agent runtime exposes a context-forking option, keep it disabled for the Evaluator. Never reuse the Generator agent/session ID, and never pass the Generator transcript.
 
 2. **Spawn Evaluator Persona.** Use the `references/evaluator_prompt.md` template, filled with:
    - The full task description
@@ -211,6 +212,7 @@ After the Generator signals `READY_FOR_EVAL`, the orchestrator must perform an *
    - **Frontend tasks:** Use browser automation to navigate, screenshot, and interact with the running app.
    - **Backend tasks:** Use HTTP tools to hit real API endpoints, verify status codes and response bodies.
    - If tools are unavailable, fall back to CLI-based verification (curl, wget) and document the limitation.
+   - Clean up every live verification resource you start: close browser pages/contexts, terminate local dev servers, and release MCP/tool sessions even when verification fails.
 
    **Check C — Edge Case Probing:**
    - Test at least 2 boundary/edge cases not explicitly in the scenario
