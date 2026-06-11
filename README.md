@@ -8,23 +8,35 @@
 
 ![pb-spec](https://socialify.git.ci/longcipher/pb-spec/image?font=Source+Code+Pro&language=1&name=1&owner=1&pattern=Circuit+Board&theme=Auto)
 
-pb-spec is a set of [Agent Skills Specification](https://agentskills.io) compliant AI Coding assistant workflow skill packages. It provides a structured process — `plan` → `build` — that turns natural-language requirements into well-architected, TDD/BDD-driven, tested code.
+pb-spec is a set of [Agent Skills Specification](https://agentskills.io) compliant AI Coding assistant workflow skill packages. It provides a structured process — `plan` → `build` — that turns natural-language requirements into well-architected, BDD-driven, tested code.
 
 ## Design Philosophy
 
-Compared to letting AI "just write code", pb-spec provides a hardened execution harness (guardrails). It requires context-first design, contract-based architecture, and dual-loop verification through logging and health checks.
+pb-spec implements the **Plan-Build pattern**: a Planner Agent generates design specs, and a Builder Agent executes code with verification. The core innovation is making `.feature` files the **absolute source of truth** — all design and tasks derive FROM scenarios, not the other way around.
+
+### Core Principles
+
+| Principle | Description |
+|---|---|
+| **BDD-First** | Feature scenarios are the source of truth. Design and tasks derive FROM scenarios. |
+| **RFC 2119 Constraints** | Architectural constraints use MUST/SHOULD/MAY keywords — binding for the Builder. |
+| **DAG Execution** | Tasks include DependsOn metadata for parallel execution of independent tasks. |
+| **Adaptive Steering** | Tasks with Complexity=High route to reasoning models; Low to fast models. |
+| **Escalation Protocol** | Repeated failures auto-escalate to stronger models for root-cause analysis. |
+| **Generator/Evaluator Isolation** | Generator builds; Evaluator judges with fresh context — never inherits Generator state. |
 
 ### Design Standards
 
-`design.md` artifacts conform to four industry-standard specification formats:
+`design.md` artifacts conform to industry-standard specification formats:
 
 | Standard | Purpose | pb-spec Application |
 |---|---|---|
-| **EARS Notation** | Eliminate ambiguous requirements with 5 sentence patterns (Ubiquitous, State-driven, Event-driven, Unwanted, Exception) | Every requirement in `design.md` uses EARS syntax with `[REQ-XX]` IDs |
-| **C4 Model + Mermaid** | Architecture topology in parseable text (Context, Container, Component diagrams) | Architecture sections use `` ```mermaid `` blocks with C4 hierarchy |
-| **DBML / Prisma Schema** | Structured data models with strict types, relationships, and indexes | Data model sections use DBML or Prisma Schema DSL — natural language forbidden |
-| **MADR (ADR Records)** | Architecture decision records with Context/Decision/Consequences | Every AD has `[Context]`, `[Decision]`, `[Consequences]` subsections |
-| **API-First Type Signatures** | Contracts defined before implementation (OpenAPI, Protocol, Trait) | Interface sections use type signatures — narrative descriptions forbidden |
+| **EARS Notation** | Eliminate ambiguous requirements with 5 sentence patterns | Every requirement uses EARS syntax with `[REQ-XX]` IDs |
+| **C4 Model + Mermaid** | Architecture topology in parseable text | Architecture sections use `` ```mermaid `` blocks |
+| **DBML / Prisma Schema** | Structured data models with strict types | Data model sections use DBML or Prisma Schema DSL |
+| **MADR (ADR Records)** | Architecture decision records | Every AD has `[Context]`, `[Decision]`, `[Consequences]` |
+| **RFC 2119 Constraints** | Binding behavioral constraints for agents | `§Architectural Constraints` with MUST/SHOULD/MAY |
+| **Behavior Traceability Matrix** | Every component maps to a Feature scenario | No scenario = remove from design |
 
 ### Best-Practice Alignment
 
@@ -33,16 +45,15 @@ Compared to letting AI "just write code", pb-spec provides a hardened execution 
 | [RPI Strategy](https://patrickarobinson.com/blog/introducing-rpi-strategy/) | Separate research, planning, and implementation | `/pb-init` + `/pb-plan` precede `/pb-build` |
 | [Plan-and-Solve Prompting](https://arxiv.org/abs/2305.04091) | Plan first to reduce missing-step errors | `design.md` + `tasks.md` are mandatory artifacts |
 | [ReAct](https://arxiv.org/abs/2210.03629) | Interleave reasoning and actions with environment feedback | `/pb-build` executes task-by-task with test/tool feedback loops |
-| [Reflexion](https://arxiv.org/abs/2303.11366) | Learn from failure signals via iterative retries | Retry/skip/abort and DCR flow in `pb-build` |
-| [Harness Engineering (OpenAI, 2026-02-11)](https://openai.com/index/harness-engineering/) | Treat runtime signals and checklists as first-class harness inputs | `pb-plan` requires runtime verification hooks; `pb-build` validates logs/health evidence before task closure |
-| [openai/symphony](https://github.com/openai/symphony) | Long-running agents need explicit observability and deterministic escalation | `pb-build` enforces bounded retries and emits standardized DCR packets for `pb-refine` |
-| [Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) | Grounding, context hygiene, recovery, observability | State checks, minimal context handoff, task-local rollback guidance |
+| [Reflexion](https://arxiv.org/abs/2303.11366) | Learn from failure signals via iterative retries | Escalation protocol + DCR flow in `pb-build` |
+| [Harness Engineering (OpenAI, 2026-02-11)](https://openai.com/index/harness-engineering/) | Treat runtime signals and checklists as first-class harness inputs | `pb-plan` requires runtime verification hooks; `pb-build` validates logs/health evidence |
+| [openai/symphony](https://github.com/openai/symphony) | Long-running agents need explicit observability and deterministic escalation | `pb-build` enforces bounded retries and emits standardized DCR packets |
+| [Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) | Grounding, context hygiene, recovery, observability | State checks, minimal context handoff, task-local rollback |
 | [Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) | Prefer simple composable workflows over framework complexity | Small adapter-based CLI + explicit workflow prompts |
-| [Harness Design for Long-Running Application Development](https://www.anthropic.com/engineering/harness-design-long-running-apps) | Generator/Evaluator separation; adversarial evaluation with MCP-driven live verification | `pb-build` dual-persona: Generator builds, independent Evaluator audits with fresh context; adaptive evaluation by task complexity |
-| [Stop Using /init for AGENTS.md](https://addyosmani.com/blog/agents-md/) | Keep AGENTS.md focused and maintainable | `/pb-init` updates a managed snapshot block in `AGENTS.md` while preserving all user-authored constraints outside that block |
-| [Ensuring Correctness Through the Type System](https://lindbakk.com/blog/ensuring-correctness-through-the-type-system) | Use the type system to encode invariants and catch errors early | Encode contracts as type-level assertions in `design.md` and add type checks to verification; `pb-plan` adds type guidance and `pb-build` runs the type checker when applicable |
-| [shadcn/improve](https://github.com/shadcn/improve) | Audit codebase, write self-contained plans for cheaper executors | `/pb-improve` surveys codebase, produces prioritized findings and handoff plans |
-| [Superpowers](https://github.com/obra/superpowers) | Composable skills, evidence-based claims, systematic debugging, skill auto-triggering | `using-pb-spec` bootstrap; `pb-verification-before-completion`; `pb-systematic-debugging`; supporting skills ecosystem |
+| [Harness Design for Long-Running Application Development](https://www.anthropic.com/engineering/harness-design-long-running-apps) | Generator/Evaluator separation; adversarial evaluation | `pb-build` dual-persona with adaptive evaluation by task complexity |
+| [shadcn/improve](https://github.com/shadcn/improve) | Audit codebase, write self-contained plans for cheaper executors | `/pb-improve` surveys codebase, produces prioritized specs |
+| [Agent-SOP](https://github.com/strands-agents/agent-sop) | RFC 2119 constraints, DAG tasks, adaptive model routing | RFC 2119 in `design.md`, DAG metadata in `tasks.md`, Escalation protocol |
+| [Superpowers](https://github.com/obra/superpowers) | Composable skills, evidence-based claims, systematic debugging | `using-pb-spec` bootstrap; supporting skills ecosystem |
 
 ## Installation
 
@@ -58,7 +69,7 @@ npx skills add longcipher/pb-spec
 npx skills add longcipher/pb-spec --skill pb-init
 npx skills add longcipher/pb-spec --skill pb-plan
 npx skills add longcipher/pb-spec --skill pb-build
-npx skills add longcipher/pb-spec --skill improve
+npx skills add longcipher/pb-spec --skill pb-improve
 ```
 
 *(After installation, skills will be placed in `.agents/skills/` or the compatible local directory for your environment, and automatically indexed by your AI.)*
@@ -68,10 +79,10 @@ npx skills add longcipher/pb-spec --skill improve
 Invoke these skills directly in your IDE / Agent terminal:
 
 1. **/pb-init**: Audit the current project and non-destructively create or update the `AGENTS.md` architecture snapshot.
-2. **/pb-plan "requirement description"**: For example `/pb-plan Add WebSocket auth`, AI will generate `design.md`, `tasks.md`, and `.feature` test specs with Architecture Decisions.
+2. **/pb-plan "requirement description"**: For example `/pb-plan Add WebSocket auth`, AI will generate `design.md`, `tasks.md`, and `.feature` test specs with Architecture Decisions and RFC 2119 constraints.
 3. **/pb-build "feature-name"**: Automatically reads `tasks.md`, starts the outer BDD and inner TDD dual-loop with Subagents, closing and verifying each task one by one.
 4. **/pb-refine "feature-name"**: *(Optional)* When encountering design blocks (Build Blocked) or architectural flaws, iteratively modify specs based on feedback.
-5. **/pb-improve**: Audit the codebase and generate prioritized implementation plans for other agents to execute.
+5. **/pb-improve**: Audit the codebase and generate prioritized implementation specs for other agents to execute.
 
 ## Skills Overview
 
@@ -80,10 +91,10 @@ Invoke these skills directly in your IDE / Agent terminal:
 | Skill | Trigger | Output | Description |
 |---|---|---|---|
 | `pb-init` | `/pb-init` | `AGENTS.md` | Audit repo and safely update/append a managed snapshot block without rewriting user-authored constraints |
-| `pb-plan` | `/pb-plan <requirement>` | `specs/<spec-dir>/design.md` + `tasks.md` + `features/*.feature` | Design proposal + Gherkin scenarios + ordered task breakdown |
+| `pb-plan` | `/pb-plan <requirement>` | `specs/<spec-dir>/design.md` + `tasks.md` + `features/*.feature` | Design proposal + Gherkin scenarios + ordered task breakdown with RFC 2119 constraints and DAG metadata |
 | `pb-refine` | `/pb-refine <feature>` | Revised spec files | Apply feedback or Design Change Requests |
-| `pb-build` | `/pb-build <feature-name>` | Code + tests | BDD+TDD via Generator (builds) + Evaluator (adversarial review) dual-persona workflow |
-| `pb-improve` | `/pb-improve` | `plans/*.md` | Codebase audit → prioritized findings → self-contained handoff plans |
+| `pb-build` | `/pb-build <feature-name>` | Code + tests | BDD+TDD via Generator (builds) + Evaluator (adversarial review) with Escalation protocol |
+| `pb-improve` | `/pb-improve` | `specs/<spec-dir>/` + `specs/context.md` | Codebase audit → prioritized findings → pb-plan-compatible specs |
 
 ### Supporting Skills
 
@@ -119,7 +130,7 @@ Five agent skills that chain together:
 ```text
 /pb-init → /pb-plan → [/pb-refine] → /pb-build
                     ↘
-                    /pb-improve → plans/ → any executor
+                    /pb-improve → specs/ → /pb-build
 ```
 
 Supporting skills activate automatically during the workflow:
@@ -153,18 +164,22 @@ Takes source material in arbitrary format and produces a complete feature spec:
 
 ```text
 specs/<YYYY-MM-DD-NO-feature-name>/
-├── design.md    # Architecture, API contracts, data models
-├── tasks.md     # Ordered implementation tasks
-└── features/    # Gherkin acceptance artifacts
+├── design.md    # Architecture, API contracts, data models, RFC 2119 constraints
+├── tasks.md     # Ordered implementation tasks with DAG metadata
+└── features/    # Gherkin acceptance artifacts (Source of Truth)
 ```
 
 Key capabilities:
 
+- **BDD-First**: Feature scenarios are written FIRST; design and tasks derive FROM scenarios
 - **EARS Requirements**: All acceptance criteria use 5 sentence patterns for machine-checkable verification
+- **RFC 2119 Constraints**: `§Architectural Constraints` section with MUST/SHOULD/MAY keywords — binding for Builder
+- **Behavior Traceability Matrix**: Every design component maps to a Feature scenario (no scenario = remove from design)
 - **C4 + Mermaid Architecture**: Architecture diagrams in parseable Mermaid syntax
 - **MADR Decisions**: Architecture decisions with Context/Decision/Consequences
 - **DBML Data Models**: Structured data models in DSL (natural language forbidden)
 - **API-First Contracts**: Type signatures before implementation (OpenAPI, Protocol, Trait)
+- **DAG-Enabled Tasks**: `TaskID`, `DependsOn`, `Complexity`, `Required Skills`, `EvalRule` metadata
 - **Risk-based testing**: Property tests by default for broad input domains; fuzzing and benchmarks conditional
 - **Template identity alignment**: Renames generic scaffold names to project-matching identifiers
 - **Source requirement normalization**: Converts arbitrary-format input into a structured requirement ledger
@@ -178,50 +193,124 @@ Validates `🛑 Build Blocked` and `🔄 Design Change Request` packets for requ
 
 ### 4. `/pb-build <feature-name>` — Subagent-Driven Implementation
 
-Implements tasks sequentially using a **Generator/Evaluator dual-persona workflow**:
+Implements tasks sequentially using a **Generator/Evaluator dual-persona workflow** with **Escalation protocol**:
 
 ```text
 Generator (subagent) → READY_FOR_EVAL → Evaluator (independent context) → PASS / FAIL
                                                 ├── Diff Audit (git diff + scope + architecture)
+                                                ├── BDD Evidence Verification (independent re-run)
                                                 ├── MCP Live Verification (Playwright / HTTP / CLI)
                                                 └── Edge Case Probing (boundaries, errors, security)
 
 On PASS  → Orchestrator marks task DONE in tasks.md
-On FAIL  → Evaluator feedback → fresh Generator subagent → retry loop (max 3)
+On FAIL  → Evaluator feedback → fresh Generator subagent → retry loop
+On 2nd FAIL → Escalation: auto-upgrade to stronger model for root-cause analysis
+On 3rd FAIL → DCR packet to /pb-refine
 ```
 
 Key principles:
 
+- **BDD-First**: Feature scenarios are the source of truth; all business code must satisfy scenarios
+- **RFC 2119 Constraints**: All constraints from `design.md` §Architectural Constraints are BINDING
 - **TDD is non-negotiable**: Every task starts with a failing test (Red → Green → Refactor)
 - **Fresh context per subagent**: No inherited assumptions; Evaluator never inherits Generator context
 - **Architecture decisions are binding**: Executes the approved design; does not invent a different architecture
-- **Escalation over thrashing**: 3 consecutive failures → suspend task + DCR packet to `/pb-refine`
+- **Escalation over thrashing**: 2nd failure auto-escalates to stronger model; 3rd failure → DCR packet
+- **Mode Behavior**: Interactive mode (default) or Auto mode (`--auto` flag)
 
 ### 5. `/pb-improve` — Codebase Audit & Plan Generation
 
-Audits any codebase and writes self-contained implementation plans for other agents to execute. The skill never modifies source code — only produces plans under `plans/`.
+Audits any codebase and writes pb-plan-compatible specs for other agents to execute. The skill never modifies source code — only produces specs under `specs/`.
 
 ```text
-/pb-improve                        full audit → prioritized findings → plans
+/pb-improve                        full audit → prioritized findings → specs
 /pb-improve quick                  cheap pass: hotspots, top findings only
 /pb-improve deep                   exhaustive: every package, every category
 /pb-improve security               focused audit (also: perf, tests, bugs, ...)
 /pb-improve branch                 audit only what the current branch changes
 /pb-improve next                   feature suggestions — where to take the project
 /pb-improve plan <description>     skip the audit, spec one thing
-/pb-improve review-plan <file>     critique and tighten an existing plan
-/pb-improve execute <plan>         dispatch a cheaper executor, review its work
+/pb-improve review-spec <feature>  critique and tighten an existing spec
 /pb-improve reconcile              refresh the backlog: verify, unblock, retire
-/pb-improve ... --issues           also publish plans as GitHub issues
+/pb-improve ... --issues           also publish specs as GitHub issues
 ```
 
 How it works:
 
-1. **Recon** — Maps the repo: stack, conventions, build/test/lint commands (verification gates).
+1. **Recon** — Maps the repo: stack, conventions, build/test/lint commands (verification gates). Generates `specs/context.md` with project context.
 2. **Audit** — Fans out parallel subagents across 9 categories: correctness, security, performance, test coverage, tech debt, dependencies, DX, docs, direction.
 3. **Vet** — Re-reads every cited location to drop false positives and correct mis-attributions.
 4. **Prioritize** — Findings ordered by leverage (impact ÷ effort, weighted by confidence).
-5. **Plan** — One file per selected finding in `plans/` with self-contained context, verification gates, and STOP conditions.
+5. **Spec** — One spec per selected finding in `specs/<spec-dir>/` with design.md (RFC 2119 constraints), tasks.md (DAG metadata), and features/*.feature (Source of Truth).
+
+## BDD-First Integration
+
+The core innovation: `.feature` files are the **absolute source of truth**. All design and tasks derive FROM scenarios.
+
+### Feature-Driven Workflow
+
+```text
+features/*.feature (Source of Truth)
+        ↓
+design.md (derives FROM features)
+        ↓
+tasks.md (driven BY scenarios)
+        ↓
+/pb-build (executes with RED→GREEN→REFACTOR)
+```
+
+### Behavior Traceability Matrix
+
+Every design component MUST map to a Feature scenario:
+
+| Domain Module | Core Component | Driven by Feature | BDD Tags |
+|---|---|---|---|
+| Auth | `JwtAuthGuard` | `features/auth/login.feature` | `@auth`, `@security` |
+| Payment | `StripeWebhookHandler` | `features/billing/checkout.feature` | `@billing`, `@webhook` |
+
+**Rule:** If a design component cannot be mapped to a scenario, remove it from the design.
+
+### RFC 2119 Constraints
+
+Design constraints use RFC 2119 keywords — binding for the Builder:
+
+```markdown
+## Architectural Constraints (RFC 2119)
+
+- **[C-01]** Database interactions **MUST** use the existing ORM layer; raw SQL **MUST NOT** be introduced.
+- **[C-02]** API responses **SHOULD** maintain <200ms p99 latency.
+- **[C-03]** If an unhandled edge case is encountered, the Builder **MUST** halt and file a DCR.
+```
+
+### DAG-Enabled Tasks
+
+Tasks include metadata for parallel execution and adaptive model routing:
+
+```markdown
+### Task 2.1: "Successful login" — User authenticates
+
+- **TaskID:** `T1`
+- **DependsOn:** `None`
+- **Complexity:** `High`
+- **Required Skills:** Python, JWT, SQLAlchemy
+- **EvalRule:** `behave --tags=@login_success` must pass
+```
+
+| Field | Purpose |
+|---|---|
+| `TaskID` | Unique identifier for DAG resolution |
+| `DependsOn` | Lists prerequisite TaskIDs; `None` = can run in parallel |
+| `Complexity` | `Low` → fast model, `High` → reasoning model |
+| `Required Skills` | Skills the Builder Agent needs |
+| `EvalRule` | Explicit pass/fail criteria |
+
+### Escalation Protocol
+
+| Failure Count | Action | Model Strategy |
+|---|---|---|
+| 1 | Retry with same model | Same model |
+| 2 | **Escalate** — auto-upgrade to stronger model for root-cause analysis | +1 tier (Haiku→Sonnet, Sonnet→Opus) |
+| 3 | File DCR, stop build | N/A |
 
 ## Design Philosophy: Agent Harness
 
@@ -236,9 +325,12 @@ pb-spec's design is inspired by Anthropic's research on [Effective Harnesses for
 | **Recovery Loop** | Pre-task snapshots + file-scoped recovery |
 | **Verification Harness** | Design docs define explicit verification commands |
 | **Observability as Context** | Task verification includes runtime signals (logs/health) |
-| **Escalation Loop** | 3 consecutive failures → DCR handoff to `pb-refine` |
+| **Escalation Loop** | 2nd failure auto-escalates; 3rd failure → DCR handoff to `pb-refine` |
 | **Generator/Evaluator Isolation** | Generator builds; Evaluator judges with fresh context |
 | **Evidence Before Claims** | `pb-verification-before-completion`: no success claims without fresh verification |
+| **RFC 2119 Constraints** | Binding behavioral constraints prevent hallucination and scope creep |
+| **DAG Execution** | Parallel task execution for independent tasks |
+| **Adaptive Steering** | Complexity-based model routing for cost/speed optimization |
 | **Systematic Debugging** | `pb-systematic-debugging`: root cause before fixes, scientific method |
 | **Skill Auto-Triggering** | `using-pb-spec` bootstrap ensures skills activate at the right moments |
 

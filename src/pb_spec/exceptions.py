@@ -3,21 +3,17 @@
 from __future__ import annotations
 
 
-class ValidationError(Exception):
-    """Base exception for all validation errors."""
+class PbSpecError(Exception):
+    """Base exception for all pb-spec errors."""
 
 
-class SpecNotFoundError(ValidationError):
+class SpecNotFoundError(PbSpecError):
     """Raised when spec directory is not found."""
 
 
-class FileReadError(ValidationError):
+class FileReadError(PbSpecError):
     """Raised when spec files cannot be read."""
 
 
-class ContractViolationError(ValidationError):
-    """Raised when markdown contract is violated."""
-
-
-class ConfigError(ValidationError):
+class ConfigError(PbSpecError):
     """Raised when configuration parsing fails."""

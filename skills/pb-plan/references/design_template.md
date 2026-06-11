@@ -37,7 +37,7 @@
 
 ## 3. Requirements & Goals (EARS Notation)
 
-> All acceptance criteria use **EARS (Easy Approach to Requirements Syntax)** — 5 sentence patterns that eliminate ambiguity and produce machine-checkable验收标准.
+> All acceptance criteria use **EARS (Easy Approach to Requirements Syntax)** — 5 sentence patterns that eliminate ambiguity and produce machine-checkable acceptance criteria.
 
 ### 3.1 Problem Statement
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from dataclasses import dataclass, field
@@ -47,7 +48,7 @@ class ScanResult:
         return [i for i in self.issues if i.issue_type == issue_type]
 
 
-VALIDATION_FILES: frozenset[str] = frozenset({"scanner.py", "validate.py"})
+VALIDATION_PACKAGE_DIR: Path = Path(__file__).parent
 
 EXCLUDE_DIRS: frozenset[str] = frozenset(
     {
@@ -185,7 +186,7 @@ class CodeScanner:
                 text=True,
                 check=True,
                 cwd=self.root_dir,
-                timeout=timeouts["git_ls_files"],
+                timeout=timeouts.git_ls_files,
             )
             files = []
             for line in result.stdout.splitlines():
@@ -193,7 +194,7 @@ class CodeScanner:
                 if not line:
                     continue
                 file_path = self.root_dir / line
-                if file_path.suffix in self.scan_extensions:
+                if file_path.suffix in self.scan_extensions and self._should_scan_file(file_path):
                     files.append(file_path)
             return files
         except (subprocess.CalledProcessError, FileNotFoundError):
@@ -204,17 +205,24 @@ class CodeScanner:
         """Check whether a file should be scanned.
 
         Consistent filtering applied regardless of file discovery method.
+        Excludes the scanner's own source directory to prevent self-detection.
+        Excludes specs/ directory (workflow artifacts, not source code).
         """
-        return (
-            file_path.name != "pb-spec"
-            and file_path.name not in VALIDATION_FILES
-            and "specs/" not in str(file_path)
-        )
+        try:
+            resolved = file_path.resolve()
+            resolved.relative_to(VALIDATION_PACKAGE_DIR.resolve())
+            return False
+        except ValueError:
+            pass
+        try:
+            file_path.resolve().relative_to((self.root_dir / "specs").resolve())
+            return False
+        except ValueError:
+            pass
+        return True
 
     def _get_files_fallback(self) -> list[Path]:
         """Fall back to os.walk when git is unavailable."""
-        import os
-
         files = []
         for root, dirs, filenames in os.walk(self.root_dir):
             dirs[:] = [d for d in dirs if d not in self.exclude_dirs and not d.startswith(".")]
@@ -239,7 +247,7 @@ class CodeScanner:
         git_files being an empty list means git works but found no matching code files.
         """
         if self.target_files is not None:
-            return [f for f in self.target_files if f.suffix in self.scan_extensions]
+            return [f for f in self.target_files if f.suffix in self.scan_extensions and f.exists()]
 
         git_files = self._get_git_files()
         if git_files is not None:

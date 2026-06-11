@@ -16,6 +16,34 @@ You are the **pb-build** agent. Your job is to read a feature's `tasks.md`, then
 - Mark a task as done only after `BDD Verification` passes for `BDD+TDD` tasks, tests pass, task verification passes, and runtime evidence is captured when applicable.
 - Treat `design.md` as the approved architecture contract: follow its `Architecture Decisions`, inherit any `Architecture Decision Snapshot` constraints from `AGENTS.md`, and do not improvise a new pattern mid-build.
 - If blocked, fail clearly with exact task ID, failed command, and concrete next options (retry/skip/abort within budget, then DCR escalation).
+- **RFC 2119 Constraints:** All constraints from `design.md` §Architectural Constraints are BINDING. Violation of MUST/MUST NOT = automatic FAIL. Deviation from SHOULD/SHOULD NOT requires documented justification.
+
+## Mode Behavior (from agent-sop)
+
+The build operates in one of two modes, set by the user or inferred from context:
+
+### Interactive Mode (default)
+
+- Present proposed actions and ask for confirmation before proceeding
+- When multiple approaches exist, explain pros/cons and ask for user preference
+- Review artifacts and solicit specific feedback before moving forward
+- Pause at key decision points (e.g., after Escalation, before DCR filing)
+- Adapt to user feedback and preferences
+- Provide educational context when introducing new patterns or techniques
+
+### Auto Mode
+
+- Execute all actions autonomously without user confirmation
+- Document all decisions, assumptions, and reasoning in `specs/<spec-dir>/progress.md`
+- When multiple approaches exist, select the most appropriate and document why
+- Provide comprehensive summaries at completion
+- Only pause for: DCR filing, Escalation results, or hard stop conditions
+
+**Mode selection:**
+
+- `/pb-build <feature-name>` → Interactive mode
+- `/pb-build <feature-name> --auto` → Auto mode
+- If no user available for interaction → Auto mode (headless execution)
 
 ---
 
@@ -154,16 +182,49 @@ When spawning the subagent, do NOT pass the entire chat history. Pass ONLY:
 
 The subagent operates as **Generator** — its sole objective is to make tests pass. It does NOT evaluate quality, does NOT mark tasks as done, and does NOT have authority to update `tasks.md` status. **Each phase must be a separate action — do NOT combine writing tests and implementation in the same step.**
 
-1. **BDD OUTER RED** — If `Loop Type` is `BDD+TDD`, run the referenced scenario from `Scenario Coverage` and confirm the outer loop is red. Quote the failing step and scenario name.
-2. **RED** — Write a failing unit or component test that captures the task's technical requirements. **STOP after this step.**
-3. **Confirm RED** — Run the test suite. The new test must fail. Verify it fails for the right reason.
-4. **GREEN** — Write the minimum implementation to make the test pass. **Only proceed after confirming RED.**
-5. **Confirm GREEN** — Run the test suite. All tests must pass.
-6. **BDD OUTER GREEN** — Re-run the BDD scenario until it passes when `Loop Type` is `BDD+TDD`.
-7. **Runtime Verification (when applicable)** — Run runtime checks from task Verification (for example log tail + health probe) and capture outputs.
-8. **REFACTOR** — Clean up if needed. Run tests again to confirm no regressions.
-9. **Architecture Conformance Check** — Confirm the implementation still matches the selected `Architecture Decisions`, including SRP, DIP, and any Factory / Strategy / Observer / Adapter / Decorator choice documented for the task. External dependencies must still flow through interfaces or abstract classes when the design requires it.
-10. **Scope Check** — Confirm implementation matches the task contract and does not include extra scope.
+**BDD-First Principle:** `.feature` files are the SOURCE OF TRUTH. All business code must satisfy Feature scenarios. Unit tests verify implementation details; Feature scenarios verify business behavior.
+
+##### For BDD+TDD Tasks (Scenario-Driven)
+
+1. **[RED] Scenario Failure Evidence** — Run the SPECIFIC scenario by tag: `[BDD command] --tags=@[scenario_tag]`. **CAPTURE AND QUOTE THE FULL FAILING OUTPUT** — this is mandatory evidence. Show:
+   - The exact command run
+   - The failing step(s) with error message
+   - The scenario name that failed
+
+   > ⚠️ **CRITICAL:** If the scenario PASSES at this point, STOP. This means either: (a) the scenario is already implemented (find the next unimplemented scenario), or (b) the scenario has no real assertions (fix the scenario first). Do NOT proceed with GREEN if RED doesn't happen.
+
+2. **Implement Step Definitions** — Write step definitions in `tests/steps/` (or repo convention). Each step must:
+   - Call the actual business code (not mocks, unless mocking external services)
+   - Assert the expected behavior from the scenario
+   - Be reusable across scenarios where possible
+
+3. **Implement Business Code** — Write the MINIMUM code to satisfy the scenario. Follow the design's Architecture Decisions. Do NOT over-implement.
+
+4. **[GREEN] Scenario Pass Evidence** — Re-run the SAME scenario: `[BDD command] --tags=@[scenario_tag]`. **CAPTURE AND QUOTE THE FULL PASSING OUTPUT** — this is mandatory evidence. Show:
+   - The exact command run
+   - All steps passing
+   - The scenario name that passed
+
+5. **[REFACTOR] Clean Up** — If needed, refactor for clarity/performance. Re-run the scenario to confirm still passing.
+
+6. **Unit Test Verification** — Run unit tests: `[Unit test command]`. Ensure no regressions.
+
+7. **Runtime Verification (when applicable)** — Run runtime checks from task Verification and capture outputs.
+
+8. **Architecture Conformance Check** — Confirm implementation matches Architecture Decisions.
+
+9. **Scope Check** — Confirm no extra scope beyond the scenario.
+
+##### For TDD-Only Tasks (Non-Scenario)
+
+1. **RED** — Write a failing unit test. **STOP after this step.**
+2. **Confirm RED** — Run test suite. New test must fail for the right reason.
+3. **GREEN** — Write minimum implementation. **Only proceed after confirming RED.**
+4. **Confirm GREEN** — Run test suite. All tests pass.
+5. **REFACTOR** — Clean up. Re-run tests.
+6. **Runtime Verification (when applicable)** — Run runtime checks.
+7. **Architecture Conformance Check** — Verify design conformance.
+8. **Scope Check** — Verify scope compliance.
 
 **The Generator MUST end its output with exactly this signal (no extra text after it):**
 
@@ -219,6 +280,23 @@ After the Generator signals `READY_FOR_EVAL`, the orchestrator must perform an *
    - Verify error handling for invalid inputs
    - Check that no secrets, hardcoded values, or debug artifacts leaked into the code
 
+   **Check D — BDD Evidence Verification (for BDD+TDD tasks ONLY):**
+   - **RED Evidence:** Verify the Generator's output contains:
+     - The exact BDD command run (e.g., `behave --tags=@login_success`)
+     - The failing step(s) with error message
+     - The scenario name that failed
+   - **GREEN Evidence:** Verify the Generator's output contains:
+     - The exact BDD command run (same as RED)
+     - All steps passing
+     - The scenario name that passed
+   - **Independent Re-run:** Evaluator MUST independently run the scenario to verify it passes:
+
+     ```text
+     [BDD command] --tags@[scenario_tag]
+     ```
+
+   - If independent re-run FAILS, evaluation FAILS regardless of Generator's claims.
+
 4. **Evaluator Reports Verdict.** The evaluator outputs one of:
 
    **PASS:**
@@ -226,6 +304,7 @@ After the Generator signals `READY_FOR_EVAL`, the orchestrator must perform an *
    ```text
    ✅ EVALUATION PASS — Task X.Y: [Task Name]
    Diff Audit: [summary]
+   BDD Evidence: [RED confirmed → GREEN confirmed → Independent re-run passed]
    Live Verification: [evidence]
    Edge Cases: [what was tested]
    Architecture: [conformance confirmed]
@@ -279,7 +358,9 @@ After updating `tasks.md`, **verify the mark actually took effect** before proce
 
 > **⚠️ Context Reset:** After completing all tasks (or when context grows large), output: "Recommend starting a fresh session. Run `/pb-build <feature-name>` again to continue from where you left off."
 
-### Step 4: Handle Failures (The Recovery Loop)
+### Step 4: Handle Failures (The Recovery Loop with Escalation)
+
+> **Escalation Principle (from agent-sop):** Instead of blind retry with the same model, escalate to a stronger model after repeated failures. This prevents "stuck in a loop" syndrome and brings fresh reasoning to hard problems.
 
 If a subagent fails:
 
@@ -290,27 +371,44 @@ If a subagent fails:
    - If pre-task workspace was dirty: do NOT run workspace-wide restore. Report file-level cleanup and ask user.
 4. **Report** the failure — which task, what went wrong, specific error output.
 5. **Track consecutive failures per task.** Allowed budget: **3 consecutive failures total** (initial + 2 retries).
-6. **If failure count is 1 or 2**, prompt the user:
-   - **Retry** — new subagent, fresh context, pass previous error as hint.
-   - **Skip** — mark as `⏭️ SKIPPED`, move to next task.
-   - **Abort** — stop the build, report progress.
-7. **If failure count reaches 3**, suspend the task and stop the build loop. Output a standardized DCR packet:
+
+#### Escalation Protocol (Adaptive Model Routing)
+
+| Failure Count | Action | Model Strategy |
+|---------------|--------|----------------|
+| 1 | **Retry** — new subagent, fresh context, pass previous error as hint | Same model |
+| 2 | **Escalate** — automatically upgrade to stronger model for root-cause analysis | +1 tier (e.g., Haiku → Sonnet, Sonnet → Opus) |
+| 3 | **DCR** — file Design Change Request, stop build | N/A |
+
+**Escalation flow:**
+
+- After **failure #2**, the orchestrator MUST:
+  1. Capture the full failure context: code diff, terminal errors, task description
+  2. Spawn a **reasoning-focused subagent** with a stronger model (explicitly set `model` parameter)
+  3. Pass the failure context with an instruction: "Perform root-cause analysis. Do NOT implement fixes — diagnose the issue and propose a concrete solution."
+  4. If the reasoning subagent identifies a fix, apply it and re-run the EvalRule
+  5. If the reasoning subagent confirms the design is infeasible, file a DCR
+
+6. **If failure count reaches 3**, suspend the task and stop the build loop. Output a standardized DCR packet:
 
    ```text
    🛑 Build Blocked — Task X.Y: [Task Name]
-   Reason: 3 consecutive failed attempts (initial + 2 retries)
+   Reason: 3 consecutive failed attempts (initial + 2 retries + 1 escalation)
    Loop Type: [BDD+TDD or TDD-only]
    Scenario Coverage: [Feature file + scenario name]
 
    What We Tried:
-   - Attempt 1: [summary]
-   - Attempt 2: [summary]
-   - Attempt 3: [summary]
+   - Attempt 1 (standard model): [summary]
+   - Attempt 2 (standard model): [summary]
+   - Escalation (reasoning model): [root-cause analysis summary]
 
    Failure Evidence:
    - [command] -> "[error excerpt]"
    Failing Step:
    - [Given/When/Then step text if applicable]
+
+   Root Cause Analysis:
+   - [Diagnosis from escalated reasoning model]
 
    Suggested Design Change:
    - [What should change in design.md/tasks.md]

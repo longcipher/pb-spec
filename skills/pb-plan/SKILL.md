@@ -230,17 +230,70 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`. Only include sec
 - **Dependency Injection Plan:** All external dependencies must be routed through interfaces or abstract classes unless the repo already defines a different stable seam.
 - **Code Simplifier Alignment:** Explain why the chosen pattern reduces complexity, clarifies control flow, or limits coupling rather than adding ceremony.
 
+## Architectural Constraints (RFC 2119)
+
+> **Constraint-driven execution:** Use RFC 2119 keywords (MUST, MUST NOT, SHOULD, SHOULD NOT, MAY) to define hard boundaries for the Builder Agent. LLMs are highly sensitive to these keywords — they create an immutable "constitution" that prevents hallucination and scope creep.
+
+**Format:**
+
+- **MUST** / **MUST NOT**: Absolute requirements. Violation = task FAIL.
+- **SHOULD** / **SHOULD NOT**: Strong recommendations. Deviation requires documented justification.
+- **MAY**: Optional enhancements. Builder decides whether to include.
+
+**Constraints:**
+
+- **[C-01]** [Domain] [action] **MUST** [requirement] because [reason].
+- **[C-02]** [Domain] [action] **MUST NOT** [prohibition] because [reason].
+- **[C-03]** [Domain] [action] **SHOULD** [recommendation] to [benefit].
+- **[C-04]** [Domain] [action] **MAY** [option] for [use case].
+
+**Negative constraint examples:**
+
+- Database interactions **MUST** use the existing ORM layer; raw SQL queries **MUST NOT** be introduced because they bypass the query builder's injection protection.
+- API responses **SHOULD** maintain <200ms p99 latency; if exceeded, the task **MUST** include performance optimization before marking done.
+- If an unhandled edge case is encountered, the Builder **MUST** halt and file a DCR; it **MUST NOT** silently fabricate error handling.
+
+## Behavior Traceability Matrix
+
+> **BDD-First Principle:** Every architectural component MUST be traceable to at least one Feature scenario. Components without scenario backing are over-engineering.
+
+| Domain Module | Core Component | Driven by Feature | BDD Tags | Scenario |
+| :--- | :--- | :--- | :--- | :--- |
+| [e.g., Auth] | [e.g., `JwtAuthGuard`] | [e.g., `features/auth/login.feature`] | [`@auth`, `@security`] | [e.g., "Successful login with valid credentials"] |
+| [e.g., Payment] | [e.g., `StripeWebhookHandler`] | [e.g., `features/billing/checkout.feature`] | [`@billing`, `@webhook`] | [e.g., "Process successful payment callback"] |
+
+**Rule:** If a design component cannot be mapped to a scenario, remove it from the design. Avoid speculative architecture.
+
 ## BDD/TDD Strategy
 
 - **Primary Language:** ...
-- **BDD Runner:** `@cucumber/cucumber` / `behave` / `cucumber`
-- **BDD Command:** ...
+- **BDD Runner:** `@cucumber/cucumber` / `behave` / `cucumber` / `pytest-bdd`
+- **BDD Command:** ... (with tag filtering: e.g., `behave --tags=@login_success`)
 - **Unit Test Command:** ...
 - **Property Test Tool:** `fast-check` / `Hypothesis` / `proptest` / `N/A` with reason
 - **Fuzz Test Tool:** `jazzer.js` / `Atheris` / `cargo-fuzz` / `N/A` with reason
 - **Benchmark Tool:** `Vitest Bench` / `pytest-benchmark` / `criterion` / `N/A` with reason
 - **Feature Files:** `specs/<spec-dir>/features/*.feature`
-- **Outside-in Loop:** Which Gherkin scenarios fail first and then pass
+- **Step Definitions:** `tests/steps/` or `features/steps/` (match repo convention)
+- **Outside-in Loop Execution Order:**
+  1. Run specific scenario tag → confirm RED (failing)
+  2. Implement step definitions + minimal business code
+  3. Run specific scenario tag → confirm GREEN (passing)
+  4. Refactor, re-run to confirm no regression
+
+## Core State Transitions (from Feature scenarios)
+
+> Map critical business flows from Given-When-Then to Mermaid state diagrams. Gherkin is essentially state transitions: `Given` (initial state) → `When` (triggering event) → `Then` (result state).
+
+```mermaid
+stateDiagram-v2
+    [*] --> InitialState : Given [precondition]
+    InitialState --> ActionState : When [action/event]
+    ActionState --> SuccessState : Then [expected outcome]
+    ActionState --> FailureState : Then [error condition]
+```
+
+*[Replace with actual state transitions from your Feature scenarios]*
 
 ## Code Simplification Constraints
 
@@ -252,7 +305,11 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`. Only include sec
 
 ## BDD Scenario Inventory
 
-- `features/[feature-name].feature` — [Scenario Name]: [Business outcome]
+> **Complete mapping:** Every scenario in every feature file must appear here AND in the Behavior Traceability Matrix.
+
+| Feature File | Scenario Name | Business Outcome | Task Coverage |
+| :--- | :--- | :--- | :--- |
+| `features/[feature-name].feature` | [Scenario Name] | [Business outcome] | Task X.Y |
 
 ## Existing Components to Reuse
 
@@ -261,7 +318,6 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`. Only include sec
 ## Verification
 
 > How to verify the change works. Include advanced test commands when property/fuzz/benchmark coverage is required.
-```
 
 **Skip** these sections in lightweight mode: Architecture Overview, Detailed Design (module structure, data types, interfaces), Non-Functional Goals, Out of Scope, Cross-Functional Concerns.
 
@@ -271,43 +327,94 @@ Read `references/design_template.md` and fill every section fully. Write the res
 
 ### Step 5a: Output `tasks.md` — Lightweight Mode (< 50 words)
 
-Write a **flat task list** to `specs/<spec-dir>/tasks.md`. No phases — just ordered tasks. Even in lightweight mode, task IDs must remain in `Task X.Y` format so `pb-build` can track state reliably:
+Write a **scenario-driven task list** to `specs/<spec-dir>/tasks.md`. Tasks are organized by Feature scenarios, not by module. Even in lightweight mode, task IDs must remain in `Task X.Y` format so `pb-build` can track state reliably:
 
 ```markdown
-# [Feature Name] — Tasks
+# [Feature Name] — Tasks (BDD-Driven)
 
 | Metadata | Details |
 | :--- | :--- |
 | **Design Doc** | specs/<spec-dir>/design.md |
 | **Status** | Planning |
+| **Mode** | Lightweight |
 
-## Tasks
+## Execution Strategy
 
-### Task 1.1: [Task Name]
+> **Outside-In TDD:** Each task implements ONE scenario. Follow RED → GREEN → REFACTOR strictly.
+> Do NOT proceed to the next task until the current scenario passes.
+
+## Phase 1: BDD Infrastructure (if needed)
+
+### Task 1.1: Configure BDD Framework
+
+> **Context:** Ensure BDD runner is configured and can discover feature files.
+> **Scenario Coverage:** All scenarios (prerequisite)
+
+- **Loop Type:** `TDD-only`
+- **Status:** 🔴 TODO
+- [ ] Step 1: Verify BDD runner is installed and configured
+- [ ] Step 2: Ensure `features/**/*.feature` is discoverable
+- [ ] Step 3: Generate step definition stubs (dry-run)
+- [ ] Verification: `[BDD command] --dry-run` exits 0
+
+## Phase 2: Scenario-Driven Implementation (DAG-Enabled)
+
+> **MANDATORY FLOW per task:** RED (run scenario → fail) → GREEN (implement → pass) → REFACTOR
+> **DAG Execution:** Tasks with no dependencies can run in parallel via separate Builder Agents.
+
+### Task 2.1: [Scenario Name] — [Business Outcome]
 
 > **Context:** ...
-> **Verification:** ...
-> **Requirement Coverage:** [Requirement IDs from source requirement ledger, or `N/A` with reason]
-> **Scenario Coverage:** [Feature/scenario names]
+> **Feature:** `features/[feature-name].feature` → `Scenario: [Exact scenario name]`
+> **Tags:** `@[tag1]`, `@[tag2]`
+> **Requirement Coverage:** [REQ-XX]
 
-- **Loop Type:** `BDD+TDD` / `TDD-only`
-- **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
-- **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
-- **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
+- **TaskID:** `T1`
+- **DependsOn:** `None` (or list of TaskIDs: `T1`, `T2`)
+- **Complexity:** `Low` | `Medium` | `High`
+- **Required Skills:** [e.g., Python, SQLAlchemy, JWT]
+- **EvalRule:** `[BDD command] --tags=@[tag]` must pass; `uv run pytest` must pass
+- **Loop Type:** `BDD+TDD`
+- **Behavioral Contract:** `[Describe behavior]`
 - **Status:** 🔴 TODO
-- [ ] Step 1: ...
-- [ ] Step 2: ...
-- [ ] BDD Verification: ...
-- [ ] Verification: ...
-- [ ] Advanced Test Verification: [Command or `N/A` with reason]
-- [ ] Runtime Verification (if applicable): [Logs + probe result, or `N/A` with reason]
+- [ ] 1. **[RED]** Run `behave --tags=@[tag]` — confirm scenario FAILS (capture output)
+- [ ] 2. Implement step definitions in `tests/steps/[steps].py`
+- [ ] 3. Implement minimal business code to satisfy scenario
+- [ ] 4. **[GREEN]** Run `behave --tags=@[tag]` — confirm scenario PASSES
+- [ ] 5. **[REFACTOR]** Clean up code, re-run to confirm no regression
+- [ ] BDD Verification: `behave --tags=@[tag]` — all steps pass
+- [ ] Verification: `uv run pytest` — no regressions
+
+### Task 2.2: [Next Scenario Name] — [Business Outcome]
+
+> (Same structure as Task 2.1, for the next scenario)
 ```
+
+**Key rules:**
+
+- One task per scenario (for BDD+TDD tasks)
+- RED evidence is REQUIRED: show the failing command output before implementing
+- GREEN evidence is REQUIRED: show the passing command output before marking done
+- Never skip a failing scenario to work on the next one
+- **DAG parallelism:** Tasks with `DependsOn: None` can execute concurrently
+- **Complexity routing:** `Low` → fast model, `High` → reasoning model (Adaptive Steering)
+- **EvalRule:** Explicit pass/fail criteria for automated evaluation
 
 **Skip** phases, Summary & Timeline table, and Definition of Done boilerplate for lightweight specs.
 
 ### Step 5b: Output `tasks.md` — Full Mode (≥ 50 words)
 
-Read `references/tasks_template.md` and use it to break down the implementation plan from `design.md` into concrete, actionable tasks. Write the result to `specs/<spec-dir>/tasks.md`.
+Read `references/tasks_template.md` and use it to break down the implementation plan from `design.md` into scenario-driven tasks. Write the result to `specs/<spec-dir>/tasks.md`.
+
+**Full mode requirements:**
+
+- Tasks MUST be organized by Feature scenarios, not by module/component
+- Each BDD+TDD task maps to exactly ONE scenario
+- Include Behavior Traceability Matrix cross-references
+- Include Mermaid state diagrams for complex state transitions
+- Enforce RED → GREEN → REFACTOR evidence per task
+- Include DAG metadata: TaskID, DependsOn, Complexity, Required Skills, EvalRule
+- Ensure dependency graph is acyclic (no circular dependencies)
 
 ### Step 6: Output `features/*.feature`
 
@@ -364,20 +471,21 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 4. **Live codebase analysis.** Always search the actual codebase. Use `AGENTS.md` as complementary policy context, not a replacement for code inspection.
 5. **Input normalization first.** Arbitrary format source material is valid; the planner must normalize it instead of requiring the user to pre-structure it.
 6. **Subagent leverage with accountability.** Use specialized subagents for extraction, repo analysis, and reconciliation when they improve quality, but keep the main planner responsible for the final contract.
-7. **Task granularity: Logical Unit of Work.** Each task is a self-contained, meaningful change. Do not split based on arbitrary time estimates.
-8. **Scenario-first planning.** User-visible behavior must become Gherkin artifacts under `features/*.feature`.
-9. **Verification per task.** Every task must define how to prove it is done; runtime-facing tasks include runtime observability evidence.
-10. **Double-loop execution readiness.** `tasks.md` must make it obvious which tasks are `BDD+TDD` versus `TDD-only`.
-11. **Dependency order.** Phases and tasks flow from foundational to dependent. A developer can execute them top-to-bottom.
+7. **Task granularity: Scenario-Driven.** Each BDD+TDD task maps to exactly ONE scenario. Tasks are organized by Feature scenarios, not by module/component. Non-BDD tasks (infrastructure, setup) are grouped separately.
+8. **Scenario-first planning.** User-visible behavior must become Gherkin artifacts under `features/*.feature`. Features are the SOURCE OF TRUTH.
+9. **Verification per task.** Every task must define how to prove it is done. BDD+TDD tasks require RED evidence (failing output) and GREEN evidence (passing output).
+10. **Double-loop execution readiness.** `tasks.md` must make it obvious which tasks are `BDD+TDD` versus `TDD-only`. RED→GREEN→REFACTOR is mandatory for BDD+TDD tasks.
+11. **Dependency order.** Phases and tasks flow from foundational to dependent. Infrastructure first, then scenarios in business-priority order.
 12. **Project-aware.** Use the project's existing conventions, patterns, and tech stack. Reuse existing components — do not reinvent.
 13. **Identity-aware.** Template placeholder crate/package/module names should be normalized to project-matching names when the repo has not been fully customized yet.
 14. **Risk-based test depth.** Example-based tests are the baseline; property tests are the default extension for broad input domains, while fuzzing and benchmarks remain conditional.
 15. **Readable over clever.** Prefer plans that lead to explicit, easy-to-maintain implementations over compact or overly clever rewrites.
-16. **Traceability over intuition.** A plan is not complete until the source requirement ledger, the Requirements Coverage Matrix, the scenarios, and the task list agree.
+16. **Traceability over intuition.** A plan is not complete until the Behavior Traceability Matrix, the Requirements Coverage Matrix, the scenarios, and the task list agree. Every design component maps to a scenario.
 17. **Scoped simplification.** Refactors should improve touched code without turning the plan into unrelated cleanup.
 18. **Requirements coverage.** Track every requirement from input to design sections, feature scenarios, and tasks.
 19. **Truthfulness over fluency.** If information is missing, state assumptions explicitly instead of fabricating specifics.
 20. **Deterministic output quality.** Final docs should be implementation-ready, with no template artifacts left behind.
+21. **No speculative architecture.** If a design component cannot be traced to a Feature scenario, remove it. Avoid building what isn't requested.
 
 ---
 

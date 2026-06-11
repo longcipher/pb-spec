@@ -31,7 +31,7 @@ def get_git_modified_files(root_dir: Path | str = ".") -> set[Path]:
             text=True,
             cwd=root,
             encoding="utf-8",
-            timeout=timeouts["git_ls_files"],
+            timeout=timeouts.git_ls_files,
         )
         for line in result.stdout.splitlines():
             if len(line) < 4:

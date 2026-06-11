@@ -224,25 +224,25 @@ class TestCodeScanner:
 
         assert result.has_issues is False
 
-    def test_scan_excludes_scanner_py(self, tmp_path: Path) -> None:
-        """Test that scanner.py is excluded (prevents self-detection)."""
+    def test_scan_excludes_validation_package(self, tmp_path: Path) -> None:
+        """Test that files within the actual validation package directory are excluded."""
+        from pb_spec.validation.scanner import VALIDATION_PACKAGE_DIR
+
+        scanner = CodeScanner(root_dir=VALIDATION_PACKAGE_DIR.parent.parent.parent)
+        result = scanner.scan()
+
+        scanner_paths = {i.file_path for i in result.issues}
+        assert not any("validation/scanner.py" in p for p in scanner_paths)
+
+    def test_scan_includes_scanner_py_outside_package(self, tmp_path: Path) -> None:
+        """Test that scanner.py outside the validation package IS scanned."""
         test_file = tmp_path / "scanner.py"
-        test_file.write_text("TODO: this is a pattern definition\n")
+        test_file.write_text("TODO: this should be found\n")
 
         scanner = CodeScanner(root_dir=tmp_path)
         result = scanner.scan()
 
-        assert result.has_issues is False
-
-    def test_scan_excludes_validate_py(self, tmp_path: Path) -> None:
-        """Test that validate.py is excluded (prevents self-detection)."""
-        test_file = tmp_path / "validate.py"
-        test_file.write_text("@pytest.mark.skip\ndef test(): pass\n")
-
-        scanner = CodeScanner(root_dir=tmp_path)
-        result = scanner.scan()
-
-        assert result.has_issues is False
+        assert result.has_issues is True
 
     def test_scan_multiple_issues_same_line(self, tmp_path: Path) -> None:
         """Test that multiple issues on same line are all reported."""

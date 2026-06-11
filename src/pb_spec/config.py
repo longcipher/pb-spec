@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import functools
 import logging
 import os
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -21,21 +21,34 @@ def _parse_int_env(name: str, default: int) -> int:
         return default
 
 
-@functools.lru_cache(maxsize=1)
-def _get_timeout_config_cached() -> dict[str, int]:
-    """Cached implementation of timeout config (for testing)."""
-    return {
-        "git_ls_files": _parse_int_env("PB_SPEC_GIT_TIMEOUT", 60),
-        "rumdl_check": _parse_int_env("PB_SPEC_RUMDL_CHECK_TIMEOUT", 10),
-        "rumdl_format": _parse_int_env("PB_SPEC_RUMDL_FORMAT_TIMEOUT", 30),
-    }
+@dataclass(frozen=True)
+class TimeoutConfig:
+    """Structured timeout configuration."""
+
+    git_ls_files: int = 60
+    rumdl_check: int = 10
+    rumdl_format: int = 30
 
 
-def get_timeout_config() -> dict[str, int]:
-    """Get timeout configuration from environment variables with defaults."""
-    return _get_timeout_config_cached()
+_timeout_config: TimeoutConfig | None = None
 
 
-def clear_timeout_cache() -> None:
-    """Clear the timeout config cache. For testing only."""
-    _get_timeout_config_cached.cache_clear()
+def get_timeout_config() -> TimeoutConfig:
+    """Get timeout configuration from environment variables with defaults.
+
+    Cached after first call. Call _reset_timeout_config_cache() to refresh.
+    """
+    global _timeout_config
+    if _timeout_config is None:
+        _timeout_config = TimeoutConfig(
+            git_ls_files=_parse_int_env("PB_SPEC_GIT_TIMEOUT", 60),
+            rumdl_check=_parse_int_env("PB_SPEC_RUMDL_CHECK_TIMEOUT", 10),
+            rumdl_format=_parse_int_env("PB_SPEC_RUMDL_FORMAT_TIMEOUT", 30),
+        )
+    return _timeout_config
+
+
+def _reset_timeout_config_cache() -> None:
+    """Reset the cached config. For testing only."""
+    global _timeout_config
+    _timeout_config = None

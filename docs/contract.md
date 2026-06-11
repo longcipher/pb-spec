@@ -164,20 +164,19 @@ The validator should treat this mapping as authoritative for lightweight mode ra
 
 ### 6.6 `design.md` Validation Rules
 
-For validation purposes:
+The validator **MUST** match headings by section title. The following rules apply:
 
-- headings are matched by section title
-- empty placeholders such as `TBD`, `[To be written]`, or bracket-only templates do not satisfy a required section
-- a section may satisfy a conditional requirement by explicitly stating why it is `N/A`
-- repo-specific standards must be grounded in actual repo docs or code, not generic boilerplate
+- Empty placeholders such as `TBD`, `[To be written]`, or bracket-only templates **MUST NOT** satisfy a required section.
+- A section **MAY** satisfy a conditional requirement by explicitly stating why it is `N/A`.
+- Repo-specific standards **MUST** be grounded in actual repo docs or code, not generic boilerplate.
 
 **Format-specific validation rules:**
 
-- **EARS Requirements:** Each requirement must use one of the 5 EARS patterns (Ubiquitous, State-driven, Event-driven, Unwanted, Exception). Requirements written as vague goals ("the system should be fast") are invalid.
-- **C4/Mermaid Architecture:** Architecture sections must contain at least one ````mermaid` code block. Natural language architecture descriptions alone do not satisfy the Architecture Overview requirement.
-- **MADR Decisions:** Each Architecture Decision must have `Context`, `Decision`, and `Consequences` subsections. Decisions without consequences are incomplete.
-- **DBML/Prisma Data Models:** Data model sections must use DBML or Prisma Schema syntax inside a fenced code block. Natural language table descriptions ("users table has an id and name") are invalid.
-- **API-First Contracts:** Interface sections must use type signatures (OpenAPI YAML, TypeScript interfaces, Python Protocols, Rust traits). Narrative API descriptions without type definitions are invalid.
+- **EARS Requirements:** Each requirement **MUST** use one of the 5 EARS patterns (Ubiquitous, State-driven, Event-driven, Unwanted, Exception). Requirements written as vague goals ("the system should be fast") are invalid.
+- **C4/Mermaid Architecture:** Architecture sections **MUST** contain at least one ````mermaid` code block. Natural language architecture descriptions alone do **NOT** satisfy the Architecture Overview requirement.
+- **MADR Decisions:** Each Architecture Decision **MUST** have `Context`, `Decision`, and `Consequences` subsections. Decisions without consequences are incomplete.
+- **DBML/Prisma Data Models:** Data model sections **MUST** use DBML or Prisma Schema syntax inside a fenced code block. Natural language table descriptions ("users table has an id and name") are invalid.
+- **API-First Contracts:** Interface sections **MUST** use type signatures (OpenAPI YAML, TypeScript interfaces, Python Protocols, Rust traits). Narrative API descriptions without type definitions are invalid.
 
 ## 7. `tasks.md` Contract
 
@@ -298,20 +297,20 @@ Current static validation is intentionally narrower than the execution model. It
 
 ### 7.9 `tasks.md` Validation Rules
 
-For validation purposes:
+The following rules **MUST** be enforced by the validator:
 
-- at least one valid `### Task X.Y:` block must exist
-- every task block must be independently parseable
-- duplicate task IDs are invalid
-- a task heading without required fields is invalid
-- a required verification field is not satisfied by an empty placeholder
-- `N/A` is valid only when accompanied by a brief reason
+- At least one valid `### Task X.Y:` block **MUST** exist.
+- Every task block **MUST** be independently parseable.
+- Duplicate task IDs **MUST NOT** be accepted.
+- A task heading without required fields is invalid.
+- A required verification field **MUST NOT** be satisfied by an empty placeholder.
+- `N/A` is valid only when accompanied by a brief reason.
 
 ## 8. `features/*.feature` Contract
 
 ### 8.1 Minimum Requirement
 
-A build-eligible spec must contain at least one `.feature` file under `features/` with at least one `Scenario`.
+A build-eligible spec **MUST** contain at least one `.feature` file under `features/` with at least one `Scenario`.
 
 ### 8.2 Scenario Coverage Expectations
 
@@ -325,10 +324,10 @@ The contract expects:
 
 The minimum current baseline is:
 
-- at least one `.feature` file exists
-- at least one `Scenario` exists
+- At least one `.feature` file **MUST** exist.
+- At least one `Scenario` **MUST** exist.
 
-Stronger scenario-to-task traceability is part of the intended future contract and should be introduced through validator support.
+Stronger scenario-to-task traceability **SHOULD** be introduced through future validator support.
 
 ## 9. `Scenario Coverage` Contract
 
@@ -336,20 +335,20 @@ Stronger scenario-to-task traceability is part of the intended future contract a
 
 ### 9.1 Required Behavior
 
-For `BDD+TDD` tasks, `Scenario Coverage` must name one or more concrete scenarios.
+For `BDD+TDD` tasks, `Scenario Coverage` **MUST** name one or more concrete scenarios.
 
-For `TDD-only` tasks, `Scenario Coverage` may be:
+For `TDD-only` tasks, `Scenario Coverage` **MAY** be:
 
 - a concrete scenario reference, if the task supports a visible scenario
 - `N/A` with reason, if the task is purely internal scaffolding or non-behavioral infrastructure
 
 ### 9.2 Orphan Scenario Detection
 
-The following invariant is enforced:
+The following invariant **MUST** be enforced:
 
-- each executable behavior scenario must map to one or more task blocks
-- each `BDD+TDD` task must map to real scenarios
-- orphaned scenario references are reported as validation errors
+- Each executable behavior scenario **MUST** map to one or more task blocks.
+- Each `BDD+TDD` task **MUST** map to real scenarios.
+- Orphaned scenario references **MUST** be reported as validation errors.
 
 ## 10. Blocked-Build and DCR Block Contract
 
@@ -401,91 +400,133 @@ The DCR block is intentionally smaller than the blocked-build block because it d
 
 ### 10.3 Block Validation Rules
 
-For validation purposes:
+The following rules **MUST** be enforced:
 
-- missing required sections make the block incomplete
-- incomplete blocks must be rejected by refiner-side validation
-- failure evidence must contain concrete command output or quoted error text, not generic summaries alone
+- Missing required sections **MUST** make the block incomplete.
+- Incomplete blocks **MUST** be rejected by refiner-side validation.
+- Failure evidence **MUST** contain concrete command output or quoted error text, not generic summaries alone.
 
 ## 11. Build Eligibility
 
-A spec is build-eligible when all of the following are true:
+A spec **MUST** satisfy all of the following to be build-eligible:
 
-1. the required `design.md` sections for its mode are present
-2. `tasks.md` contains at least one valid task block
-3. each task block contains the required task fields
-4. task statuses are valid
-5. `features/` contains at least one `.feature` file with at least one `Scenario`
-6. required verification fields are present and non-empty
+1. The required `design.md` sections for its mode **MUST** be present.
+2. `tasks.md` **MUST** contain at least one valid task block.
+3. Each task block **MUST** contain the required task fields.
+4. Task statuses **MUST** be valid.
+5. `features/` **MUST** contain at least one `.feature` file with at least one `Scenario`.
+6. Required verification fields **MUST** be present and non-empty.
 
-Future validator versions may extend build eligibility checks to include stronger cross-link validation.
+Future validator versions **SHOULD** extend build eligibility checks to include stronger cross-link validation.
 
-## 12. Future Validation Architecture (Roadmap)
+## 12. Validation Architecture
 
-This section describes the intended evolution of the validation system. The types and
-functions listed here are **roadmap targets**, not yet implemented in the current CLI.
+The validation system uses structured types for error handling and reporting.
 
-### 12.1 Planned Structured Validation Results
+### 12.1 Structured Validation Results
 
-A future validation system should use structured types for better error handling and reporting:
-
-| Planned Type | Purpose |
-| :--- | :--- |
-| `ValidationResult` | Collection of errors and warnings with severity levels |
-| `ValidationError` | Single validation issue with file, line, column context |
-| `ErrorLevel` | Severity enum: `ERROR`, `WARNING`, `INFO` |
-
-### 12.2 Planned Validation Interfaces
-
-A future refactoring should expose validation as a library with both legacy and structured interfaces:
-
-| Planned Function | Return Type | Purpose |
+| Type | Purpose | Location |
 | :--- | :--- | :--- |
-| `validate_design_file()` | `list[str]` | Legacy interface returning error strings |
-| `validate_design_file_structured()` | `ValidationResult` | New interface with structured errors |
-| `validate_task_file()` | `list[str]` | Legacy interface returning error strings |
-| `validate_task_file_structured()` | `ValidationResult` | New interface with structured errors |
+| `ValidationResult` | Collection of errors and warnings with severity levels | `validation/result.py` |
+| `ValidationError` | Single validation issue with file, line, field context | `validation/result.py` |
+| `ErrorSeverity` | Severity enum: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW` | `validation/result.py` |
 
-### 12.3 Planned Feature Parsing Types
+### 12.2 Validation Interfaces
 
-A future feature parser should expose structured access to Gherkin scenarios:
+| Function | Return Type | Purpose |
+| :--- | :--- | :--- |
+| `validate_plan(spec_dir)` | `ValidationResult` | Validate design.md + tasks.md + features/ |
+| `validate_build(spec_dir)` | `ValidationResult` | Validate task completion + code quality |
+| `validate_task()` | `ValidationResult` | Subagent self-check (git-modified files) |
 
-| Planned Type | Purpose |
-| :--- | :--- |
-| `FeatureScenario` | Parsed Gherkin scenario with file, line number, and outline flag |
-| `parse_feature_file()` | Returns `list[FeatureScenario]` for structured access |
-| `get_scenario_by_name()` | Finds a specific scenario by name |
+### 12.3 Contract-Driven Configuration
 
-## 13. Validator-Ready Priorities
+Required sections, task fields, and validation rules are loaded from
+`validation/contract_sections.toml` — the single source of truth.
+The TOML config must stay synchronized with this contract document.
 
-The first validator tranche should prioritize the narrowest high-value checks:
+## 13. RFC 2119 Constraint Language
+
+This contract uses [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119) keywords
+to define requirement levels for agent behavior. Every validation rule and workflow
+expectation is expressed with the following keywords:
+
+| Keyword | Meaning | Usage in This Contract |
+| :--- | :--- | :--- |
+| **MUST** | Absolute requirement — the agent SHALL NOT skip this action | Required sections, required fields, build-eligibility gates |
+| **MUST NOT** | Absolute prohibition — the agent SHALL NOT perform this action | Validation must not modify source files, must not guess spec dirs |
+| **SHOULD** | Recommended practice — valid reasons to deviate must be documented | Optional fields, suggested patterns, formatting preferences |
+| **SHOULD NOT** | Not recommended — acceptable only with explicit justification | Avoiding placeholder content, avoiding generic boilerplate |
+| **MAY** | Truly optional — implementation is entirely at the agent's discretion | Conditional sections, advanced test categories |
+
+### 13.1 Constraint Application Rules
+
+- Every validation error MUST be reported with file path, line number (when available), and severity level.
+- Every required section MUST contain substantive content — empty placeholders (`TBD`, `[To be written]`) do NOT satisfy a requirement.
+- `N/A` in a required verification field MUST be accompanied by a brief reason.
+- The validator MUST exit with non-zero status code when any CRITICAL or HIGH severity error is found.
+- The validator SHOULD exit with non-zero status code when any MEDIUM severity error is found.
+- The validator MAY continue past LOW severity issues without failing.
+- `rumdl` formatting checks SHOULD run when the tool is available, but the validator MUST NOT fail when `rumdl` is not installed.
+- Task status transitions SHOULD follow `🔴 TODO → 🟡 IN PROGRESS → 🟢 DONE`. The validator MUST NOT enforce transition history from a single snapshot.
+- The validator MUST NOT modify source files — all operations are read-only.
+- Build-blocked and DCR blocks MUST contain all required sections; incomplete blocks MUST be rejected.
+
+## 14. Parameterization
+
+The `pb-spec validate` command supports parameterized configuration to adapt validation
+rules across different projects and workflow scales.
+
+### 14.1 CLI Parameters
+
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--plan` | flag | — | Validate spec documents after /pb-plan |
+| `--build` | flag | — | Validate task completion after /pb-build |
+| `--task` | flag | — | Subagent self-check before READY_FOR_EVAL |
+| `--specs-dir` | path | `specs/` | Path to specs directory |
+
+**MUST** specify exactly one of `--plan`, `--build`, or `--task`.
+The validator MUST reject combined flags (e.g., `--plan --build`).
+
+### 14.2 Contract Configuration
+
+Validation rules are loaded from `contract_sections.toml` at import time.
+Projects MAY override rules by placing a `contract_sections.toml` in the spec directory.
+When a project-specific config exists, the validator MUST use it instead of the default.
+
+### 14.3 Environment Variables
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `PB_SPEC_GIT_TIMEOUT` | `60` | Timeout for git commands (seconds) |
+| `PB_SPEC_RUMDL_CHECK_TIMEOUT` | `10` | Timeout for rumdl availability check (seconds) |
+| `PB_SPEC_RUMDL_FORMAT_TIMEOUT` | `30` | Timeout for rumdl formatting (seconds) |
+
+## 15. Validator-Ready Priorities
+
+The validator implements the following checks in priority order:
 
 1. parse `tasks.md` task blocks
 2. validate required task fields
 3. validate task state transitions
 4. inventory `.feature` scenario names
 5. verify `Scenario Coverage` references resolve when they claim concrete coverage
+6. `design.md` section completeness by mode
+7. blocked-build and DCR block completeness
+8. placeholder detection and empty-section rejection
 
-Later validator stages can expand to:
-
-1. `design.md` section completeness by mode
-2. blocked-build and DCR block completeness
-3. stronger scenario-to-task traceability
-4. placeholder detection and empty-section rejection
-
-## 13. Compatibility Guidance
+## 16. Compatibility Guidance
 
 This contract is designed to preserve compatibility with the current workflow.
 
-Compatibility notes:
+- existing specs using legacy `TODO` MUST be treated as `🔴 TODO` before execution begins.
+- stronger validation SHOULD prefer explicit diagnostics over silent coercion.
+- new validator rules MUST be introduced incrementally and documented clearly when they become mandatory.
 
-- existing specs using legacy `TODO` may be normalized during execution
-- stronger validation should prefer explicit diagnostics over silent coercion
-- new validator rules should be introduced incrementally and documented clearly when they become mandatory
+## 17. Summary
 
-## 14. Summary
-
-pb-spec's contract is already richer than a generic single-file spec model. The purpose of this document is not to introduce new workflow artifacts, but to make the current contract explicit enough for:
+pb-spec's contract is richer than a generic single-file spec model. The purpose of this document is not to introduce new workflow artifacts, but to make the current contract explicit enough for:
 
 - maintainers
 - prompt authors
@@ -493,3 +534,5 @@ pb-spec's contract is already richer than a generic single-file spec model. The 
 - CI and tooling integrations
 
 The canonical planning surface remains `design.md + tasks.md + features/*.feature`.
+All validation rules are expressed using RFC 2119 constraint language and loaded from
+`contract_sections.toml` as the single source of truth.

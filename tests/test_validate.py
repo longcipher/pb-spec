@@ -8,12 +8,10 @@ import pytest
 from click.testing import CliRunner
 
 from pb_spec.cli import main
-from pb_spec.commands.validate import (
-    SpecNotFoundError,
-    get_latest_spec_dir,
-)
-from pb_spec.validation.build import validate_build, validate_task
-from pb_spec.validation.plan import validate_plan, validate_tasks_structure
+from pb_spec.commands.discovery import get_latest_spec_dir
+from pb_spec.exceptions import SpecNotFoundError
+from pb_spec.validation import validate_build, validate_plan, validate_task
+from pb_spec.validation.plan import validate_tasks_structure
 
 
 @pytest.fixture

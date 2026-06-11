@@ -78,7 +78,7 @@ _DEFAULT_KNOWN_TASK_FIELDS = frozenset(
 )
 
 _KNOWN_TASK_FIELDS_FILE = Path(__file__).parent / "known_task_fields.txt"
-_loaded_known_task_fields: frozenset[str] | None = None
+_known_task_fields_cache: frozenset[str] | None = None
 
 
 def _load_known_task_fields() -> frozenset[str]:
@@ -87,9 +87,9 @@ def _load_known_task_fields() -> frozenset[str]:
     Supports external file at validation/known_task_fields.txt for easier
     maintenance without code changes.
     """
-    global _loaded_known_task_fields
-    if _loaded_known_task_fields is not None:
-        return _loaded_known_task_fields
+    global _known_task_fields_cache
+    if _known_task_fields_cache is not None:
+        return _known_task_fields_cache
 
     if _KNOWN_TASK_FIELDS_FILE.exists():
         fields: set[str] = set()
@@ -100,23 +100,23 @@ def _load_known_task_fields() -> frozenset[str]:
                     stripped += ":"
                 fields.add(stripped)
         if fields:
-            _loaded_known_task_fields = frozenset(fields)
-            return _loaded_known_task_fields
+            _known_task_fields_cache = frozenset(fields)
+            return _known_task_fields_cache
 
-    _loaded_known_task_fields = _DEFAULT_KNOWN_TASK_FIELDS
-    return _loaded_known_task_fields
+    _known_task_fields_cache = _DEFAULT_KNOWN_TASK_FIELDS
+    return _known_task_fields_cache
 
 
 def _reset_known_task_fields_cache() -> None:
     """Reset the cached fields. For testing only."""
-    global _loaded_known_task_fields
-    _loaded_known_task_fields = None
+    global _known_task_fields_cache
+    _known_task_fields_cache = None
 
 
-KNOWN_TASK_FIELDS = _DEFAULT_KNOWN_TASK_FIELDS
+KNOWN_TASK_FIELDS = _load_known_task_fields()
 
 
-@dataclass
+@dataclass(frozen=True)
 class TaskBlock:
     """Represents a parsed task block from tasks.md."""
 
@@ -150,73 +150,81 @@ def _is_continuation_line(line: str) -> bool:
         return False
     if TASK_CHECKBOX_RE.match(line):
         return False
-    field_match = FIELD_RE.match(line)
-    if field_match:
-        candidate = field_match.group(1) + ":"
-        if candidate in _load_known_task_fields():
-            return False
-    return True
+    return not FIELD_RE.match(line)
 
 
-class MarkdownParser:
-    """Markdown parser for extracting task blocks with robust multi-line field handling."""
+def parse_task_blocks(content: str) -> list[TaskBlock]:
+    """Parse markdown content and extract task blocks.
 
-    def parse_task_blocks(self, content: str) -> list[TaskBlock]:
-        """Parse markdown content and extract task blocks.
+    Handles multi-line field values by continuing to accumulate content
+    until the next known field, checkbox, or task heading is encountered.
+    """
+    lines = content.split("\n")
+    task_blocks: list[TaskBlock] = []
 
-        Handles multi-line field values by continuing to accumulate content
-        until the next known field, checkbox, or task heading is encountered.
-        """
-        lines = content.split("\n")
-        task_blocks: list[TaskBlock] = []
-        current_task: TaskBlock | None = None
-        current_field = ""
-        current_field_content: list[str] = []
+    task_id = ""
+    task_name = ""
+    task_content_lines: list[str] = []
+    task_fields: dict[str, str] = {}
+    current_field = ""
+    current_field_content: list[str] = []
+    in_task = False
 
-        def _flush_field() -> None:
-            if current_task is not None and current_field:
-                current_task.fields[current_field] = "\n".join(current_field_content).strip()
+    def _flush_field() -> None:
+        if in_task and current_field:
+            task_fields[current_field] = "\n".join(current_field_content).strip()
 
-        for line in lines:
-            task_match = TASK_HEADING_RE.match(line)
-            if task_match:
+    def _flush_task() -> None:
+        if in_task:
+            task_blocks.append(
+                TaskBlock(
+                    id=task_id,
+                    name=task_name,
+                    content="\n".join(task_content_lines),
+                    fields=dict(task_fields),
+                )
+            )
+
+    for line in lines:
+        task_match = TASK_HEADING_RE.match(line)
+        if task_match:
+            _flush_field()
+            _flush_task()
+
+            _level, task_id, task_name_raw = task_match.groups()
+            task_name = task_name_raw.strip()
+            task_content_lines = [line]
+            task_fields = {}
+            current_field = ""
+            current_field_content = []
+            in_task = True
+            continue
+
+        if not in_task:
+            continue
+
+        task_content_lines.append(line)
+
+        field_match = FIELD_RE.match(line)
+        if field_match:
+            candidate_name = field_match.group(1) + ":"
+            if candidate_name in _load_known_task_fields():
                 _flush_field()
-                if current_task:
-                    task_blocks.append(current_task)
-
-                _level, task_id, task_name = task_match.groups()
-                current_task = TaskBlock(id=task_id, name=task_name.strip(), content="", fields={})
-                current_field = ""
-                current_field_content = []
-                current_task.content = line + "\n"
-                continue
-
-            if current_task is None:
-                continue
-
-            current_task.content += line + "\n"
-
-            field_match = FIELD_RE.match(line)
-            if field_match:
-                candidate_name = field_match.group(1) + ":"
-                if candidate_name in _load_known_task_fields():
-                    _flush_field()
-                    field_value = field_match.group(2).strip()
-                    current_field = candidate_name
-                    current_field_content = [field_value] if field_value else []
-                    current_task.fields[current_field] = field_value
-                elif _is_continuation_line(line) and current_field:
-                    current_field_content.append(line)
-                    current_task.fields[current_field] = "\n".join(current_field_content).strip()
+                field_value = field_match.group(2).strip()
+                current_field = candidate_name
+                current_field_content = [field_value] if field_value else []
+                task_fields[current_field] = field_value
             elif _is_continuation_line(line) and current_field:
                 current_field_content.append(line)
-                current_task.fields[current_field] = "\n".join(current_field_content).strip()
+                task_fields[current_field] = "\n".join(current_field_content).strip()
+        elif _is_continuation_line(line) and current_field:
+            current_field_content.append(line)
+            task_fields[current_field] = "\n".join(current_field_content).strip()
 
-        _flush_field()
-        if current_task:
-            task_blocks.append(current_task)
+    _flush_field()
+    _flush_task()
 
-        return task_blocks
+    return task_blocks
 
 
 def task_display_name(task_block: TaskBlock) -> str:

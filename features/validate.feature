@@ -89,3 +89,4 @@ Feature: Validate pb-spec workflow artifacts
     And I should see "--build"
     And I should see "--task"
     And I should see "--specs-dir"
+    And I should see "--config"

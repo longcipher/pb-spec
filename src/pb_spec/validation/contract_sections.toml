@@ -1,0 +1,88 @@
+# Contract Sections Configuration
+# Single source of truth for validation rules.
+# Loaded by plan.py at import time.
+#
+# Source of authority: docs/contract.md §6.2 and §7.2
+
+[full_mode]
+# Required sections for full-mode design.md (contract §6.2)
+# Note: "Architecture Decisions" is a standalone section in contract §6.2
+# though the pb-plan design template embeds it under Architecture Overview.
+required_sections = [
+    "Executive Summary",
+    "Requirements & Goals",
+    "Architecture Overview",
+    "Architecture Decisions",
+    "Data Models",
+    "Interface Contracts",
+    "Detailed Design",
+    "Verification & Testing Strategy",
+    "Implementation Plan",
+]
+
+# Conditional sections for full-mode (contract §6.3)
+# Format: section_name = "condition_description"
+[full_mode.conditional_sections]
+"Architecture Decisions" = "Required when the change introduces a new boundary or is likely to exceed 200 lines of implementation"
+"Project Identity Alignment" = "Required when the repository still exposes template or scaffold identifiers"
+"Existing Components to Reuse" = "Required unless no reusable component exists"
+"BDD Scenario Inventory" = "Required when feature behavior is user-visible or acceptance-tested"
+"Property Testing" = "Required for broad input-domain logic unless explicitly justified as unnecessary"
+"Fuzz Testing" = "Required only for parser, protocol, unsafe, binary, or untrusted-input crash-safety work"
+"Benchmark" = "Required only for performance-sensitive or regression-sensitive paths"
+
+[lightweight_mode]
+# Required sections for lightweight-mode design.md (contract §6.4)
+required_sections = [
+    "Summary",
+    "Approach",
+    "Architecture Decisions",
+    "BDD/TDD Strategy",
+    "Code Simplification Constraints",
+    "BDD Scenario Inventory",
+    "Existing Components to Reuse",
+    "Verification",
+]
+
+# Lightweight-to-full mapping (contract §6.5)
+[lightweight_mode.mapping]
+"Summary" = "Executive Summary"
+"Approach" = "Architecture Overview plus compact Detailed Design"
+"Architecture Decisions" = "Architecture Decisions"
+"BDD/TDD Strategy" = "Verification & Testing Strategy"
+"Code Simplification Constraints" = "Requirements & Goals maintainability constraints"
+"BDD Scenario Inventory" = "BDD Scenario Inventory"
+"Existing Components to Reuse" = "Existing Components to Reuse"
+"Verification" = "compact Verification & Testing Strategy plus compact Implementation Plan closure criteria"
+
+[tasks]
+# Required fields per task block (contract §7.2)
+required_fields = [
+    "Context:",
+    "Verification:",
+    "Scenario Coverage:",
+    "Loop Type:",
+    "Behavioral Contract:",
+    "Simplification Focus:",
+    "Status:",
+    "BDD Verification:",
+    "Advanced Test Verification:",
+    "Runtime Verification:",
+]
+
+# Fields where "N/A" must include a reason (contract §7.8)
+na_reason_fields = [
+    "Scenario Coverage:",
+    "BDD Verification:",
+    "Advanced Test Verification:",
+    "Runtime Verification:",
+]
+
+[validation_rules]
+# Format-specific validation rules (contract §6.6)
+# These are descriptive; the code uses regex to enforce them.
+"ears_requirements" = "Each requirement must use one of the 5 EARS patterns (Ubiquitous, State-driven, Event-driven, Unwanted, Exception)"
+"c4_mermaid" = "Architecture sections must contain at least one mermaid code block"
+"madr_decisions" = "Each Architecture Decision must have Context, Decision, and Consequences subsections"
+"dbml_prisma" = "Data model sections must use DBML or Prisma Schema syntax inside a fenced code block"
+"api_first_contracts" = "Interface sections must use type signatures (OpenAPI YAML, TypeScript interfaces, Python Protocols, Rust traits)"

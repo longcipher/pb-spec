@@ -42,6 +42,23 @@ class ValidationError:
     field_name: str | None = None
 
 
+def make_validation_error(
+    message: str,
+    file_path: str | None = None,
+    line_number: int | None = None,
+    field_name: str | None = None,
+    severity: ErrorSeverity = ErrorSeverity.MEDIUM,
+) -> ValidationError:
+    """Create a ValidationError with consistent defaults."""
+    return ValidationError(
+        severity=severity,
+        message=message,
+        file_path=file_path,
+        line_number=line_number,
+        field_name=field_name,
+    )
+
+
 @dataclass
 class ValidationResult:
     """Result of a validation operation.
@@ -58,30 +75,6 @@ class ValidationResult:
         """Return errors filtered by severity level."""
         return [e for e in self.errors if e.severity == severity]
 
-    def errors_by_file(self, file_path: str) -> list[ValidationError]:
-        """Return errors filtered by file path."""
-        return [e for e in self.errors if e.file_path == file_path]
-
     def has_critical(self) -> bool:
         """Return True if any CRITICAL errors exist."""
         return any(e.severity == ErrorSeverity.CRITICAL for e in self.errors)
-
-    @classmethod
-    def from_string_errors(
-        cls,
-        is_valid: bool,
-        errors: list[str],
-        warnings: list[str] | None = None,
-        severity: ErrorSeverity = ErrorSeverity.MEDIUM,
-    ) -> ValidationResult:
-        """Create ValidationResult from plain string error lists.
-
-        This is a backward-compatible factory for existing code that produces
-        string error messages. New code should use ValidationError directly.
-        """
-        structured_errors = [ValidationError(severity=severity, message=msg) for msg in errors]
-        return cls(
-            is_valid=is_valid,
-            errors=structured_errors,
-            warnings=warnings or [],
-        )

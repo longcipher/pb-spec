@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from pb_spec.exceptions import FileReadError
@@ -9,29 +10,20 @@ from pb_spec.git_utils import get_git_modified_files
 from pb_spec.validation.parser import (
     TASK_CHECKBOX_RE,
     UNCHECKED_TASK_CHECKBOX_RE,
-    MarkdownParser,
+    parse_task_blocks,
     task_display_name,
 )
-from pb_spec.validation.plan import read_file_content
-from pb_spec.validation.result import ErrorSeverity, ValidationError, ValidationResult
+from pb_spec.validation.plan import read_file_content, read_spec_file
+from pb_spec.validation.result import (
+    ErrorSeverity,
+    ValidationError,
+    ValidationMode,
+    ValidationResult,
+    make_validation_error,
+)
 from pb_spec.validation.scanner import CodeScanner, IssueType, ScanResult
 
-
-def _make_validation_error(
-    message: str,
-    file_path: str | None = None,
-    line_number: int | None = None,
-    field_name: str | None = None,
-    severity: ErrorSeverity = ErrorSeverity.MEDIUM,
-) -> ValidationError:
-    """Create a ValidationError with consistent defaults."""
-    return ValidationError(
-        severity=severity,
-        message=message,
-        file_path=file_path,
-        line_number=line_number,
-        field_name=field_name,
-    )
+logger = logging.getLogger(__name__)
 
 
 def validate_feature_scenarios(spec_dir: Path) -> list[ValidationError]:
@@ -44,11 +36,12 @@ def validate_feature_scenarios(spec_dir: Path) -> list[ValidationError]:
     for feature_file in features_dir.glob("*.feature"):
         try:
             content = read_file_content(feature_file)
-        except FileReadError:
+        except FileReadError as e:
+            logger.warning("Cannot read %s: %s", feature_file, e)
             continue
         if "Scenario" not in content:
             errors.append(
-                _make_validation_error(
+                make_validation_error(
                     message=f"{feature_file.name} contains no Scenario definition",
                     file_path=str(feature_file),
                     severity=ErrorSeverity.HIGH,
@@ -58,20 +51,19 @@ def validate_feature_scenarios(spec_dir: Path) -> list[ValidationError]:
     return errors
 
 
-def run_codebase_scan(mode: str) -> ScanResult:
+def run_codebase_scan(mode: ValidationMode) -> ScanResult:
     """Scan codebase for code quality issues.
 
     Args:
-        mode: "build" for full scan, "task" for subagent self-check.
-            In task mode, scanning is scoped to git-modified files only
-            to prevent subagents from chasing historical tech debt.
+        mode: ValidationMode.TASK for subagent self-check (scoped to git-modified
+            files), ValidationMode.BUILD for full scan.
 
     Returns:
         Pure ScanResult without side effects. Callers are responsible
         for presenting the results.
     """
     target_files: set[Path] | None = None
-    if mode == "task":
+    if mode == ValidationMode.TASK:
         target_files = get_git_modified_files()
 
     scanner = CodeScanner(
@@ -97,7 +89,7 @@ def _scan_result_to_errors(scan_result: ScanResult) -> list[ValidationError]:
     }
     for issue in scan_result.issues:
         errors.append(
-            _make_validation_error(
+            make_validation_error(
                 message=issue.message,
                 file_path=issue.file_path,
                 line_number=issue.line_number,
@@ -107,88 +99,60 @@ def _scan_result_to_errors(scan_result: ScanResult) -> list[ValidationError]:
     return errors
 
 
-def validate_build(spec_dir: Path) -> ValidationResult:
-    """Validate pb-build task completion (Orchestrator level).
+def _validate_task_completion(task_blocks: list, content: str) -> list[ValidationError]:
+    """Validate that all tasks are marked DONE with complete steps.
 
-    Returns a pure ValidationResult without side effects.
-    Callers are responsible for presenting the results.
+    Args:
+        task_blocks: Pre-parsed task blocks from parse_task_blocks().
+        content: Original markdown content for checkbox regex matching.
     """
     errors: list[ValidationError] = []
-    warnings: list[str] = []
-
-    tasks_file = spec_dir / "tasks.md"
-    if not tasks_file.exists():
-        return ValidationResult(
-            is_valid=False,
-            errors=[
-                _make_validation_error(
-                    message=f"Missing {tasks_file.name}",
-                    file_path=str(tasks_file),
-                    severity=ErrorSeverity.CRITICAL,
-                )
-            ],
-        )
-
-    try:
-        content = read_file_content(tasks_file)
-    except FileReadError as e:
-        return ValidationResult(
-            is_valid=False,
-            errors=[
-                _make_validation_error(
-                    message=str(e),
-                    file_path=str(tasks_file),
-                    severity=ErrorSeverity.CRITICAL,
-                )
-            ],
-        )
-
-    parser = MarkdownParser()
-    task_blocks = parser.parse_task_blocks(content)
 
     for task_block in task_blocks:
         display_name = task_display_name(task_block)
 
         status_field = task_block.fields.get("Status:", "")
-        if "🟢 DONE" not in status_field:
-            if "⏭️ SKIPPED" in status_field:
-                warnings.append(
-                    f"Task Skipped: {display_name}. (Ignored in strict completion check)"
-                )
-            elif "⛔ OBSOLETE" in status_field:
-                pass  # ignored in strict completion check
-            elif "🔴 TODO" in status_field or "🟡 IN PROGRESS" in status_field:
+        match status_field:
+            case s if "🟢 DONE" in s:
+                pass  # continue to checkbox check below
+            case s if "⏭️ SKIPPED" in s:
+                continue  # warned by caller, skip checkbox check
+            case s if "⛔ OBSOLETE" in s:
+                continue  # ignored in strict completion check
+            case s if "🔄 DCR" in s:
                 errors.append(
-                    _make_validation_error(
-                        message=f"Task Unfinished: {display_name} is not marked as DONE.",
-                        file_path="tasks.md",
-                        field_name="Status:",
-                        severity=ErrorSeverity.HIGH,
-                    )
-                )
-            elif "🔄 DCR" in status_field:
-                errors.append(
-                    _make_validation_error(
+                    make_validation_error(
                         message=f"Task Blocked by DCR: {display_name}. Needs design refinement.",
                         file_path="tasks.md",
                         field_name="Status:",
                         severity=ErrorSeverity.HIGH,
                     )
                 )
-            else:
+                continue
+            case s if "🔴 TODO" in s or "🟡 IN PROGRESS" in s or s.strip() == "TODO":
                 errors.append(
-                    _make_validation_error(
+                    make_validation_error(
+                        message=f"Task Unfinished: {display_name} is not marked as DONE.",
+                        file_path="tasks.md",
+                        field_name="Status:",
+                        severity=ErrorSeverity.HIGH,
+                    )
+                )
+                continue
+            case _:
+                errors.append(
+                    make_validation_error(
                         message=f"Task Invalid Status: {display_name}. Missing 🟢 DONE.",
                         file_path="tasks.md",
                         field_name="Status:",
                     )
                 )
-            continue
+                continue
 
         unchecked = UNCHECKED_TASK_CHECKBOX_RE.findall(task_block.content)
         if unchecked:
             errors.append(
-                _make_validation_error(
+                make_validation_error(
                     message=(
                         f"Task '{display_name}' is marked DONE but has incomplete steps:\n  "
                         + "\n  ".join(unchecked)
@@ -200,7 +164,7 @@ def validate_build(spec_dir: Path) -> ValidationResult:
         all_checkboxes = TASK_CHECKBOX_RE.findall(task_block.content)
         if not all_checkboxes:
             errors.append(
-                _make_validation_error(
+                make_validation_error(
                     message=(
                         f"Task '{display_name}' is marked DONE but contains no step checkboxes. "
                         "Contract requires at least one step."
@@ -209,19 +173,85 @@ def validate_build(spec_dir: Path) -> ValidationResult:
                 )
             )
 
-    scan_result = run_codebase_scan(mode="build")
-    if scan_result.has_issues:
-        errors.extend(_scan_result_to_errors(scan_result))
-        errors.insert(
-            0,
-            _make_validation_error(
-                message="Codebase scan failed - found issues that need to be addressed.",
-                severity=ErrorSeverity.HIGH,
-            ),
+    return errors
+
+
+def _validate_task_completion_warnings(task_blocks: list) -> list[str]:
+    """Collect warnings for non-DONE tasks (SKIPPED, OBSOLETE).
+
+    Args:
+        task_blocks: Pre-parsed task blocks from parse_task_blocks().
+    """
+    warnings: list[str] = []
+
+    for task_block in task_blocks:
+        display_name = task_display_name(task_block)
+        status_field = task_block.fields.get("Status:", "")
+        if "⏭️ SKIPPED" in status_field:
+            warnings.append(f"Task Skipped: {display_name}. (Ignored in strict completion check)")
+
+    return warnings
+
+
+def _validate_codebase_scan() -> list[ValidationError]:
+    """Run codebase scan and return errors."""
+    scan_result = run_codebase_scan(mode=ValidationMode.BUILD)
+    if not scan_result.has_issues:
+        return []
+
+    errors = [
+        make_validation_error(
+            message="Codebase scan failed - found issues that need to be addressed.",
+            severity=ErrorSeverity.HIGH,
+        ),
+    ]
+    errors.extend(_scan_result_to_errors(scan_result))
+    return errors
+
+
+def validate_build(spec_dir: Path) -> ValidationResult:
+    """Validate pb-build task completion (Orchestrator level).
+
+    Performs read-only operations (file reads, git status, codebase scan).
+    Returns a ValidationResult; callers are responsible for presenting results.
+    """
+    errors: list[ValidationError] = []
+    warnings: list[str] = []
+
+    tasks_file = spec_dir / "tasks.md"
+    if not tasks_file.exists():
+        return ValidationResult(
+            is_valid=False,
+            errors=[
+                make_validation_error(
+                    message="Missing required file: tasks.md",
+                    file_path=str(tasks_file),
+                    severity=ErrorSeverity.CRITICAL,
+                )
+            ],
         )
 
-    feature_errors = validate_feature_scenarios(spec_dir)
-    errors.extend(feature_errors)
+    tasks_file = spec_dir / "tasks.md"
+    content, error_result = read_spec_file(tasks_file)
+    if error_result is not None:
+        return error_result
+    if content is None:
+        return ValidationResult(
+            is_valid=False,
+            errors=[
+                make_validation_error(
+                    message=f"Failed to read {tasks_file}",
+                    file_path=str(tasks_file),
+                    severity=ErrorSeverity.CRITICAL,
+                )
+            ],
+        )
+
+    task_blocks = parse_task_blocks(content)
+    warnings.extend(_validate_task_completion_warnings(task_blocks))
+    errors.extend(_validate_task_completion(task_blocks, content))
+    errors.extend(_validate_codebase_scan())
+    errors.extend(validate_feature_scenarios(spec_dir))
 
     return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings)
 
@@ -232,7 +262,7 @@ def validate_task() -> ValidationResult:
     Returns a pure ValidationResult without side effects.
     Callers are responsible for presenting the results.
     """
-    scan_result = run_codebase_scan(mode="task")
+    scan_result = run_codebase_scan(mode=ValidationMode.TASK)
     if not scan_result.has_issues:
         return ValidationResult(is_valid=True)
 

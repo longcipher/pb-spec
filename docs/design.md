@@ -143,28 +143,43 @@ graph TD
 
 ```mermaid
 graph LR
-    subgraph "commands/validate.py"
+    subgraph "commands/"
         VC[validate_cmd]
+        DIS[get_latest_spec_dir]
+        RPT[report_validation_result]
+    end
+
+    subgraph "validation/"
         VP[validate_plan]
         VB[validate_build]
         VT[validate_task]
         MP[MarkdownParser]
         CB[ContractBlock]
+        SC[CodeScanner]
+        SI[ScanResult]
+        RD[run_rumdl_format]
     end
 
-    subgraph "validation/scanner.py"
-        CS[CodeScanner]
-        SI[ScanIssue]
+    subgraph "support/"
+        CFG[config.py]
+        EXC[exceptions.py]
+        GIT[git_utils.py]
+        OUT[output.py]
     end
 
     VC --> VP
     VC --> VB
     VC --> VT
+    VC --> DIS
+    VC --> RPT
     VP --> MP
     VP --> CB
-    VT --> CS
-    VB --> CS
-    CS --> SI
+    VB --> SC
+    VB --> MP
+    VT --> SC
+    SC --> GIT
+    SC --> CFG
+    RD --> CFG
 ```
 
 ### 4.4 Key Design Principles
@@ -179,9 +194,14 @@ graph LR
 | Component | Location | How to Reuse |
 | :--- | :--- | :--- |
 | Click CLI framework | `src/pb_spec/cli.py` | Extend with new subcommands |
-| MarkdownParser | `src/pb_spec/commands/validate.py` | Reuse for parsing any spec markdown |
-| ContractBlock | `src/pb_spec/commands/validate.py` | Reuse for structured block validation |
+| MarkdownParser | `src/pb_spec/validation/parser.py` | Reuse for parsing any spec markdown |
+| ContractBlock | `src/pb_spec/validation/parser.py` | Reuse for structured block validation |
 | CodeScanner | `src/pb_spec/validation/scanner.py` | Reuse for code quality scanning |
+| get_latest_spec_dir | `src/pb_spec/commands/discovery.py` | Discover latest spec directory |
+| report_validation_result | `src/pb_spec/commands/report.py` | Format and display validation results |
+| get_timeout_config | `src/pb_spec/config.py` | Shared timeout configuration |
+| get_git_modified_files | `src/pb_spec/git_utils.py` | Git-aware file discovery |
+| Colors / print_* helpers | `src/pb_spec/output.py` | Terminal output formatting |
 
 ---
 
@@ -306,39 +326,37 @@ class ValidationMode(Enum):
     TASK = "task"
 
 
+class ErrorSeverity(Enum):
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
 @dataclass(frozen=True)
 class ValidationError:
-    file: str
-    line: int | None = None
+    """A single structured validation error."""
+    severity: ErrorSeverity
     message: str
-    severity: str = "error"  # 'error', 'warning', 'info'
+    file_path: str | None = None
+    line_number: int | None = None
+    field_name: str | None = None
 
 
-@dataclass(frozen=True)
+@dataclass
 class ValidationResult:
-    mode: ValidationMode
-    spec_dir: str | None
+    """Result of a validation operation."""
     is_valid: bool
-    errors: tuple[ValidationError, ...] = ()
-    warnings: tuple[ValidationError, ...] = ()
+    errors: list[ValidationError] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
-
-class DesignParser:
-    def parse(self, content: str, mode: str = "full") -> list[ValidationError]:
-        """Parse design.md and return validation errors."""
-        ...
-
-
-class TasksParser:
-    def parse(self, content: str) -> list[ValidationError]:
-        """Parse tasks.md and return validation errors."""
-        ...
+    def errors_by_severity(self, severity: ErrorSeverity) -> list[ValidationError]: ...
+    def errors_by_file(self, file_path: str) -> list[ValidationError]: ...
+    def has_critical(self) -> bool: ...
 
 
 class CodeScanner:
-    def scan(self, files: list[str]) -> list[ScanIssue]:
-        """Scan files for code quality issues."""
-        ...
+    def scan(self) -> ScanResult: ...
 ```
 
 ### 7.2 Exception Hierarchy
@@ -346,22 +364,39 @@ class CodeScanner:
 ```python
 class ValidationError(Exception):
     """Base exception for all validation errors."""
-    pass
 
 
 class SpecNotFoundError(ValidationError):
     """Raised when spec directory is missing."""
-    pass
 
 
 class FileReadError(ValidationError):
     """Raised when spec files cannot be read."""
-    pass
 
 
-class ContractViolationError(ValidationError):
-    """Raised when markdown contract is violated."""
-    pass
+class ConfigError(ValidationError):
+    """Raised when configuration parsing fails."""
+```
+
+### 7.3 Configuration Types
+
+```python
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class TimeoutConfig:
+    """Structured timeout configuration with type-safe attribute access."""
+    git_ls_files: int = 60
+    rumdl_check: int = 10
+    rumdl_format: int = 30
+```
+
+### 7.4 Markdown Parsing
+
+```python
+def parse_task_blocks(content: str) -> list[TaskBlock]:
+    """Module-level function for extracting task blocks from markdown."""
 ```
 
 ---
@@ -374,12 +409,24 @@ class ContractViolationError(ValidationError):
 src/pb_spec/
 ├── __init__.py                 # Version from metadata
 ├── cli.py                      # Click CLI entry point
+├── config.py                   # Shared configuration (timeouts from env vars)
+├── exceptions.py               # Exception hierarchy
+├── git_utils.py                # Git interaction utilities
+├── output.py                   # Terminal output helpers (colors, formatting)
 ├── commands/
 │   ├── __init__.py
-│   └── validate.py             # Validate command implementation
+│   ├── validate.py             # Validate command implementation
+│   ├── discovery.py            # Spec directory discovery
+│   └── report.py               # Terminal output formatting for results
 └── validation/
-    ├── __init__.py
-    └── scanner.py              # Code quality scanner
+    ├── __init__.py             # Public API re-exports
+    ├── contract_sections.toml  # Contract rules (single source of truth)
+    ├── result.py               # Structured validation result types
+    ├── parser.py               # Markdown parser for task/contract blocks
+    ├── plan.py                 # Plan validation logic (design.md, tasks.md)
+    ├── build.py                # Build validation logic (task completion, code quality)
+    ├── scanner.py              # Code quality scanner
+    └── rumdl.py                # rumdl markdown formatting integration
 ```
 
 ### 8.2 Logic Flow
@@ -448,32 +495,56 @@ sequenceDiagram
 
 ### 10.1 Exception Hierarchy
 
-- `ValidationError`: Base exception for all validation errors
+- `PbSpecError`: Base exception for all pb-spec errors
 - `SpecNotFoundError`: When spec directory is missing
 - `FileReadError`: When spec files cannot be read
-- `ContractViolationError`: When markdown contract is violated
+- `ConfigError`: When configuration parsing fails
 
-### 10.2 Safety Mechanisms
+### 10.2 Structured Validation Results
 
-1. **Git-aware scanning:** Respects .gitignore, excludes irrelevant directories
-2. **Timeout protection:** All external commands have 60-second timeouts
-3. **Graceful degradation:** Optional tools (rumdl) fail safely without breaking validation
-4. **Idempotent operations:** Validation is read-only, never modifies files
+- `ValidationResult`: Collection of errors and warnings with severity levels
+- `ValidationError`: Single validation issue with file, line, field context
+- `ErrorSeverity`: Severity enum — `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`
+
+### 10.3 Safety Mechanisms (RFC 2119)
+
+- The validator **MUST NOT** modify source files — all operations are read-only.
+- The validator **MUST** exit with non-zero status when CRITICAL or HIGH errors are found.
+- The validator **SHOULD** exit with non-zero status when MEDIUM errors are found.
+- The validator **MAY** continue past LOW severity issues without failing.
+- `rumdl` formatting checks **SHOULD** run when available, but the validator **MUST NOT** fail when `rumdl` is not installed.
+- All external commands **MUST** have configurable timeouts (default 60s for git, 10-30s for rumdl).
+- The validator **MUST** respect `.gitignore` rules via `git ls-files`.
 
 ---
 
-## 11. Implementation Plan
+## 11. Contract-Driven Configuration
+
+Validation rules are loaded from `contract_sections.toml` — the single source of truth
+that stays synchronized with `docs/contract.md`. This eliminates hardcoded section lists
+and enables per-project customization.
+
+| Config Key | Purpose | Location |
+| :--- | :--- | :--- |
+| `full_mode.required_sections` | Required design.md sections for full mode | `contract_sections.toml` |
+| `lightweight_mode.required_sections` | Required design.md sections for lightweight mode | `contract_sections.toml` |
+| `tasks.required_fields` | Required fields per task block | `contract_sections.toml` |
+| `tasks.na_reason_fields` | Fields where N/A requires a reason | `contract_sections.toml` |
+
+---
+
+## 12. Implementation Plan
 
 - [x] **Phase 1: Foundation** — CLI entry point, Click group, basic validate command
 - [x] **Phase 2: Core Logic** — Markdown parser, contract block parser, validation rules
 - [x] **Phase 3: Scanner** — Code quality scanner with multi-language support
 - [x] **Phase 4: Integration** — Wire validation modes, add rumdl integration
-- [ ] **Phase 5: Polish** — Additional validation rules, performance optimization
+- [x] **Phase 5: Contract-Driven Config** — TOML-based rule loading, RFC 2119 constraints
 
 ---
 
-## 12. Cross-Functional Concerns
+## 13. Cross-Functional Concerns
 
 - **Performance:** For very large codebases, consider implementing parallel scanning or incremental validation
 - **Extensibility:** Additional programming languages can be added by extending scanner patterns
-- **Configuration:** Currently hardcoded patterns; future versions may support configurable rule sets
+- **Configuration:** Rules loaded from `contract_sections.toml`; projects may override with local config

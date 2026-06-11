@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -11,17 +12,11 @@ from pathlib import Path
 from behave import given, then, when
 
 
-def _cleanup_temp_dir(context) -> None:
-    """Clean up temporary directory if it exists."""
-    temp_dir = getattr(context, "temp_dir", None)
-    if temp_dir and os.path.exists(temp_dir):
-        shutil.rmtree(temp_dir, ignore_errors=True)
-
-
 @given("I have a pb-spec project set up")
 def step_pb_spec_project_setup(context) -> None:
     """Set up a pb-spec project context."""
     context.temp_dir = tempfile.mkdtemp()
+    context.add_cleanup(shutil.rmtree, context.temp_dir, ignore_errors=True)
     context.specs_dir = Path(context.temp_dir) / "specs"
     context.specs_dir.mkdir()
     context.spec_dir = context.specs_dir / "2026-03-28-test-feature"
@@ -102,10 +97,28 @@ def step_design_contains_section(context, section: str) -> None:
 
 @given("I have a spec directory with an incomplete design.md")
 def step_incomplete_design_md(context) -> None:
-    """Create an incomplete design.md file."""
+    """Create an incomplete design.md file with a minimal tasks.md."""
     design_file = context.spec_dir / "design.md"
     design_file.write_text("# Design Document\n\n## Some Section\nContent\n")
     context.design_file = design_file
+
+    tasks_file = context.spec_dir / "tasks.md"
+    tasks_file.write_text(
+        "# Tasks\n"
+        "\n"
+        "### Task 1.1: Test Task\n"
+        "Context: Test context.\n"
+        "Verification: Run tests.\n"
+        "Scenario Coverage: N/A — internal task.\n"
+        "Loop Type: TDD-only\n"
+        "Behavioral Contract: Must pass.\n"
+        "Simplification Focus: Keep minimal.\n"
+        "BDD Verification: N/A — TDD-only task.\n"
+        "Advanced Test Verification: N/A — no advanced tests planned.\n"
+        "Runtime Verification: N/A — no runtime changes.\n"
+        "Status: 🔴 TODO\n"
+        "- [ ] Step 1: Write test\n"
+    )
 
 
 @given('design.md is missing "{section}" section')
@@ -209,8 +222,6 @@ def step_all_tasks_status(context, status: str) -> None:
         content += f"### Task 1.1: Test Task\nStatus: {status}\n"
     else:
         # Replace existing status
-        import re
-
         content = re.sub(r"Status: .+", f"Status: {status}", content)
     context.tasks_file.write_text(content)
 
@@ -380,4 +391,3 @@ def step_should_see(context, text: str) -> None:
                 break
 
     assert found, f"Should see '{text}' in output.\nActual output: {context.output}"
-    _cleanup_temp_dir(context)
