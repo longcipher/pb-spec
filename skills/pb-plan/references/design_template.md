@@ -35,18 +35,38 @@
 
 ---
 
-## 3. Requirements & Goals
+## 3. Requirements & Goals (EARS Notation)
+
+> All acceptance criteria use **EARS (Easy Approach to Requirements Syntax)** — 5 sentence patterns that eliminate ambiguity and produce machine-checkable验收标准.
 
 ### 3.1 Problem Statement
 
 > Describe current pain points or missing functionality. Be specific.
 
-### 3.2 Functional Goals
+### 3.2 Functional Requirements (EARS)
 
-> Must-have features. Numbered list.
+> Each requirement uses one of the 5 EARS patterns. Tag each with its pattern type.
 
-1. **[Goal A]:** Description...
-2. **[Goal B]:** Description...
+**Ubiquitous (always true):**
+
+- **[REQ-01]:** The system *shall* [action] when [trigger].
+- **[REQ-02]:** The system *shall* [action] when [trigger].
+
+**State-driven (conditional on state):**
+
+- **[REQ-03]:** While [state], the system *shall* [action].
+
+**Event-driven (triggered by event):**
+
+- **[REQ-04]:** When [event], the system *shall* [action].
+
+**Unwanted (avoidance):**
+
+- **[REQ-05]:** If [condition], the system *shall not* [action].
+
+**Exception (conditional exception):**
+
+- **[REQ-06]:** Where [condition], the system *shall* [alternative action].
 
 ### 3.3 Non-Functional Goals
 
@@ -80,23 +100,67 @@
 
 > Reconcile the normalized source requirements against the generated spec before finalizing the plan.
 
-| Requirement ID | Covered In Design | Scenario Coverage | Task Coverage | Status / Rationale |
-| :--- | :--- | :--- | :--- | :--- |
-| `R1` | `[Section references]` | `[Feature/scenario names or N/A]` | `[Task IDs or N/A]` | `[Covered / Out of scope / Deferred / Assumption-bound]` |
+| Requirement ID | EARS Pattern | Covered In Design | Scenario Coverage | Task Coverage | Status / Rationale |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `R1` | `[Ubiquitous/State-driven/Event-driven/Unwanted/Exception]` | `[Section references]` | `[Feature/scenario names or N/A]` | `[Task IDs or N/A]` | `[Covered / Out of scope / Deferred / Assumption-bound]` |
 
 ---
 
-## 5. Architecture Overview
+## 5. Architecture Overview (C4 Model + Mermaid)
 
-### 5.1 System Context
+> Architecture is expressed using **C4 Model** (Context, Containers, Components, Code) rendered in **Mermaid.js** syntax. Agents parse Mermaid directly — no image files.
 
-> How does this feature fit into the existing system? Describe interactions with other modules, services, or external systems. Use a diagram if helpful.
+### 5.1 System Context (C4 Level 1)
 
-### 5.2 Key Design Principles
+> How does this feature fit into the existing system? Show external actors and systems.
+
+```mermaid
+C4Context
+    title System Context Diagram for [Feature Name]
+
+    Person(user, "User", "Uses the feature")
+    System(system, "System", "Current system")
+    System_Ext(ext, "External System", "External dependency")
+
+    Rel(user, system, "Interacts with")
+    Rel(system, ext, "Calls")
+```
+
+### 5.2 Container Diagram (C4 Level 2)
+
+> Major building blocks and their interactions.
+
+```mermaid
+graph TD
+    subgraph System
+        A[Component A] --> B[Component B]
+        B --> C[Database]
+    end
+
+    subgraph External
+        D[External API]
+    end
+
+    A --> D
+```
+
+### 5.3 Component Diagram (C4 Level 3)
+
+> Internal components of the primary container. Show key responsibilities and data flow.
+
+```mermaid
+graph LR
+    subgraph Module
+        E[Parser] --> F[Validator]
+        F --> G[Formatter]
+    end
+```
+
+### 5.4 Key Design Principles
 
 > Core ideas guiding this design. Examples: "Separation of concerns", "Fail-fast", "Backward-compatible API".
 
-### 5.3 Existing Components to Reuse
+### 5.5 Existing Components to Reuse
 
 > **Mandatory:** Before designing new modules, search the existing codebase for reusable components. List any existing utilities, clients, base classes, or patterns that this feature MUST reuse instead of reimplementing.
 
@@ -107,21 +171,7 @@
 
 > If no reusable components exist, state "No existing components identified for reuse" and explain why.
 
-### 5.4 Architecture Decisions
-
-> Explicitly decide which architectural patterns or principles this feature will use before implementation begins. For any change likely to exceed **200 lines** of implementation or introduce a new module boundary, this section is mandatory and must be specific.
-
-| Decision ID | Status | Selected Pattern / Principle | Why It Fits Here | Alternatives Rejected | Simplification Impact |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `AD-01` | `Inherited` / `New` | `[SRP / DIP / Factory / Strategy / Observer / Adapter / Decorator / N/A]` | `[Why this matches the requirement and existing repo shape]` | `[Why competing patterns were not chosen]` | `[How this reduces complexity or coupling without adding ceremony]` |
-
-- **Architecture Decision Snapshot Inputs:** List which repo-level decisions from `AGENTS.md`, docs, or existing code this design is inheriting.
-- **SRP Check:** Explain how responsibilities stay isolated and which modules should not absorb new concerns.
-- **DIP Check:** Identify the seams where dependencies must be inverted.
-- **Dependency Injection Plan:** All external dependencies should flow through interfaces or abstract classes unless the repo already has a documented alternative seam.
-- **Code Simplifier Alignment:** Explain how these decisions keep the implementation explicit and maintainable rather than clever.
-
-### 5.5 Project Identity Alignment
+### 5.6 Project Identity Alignment
 
 > If the repository appears to come from a template/scaffold, identify any generic crate/package/module names that must be renamed to match the current project or product identity before feature work is complete.
 
@@ -131,7 +181,56 @@
 
 > If no identity cleanup is needed, state "No template identity mismatches detected.".
 
-### 5.6 BDD/TDD Strategy
+---
+
+## 6. Architecture Decisions (MADR Format)
+
+> Decisions follow **MADR (Markdown Any Decision Records)** — lightweight ADR format with `[Context]`, `[Decision]`, `[Consequences]`. Each decision is a numbered record that agents cannot override without explicit re-evaluation.
+
+### AD-01: [Decision Title]
+
+- **Status:** `Proposed` / `Accepted` / `Deprecated` / `Superseded by AD-XX`
+- **Date:** YYYY-MM-DD
+
+**Context:**
+> What is the issue that motivates this decision? What forces are at play (technical, political, social, project-related)?
+
+**Decision:**
+> What is the change being proposed or decided? State the decision clearly and concisely.
+
+**Consequences:**
+> What becomes easier or more difficult because of this change? What trade-offs are introduced?
+
+- Positive: ...
+- Negative: ...
+- Neutral: ...
+
+### AD-02: [Decision Title]
+
+- **Status:** `Proposed` / `Accepted` / `Deprecated` / `Superseded by AD-XX`
+- **Date:** YYYY-MM-DD
+
+**Context:**
+> ...
+
+**Decision:**
+> ...
+
+**Consequences:**
+> ...
+
+### 5.7 Architecture Decision Snapshot Inputs
+
+> List which repo-level decisions from `AGENTS.md`, docs, or existing code this design is inheriting.
+
+### 5.8 SRP / DIP Check
+
+> For changes >200 lines or introducing new module boundaries:
+- **SRP Check:** Explain how responsibilities stay isolated and which modules should not absorb new concerns.
+- **DIP Check:** Identify the seams where dependencies must be inverted.
+- **Dependency Injection Plan:** All external dependencies should flow through interfaces or abstract classes unless the repo already has a documented alternative seam.
+
+### 5.9 BDD/TDD Strategy
 
 > Describe how this feature will use outside-in development. Define the business-facing Gherkin loop and the supporting TDD loop.
 
@@ -145,9 +244,7 @@
 - **Inner Loop:** `[Which unit/component tests will drive the underlying implementation]`
 - **Step Definition Location:** `[e.g., features/steps/, tests/bdd/, crates/app/tests/]`
 
-> Property testing should be planned by default for large input domains such as parsers, serializers, normalization, versioning rules, combinatorial business logic, or boundary-heavy validation. Fuzzing is conditional for parser/protocol/unsafe/untrusted-input crash-safety work. Benchmarks are conditional for explicit performance-sensitive paths.
-
-### 5.7 BDD Scenario Inventory
+### 5.10 BDD Scenario Inventory
 
 > List every scenario that should be planned as a first-class acceptance artifact.
 
@@ -155,7 +252,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | `features/[feature-name].feature` | `[Scenario Name]` | `[User-visible result]` | `[BDD command or acceptance check]` | `[Unit/component logic to drive with TDD]` |
 
-### 5.8 Simplification Opportunities in Touched Code
+### 5.11 Simplification Opportunities in Touched Code
 
 > Identify the specific cleanup that should happen alongside the feature without broadening scope.
 
@@ -165,9 +262,220 @@
 
 ---
 
-## 6. Detailed Design
+## 7. Data Models (DBML / Prisma Schema)
 
-### 6.1 Module Structure
+> Data models are expressed using **DBML** or **Prisma Schema** — structured DSL with strict types, relationships, and index definitions. Natural language table descriptions are forbidden.
+
+### 7.1 Data Model Definition
+
+```dbml
+// DBML format (https://dbml.dbdiagram.io)
+Table users {
+  id integer [pk, increment]
+  email varchar [unique, not null]
+  name varchar
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+Table posts {
+  id integer [pk, increment]
+  user_id integer [ref: > users.id, not null]
+  title varchar [not null]
+  body text
+  status varchar [default: 'draft']
+  created_at timestamp [default: `now()`]
+}
+
+// Alternative: Prisma Schema format
+// model User {
+//   id        Int      @id @default(autoincrement())
+//   email     String   @unique
+//   name      String?
+//   posts     Post[]
+//   createdAt DateTime @default(now())
+// }
+//
+// model Post {
+//   id        Int      @id @default(autoincrement())
+//   userId    Int
+//   user      User     @relation(fields: [userId], references: [id])
+//   title     String
+//   body      String?
+//   status    String   @default("draft")
+//   createdAt DateTime @default(now())
+// }
+```
+
+### 7.2 Relationships
+
+| From | Type | To | Description |
+| :--- | :--- | :--- | :--- |
+| `users` | 1:N | `posts` | A user has many posts |
+| `posts` | N:1 | `users` | A post belongs to one user |
+
+### 7.3 Indexes
+
+| Table | Columns | Type | Purpose |
+| :--- | :--- | :--- | :--- |
+| `users` | `email` | UNIQUE | Login lookup |
+| `posts` | `user_id` | INDEX | User's posts query |
+| `posts` | `status, created_at` | INDEX | Feed query |
+
+### 7.4 Migration Notes
+
+> Any schema changes, data migrations, or backward-compatibility concerns.
+
+---
+
+## 8. Interface Contracts (API-First / Type Signatures)
+
+> All module boundaries and external APIs are defined as **type signatures** before implementation. Agents use these as compile-time contracts — parameter mismatches are caught at design time, not runtime.
+
+### 8.1 Public API (External)
+
+> REST endpoints, CLI commands, or RPC interfaces this feature exposes.
+
+```yaml
+# OpenAPI-style contract (simplified)
+paths:
+  /api/v1/resource:
+    post:
+      summary: Create resource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateResourceRequest'
+      responses:
+        '201':
+          description: Resource created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceResponse'
+        '400':
+          description: Validation error
+
+components:
+  schemas:
+    CreateResourceRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+
+    ResourceResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+```
+
+### 8.2 Internal Module Contracts (Type Signatures)
+
+> Internal interfaces, protocols, or abstract classes. Use language-native type syntax.
+
+```python
+# Python Protocol example
+class Validator(Protocol):
+    def validate(self, data: ResourceData) -> ValidationResult:
+        """Validate resource data against schema."""
+        ...
+
+class Formatter(Protocol):
+    def format(self, result: ValidationResult) -> str:
+        """Format validation result for output."""
+        ...
+
+# Data classes
+@dataclass(frozen=True)
+class ResourceData:
+    name: str
+    description: str | None = None
+
+@dataclass(frozen=True)
+class ValidationResult:
+    is_valid: bool
+    errors: list[str]
+    warnings: list[str]
+```
+
+```typescript
+// TypeScript interface example
+interface Validator {
+  validate(data: ResourceData): ValidationResult;
+}
+
+interface Formatter {
+  format(result: ValidationResult): string;
+}
+
+// Type definitions
+type ResourceData = {
+  name: string;
+  description?: string;
+};
+
+type ValidationResult = {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+};
+```
+
+```rust
+// Rust trait example
+pub trait Validator {
+    fn validate(&self, data: &ResourceData) -> ValidationResult;
+}
+
+pub trait Formatter {
+    fn format(&self, result: &ValidationResult) -> String;
+}
+
+#[derive(Debug, Clone)]
+pub struct ResourceData {
+    pub name: String,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ValidationResult {
+    pub is_valid: bool,
+    pub errors: Vec<String>,
+    pub warnings: Vec<String>,
+}
+```
+
+### 8.3 Error Contracts
+
+> Structured error types returned by APIs and internal modules.
+
+```python
+@dataclass(frozen=True)
+class ServiceError:
+    code: str          # e.g., "VALIDATION_FAILED", "NOT_FOUND"
+    message: str       # Human-readable description
+    details: dict[str, str] | None = None  # Field-level errors
+```
+
+---
+
+## 9. Detailed Design
+
+### 9.1 Module Structure
 
 > File/directory layout for the new or modified code. If the repo still exposes scaffold placeholders, show the project-matching module/package/crate names after the planned rename.
 
@@ -180,75 +488,34 @@ src/
 │   └── utils.py
 ```
 
-### 6.2 Data Structures & Types
+### 9.2 Logic Flow
 
-> Define core data models, classes, enums, or schemas.
-> The planner contract must stay in markdown. Define the contract types that make the planned artifact set build-eligible without inventing a parallel YAML or JSON schema.
+> Describe key workflows, state transitions, or processing pipelines. Use Mermaid sequence or flow diagrams for clarity.
 
-```text
-# Example pseudo-code — adapt to project language
-class FeatureConfig:
-    enabled: bool
-    max_retries: int
-    timeout_seconds: float
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as API
+    participant S as Service
+    participant D as Database
 
-class FeatureState:
-    IDLE = "idle"
-    RUNNING = "running"
-    ERROR = "error"
-
-PlannedSpecContract
-    - `design.md` contains the required sections for architecture, BDD/TDD strategy,
-        detailed design, verification, and implementation plan
-    - `tasks.md` contains one or more `TaskContract` blocks
-    - `features/` contains at least one `.feature` file with at least one `Scenario`
-
-TaskContract
-    - heading: `### Task X.Y: <name>`
-    - required fields: Context, Verification, Scenario Coverage, Loop Type,
-        Behavioral Contract, Simplification Focus, Status, Step checkboxes,
-        BDD Verification, Advanced Test Verification, Runtime Verification
-    - allowed task states: `🔴 TODO`, `🟡 IN PROGRESS`, `🟢 DONE`, `⏭️ SKIPPED`,
-        `🔄 DCR`, `⛔ OBSOLETE`
-
-BuildBlockedPacket
-    - header: `🛑 Build Blocked — Task X.Y: <name>`
-    - required sections: Reason, Loop Type, Scenario Coverage, What We Tried,
-        Failure Evidence, Failing Step (or `N/A`), Suggested Design Change, Impact,
-        Next Action
-
-DesignChangeRequestPacket
-    - header: `🔄 Design Change Request — Task X.Y: <name>`
-    - required sections: Scenario Coverage, Problem, What We Tried,
-        Failure Evidence, Failing Step (or `N/A`), Suggested Change, Impact
+    U->>A: POST /resource
+    A->>S: create_resource(data)
+    S->>D: INSERT
+    D-->>S: result
+    S-->>A: ResourceResponse
+    A-->>U: 201 Created
 ```
 
-### 6.3 Interface Design
-
-> Public APIs, function signatures, abstract interfaces, or protocols this feature exposes or consumes.
-
-```text
-class FeatureInterface:
-    def execute(input: InputType) -> OutputType:
-        """Describe purpose and contract."""
-        ...
-```
-
-### 6.4 Logic Flow
-
-> Describe key workflows, state transitions, or processing pipelines. Use step-by-step descriptions or diagrams.
->
-> Keep the proposed flow explicit and easy to follow. Prefer straightforward branching and cohesive helper boundaries over compact but opaque control flow.
-
-### 6.5 Configuration
+### 9.3 Configuration
 
 > Any new config values, environment variables, or feature flags introduced.
 
-### 6.6 Error Handling
+### 9.4 Error Handling
 
 > Error types, failure modes, and recovery strategy.
 
-### 6.7 Maintainability Notes
+### 9.5 Maintainability Notes
 
 > Call out any implementation guardrails that keep the change readable and easy to extend.
 
@@ -258,15 +525,15 @@ class FeatureInterface:
 
 ---
 
-## 7. Verification & Testing Strategy
+## 10. Verification & Testing Strategy
 
-### 7.1 Unit Testing
+### 10.1 Unit Testing
 
 > What pure logic to test. Scope and tooling.
 >
 > Include regression checks that prove any planned simplification preserves behavior, not just happy-path outcomes.
 
-### 7.2 Property Testing
+### 10.2 Property Testing
 
 > Identify where example-based tests leave too much input space uncovered. Use the language-appropriate property-testing tool (`Hypothesis`, `fast-check`, or `proptest`) unless you can justify that the logic is too trivial or already fully covered by a smaller deterministic domain.
 
@@ -274,11 +541,11 @@ class FeatureInterface:
 | :--- | :--- | :--- | :--- |
 | `[e.g., version string normalization]` | `[Large combinatorial input space]` | `[e.g., uv run pytest tests/test_version_properties.py -q]` | `[Round-trip, idempotence, monotonicity, etc.]` |
 
-### 7.3 Integration Testing
+### 10.3 Integration Testing
 
 > How modules work together. Mock strategies, sandbox environments.
 
-### 7.4 BDD Acceptance Testing
+### 10.4 BDD Acceptance Testing
 
 > Which `.feature` files and scenarios must fail first and then pass. Include the exact BDD runner command.
 
@@ -286,7 +553,7 @@ class FeatureInterface:
 | :--- | :--- | :--- | :--- |
 | **BDD-01** | `[e.g., features/auth.feature]` | `[e.g., npm exec cucumber-js features/auth.feature]` | `[e.g., Scenario passes with 0 failed steps]` |
 
-### 7.5 Robustness & Performance Testing
+### 10.5 Robustness & Performance Testing
 
 > Plan these only when the task profile requires them.
 
@@ -295,7 +562,7 @@ class FeatureInterface:
 | **Fuzz** | `[Parser/protocol/unsafe/untrusted-input paths only]` | `[e.g., cargo fuzz run parser]` | `[Crash-safety target, or N/A with reason]` |
 | **Benchmark** | `[Explicit latency/throughput/hot-path requirements only]` | `[e.g., uv run pytest tests/benchmarks/test_cli.py --benchmark-only]` | `[Regression budget, or N/A with reason]` |
 
-### 7.6 Critical Path Verification (The "Harness")
+### 10.6 Critical Path Verification (The "Harness")
 
 > Define the exact command(s) or script(s) that prove this feature works end-to-end. The `pb-build` agent will use these to verify the final result. This acts as the acceptance test for the entire feature.
 
@@ -305,19 +572,16 @@ class FeatureInterface:
 | **VP-02** | `[e.g., curl -v http://localhost:8000/health]` | `[e.g., "Response code 200"]` |
 | **VP-03** | `[e.g., pytest tests/ -v --tb=short]` | `[e.g., "All tests pass, 0 failures"]` |
 
-> **Why this matters:** By defining verification commands at design time, the build agent does not need to invent its own verification strategy — it simply executes these commands and checks the criteria. This dramatically improves reliability.
+### 10.7 Validation Rules
 
-### 5.7 Validation Rules
-
-| Test Case ID | Action | Expected Outcome | Verification Method |
-| :--- | :--- | :--- | :--- |
-| **TC-01** | [Action] | [Expected result] | [How to verify] |
-| **TC-02** | [Action] | [Expected result] | [How to verify] |
-| **TC-03** | [Action] | [Expected result] | [How to verify] |
+| Test Case ID | EARS Requirement | Action | Expected Outcome | Verification Method |
+| :--- | :--- | :--- | :--- | :--- |
+| **TC-01** | `[REQ-XX]` | [Action] | [Expected result] | [How to verify] |
+| **TC-02** | `[REQ-XX]` | [Action] | [Expected result] | [How to verify] |
 
 ---
 
-## 6. Implementation Plan
+## 11. Implementation Plan
 
 > Phase checklist — high-level roadmap mapping to tasks.md.
 
@@ -328,6 +592,6 @@ class FeatureInterface:
 
 ---
 
-## 7. Cross-Functional Concerns
+## 12. Cross-Functional Concerns
 
 > Security review, backward compatibility, migration plan, documentation updates, monitoring/alerting, or rollback strategy — if applicable.

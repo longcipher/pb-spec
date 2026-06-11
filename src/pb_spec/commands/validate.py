@@ -2,372 +2,18 @@
 
 from __future__ import annotations
 
-import os
 import re
-import subprocess
 import sys
-from dataclasses import dataclass, field
 from pathlib import Path
 
 import click
 
-from pb_spec.validation import CodeScanner, IssueType
-
-
-def get_timeout_config() -> dict[str, int]:
-    """Get timeout configuration from environment variables with defaults."""
-    return {
-        "git_ls_files": int(os.getenv("PB_SPEC_GIT_TIMEOUT", "60")),
-        "rumdl_check": int(os.getenv("PB_SPEC_RUMDL_CHECK_TIMEOUT", "10")),
-        "rumdl_format": int(os.getenv("PB_SPEC_RUMDL_FORMAT_TIMEOUT", "30")),
-    }
-
-
-@dataclass
-class ValidationResult:
-    """Structured result of a validation operation."""
-
-    is_valid: bool
-    errors: list[str] = field(default_factory=list)
-    warnings: list[str] = field(default_factory=list)
-
-
-@dataclass
-class TaskBlock:
-    """Represents a parsed task block from tasks.md."""
-
-    id: str
-    name: str
-    content: str
-    fields: dict[str, str]
-
-
-@dataclass(frozen=True)
-class ContractBlock:
-    """Represents a markdown-carried workflow contract block."""
-
-    kind: str
-    task_id: str
-    name: str
-    sections: dict[str, str]
-
-
-TASK_HEADING_RE = re.compile(r"^(#{2,3})\s+Task\s+(\d+\.\d+):\s*(.*)$", re.MULTILINE)
-TASK_CHECKBOX_RE = re.compile(r"^[ \t]*- \[[ xX]\].*", re.MULTILINE)
-UNCHECKED_TASK_CHECKBOX_RE = re.compile(r"^[ \t]*- \[ \].*", re.MULTILINE)
-CONTRACT_BLOCK_HEADER_RE = re.compile(
-    r"^(🛑 Build Blocked|🔄 Design Change Request)\s+—\s+Task\s+(\d+\.\d+):\s*(.*)$",
-    re.MULTILINE,
-)
-
-ALLOWED_LOOP_TYPES = frozenset({"BDD+TDD", "TDD-only"})
-ALLOWED_TASK_STATUSES = frozenset(
-    {
-        "🔴 TODO",
-        "🟡 IN PROGRESS",
-        "🟢 DONE",
-        "⏭️ SKIPPED",
-        "🔄 DCR",
-        "⛔ OBSOLETE",
-        "TODO",
-    }
-)
-NA_REASON_FIELDS = frozenset(
-    {
-        "Scenario Coverage:",
-        "BDD Verification:",
-        "Advanced Test Verification:",
-        "Runtime Verification:",
-    }
-)
-BUILD_BLOCKED_REQUIRED_SECTIONS = (
-    "Reason",
-    "Loop Type",
-    "Scenario Coverage",
-    "What We Tried",
-    "Failure Evidence",
-    "Failing Step",
-    "Suggested Design Change",
-    "Impact",
-    "Next Action",
-)
-DCR_REQUIRED_SECTIONS = (
-    "Scenario Coverage",
-    "Problem",
-    "What We Tried",
-    "Failure Evidence",
-    "Failing Step",
-    "Suggested Change",
-    "Impact",
-)
-CONTRACT_SECTION_NAMES = frozenset(BUILD_BLOCKED_REQUIRED_SECTIONS + DCR_REQUIRED_SECTIONS)
-
-
-def required_sections_for_contract_block(kind: str) -> tuple[str, ...]:
-    """Return required section names for a workflow contract block kind."""
-    if kind == "🛑 Build Blocked":
-        return BUILD_BLOCKED_REQUIRED_SECTIONS
-    return DCR_REQUIRED_SECTIONS
-
-
-class MarkdownParser:
-    """Simple markdown parser for extracting task blocks."""
-
-    def parse_task_blocks(self, content: str) -> list[TaskBlock]:
-        """Parse markdown content and extract task blocks."""
-        lines = content.split("\n")
-        task_blocks = []
-        current_task: TaskBlock | None = None
-        current_field = ""
-        current_field_content = []
-
-        for line in lines:
-            # Check for task heading
-            task_match = TASK_HEADING_RE.match(line)
-            if task_match:
-                # Save previous task if exists
-                if current_task:
-                    if current_field:
-                        current_task.fields[current_field] = "\n".join(
-                            current_field_content
-                        ).strip()
-                    task_blocks.append(current_task)
-
-                # Start new task
-                level, task_id, task_name = task_match.groups()
-                current_task = TaskBlock(id=task_id, name=task_name.strip(), content="", fields={})
-                current_field = ""
-                current_field_content = []
-                current_task.content = line + "\n"  # Start accumulating content
-                continue
-
-            if current_task is None:
-                continue
-
-            # Accumulate content for the task block
-            current_task.content += line + "\n"
-
-            if current_task is None:
-                continue
-
-            # Check for field headers (may be indented)
-            field_match = re.match(r"^\s*(\w+(?:\s+\w+)*):\s*(.*)", line)
-            if field_match:
-                # Save previous field
-                if current_field:
-                    current_task.fields[current_field] = "\n".join(current_field_content).strip()
-
-                # Start new field
-                field_name = field_match.group(1) + ":"
-                field_value = field_match.group(2).strip()
-                current_field = field_name
-                current_task.fields[current_field] = field_value
-                current_field_content = [field_value] if field_value else []
-            elif current_field and line.strip() and not TASK_CHECKBOX_RE.match(line):
-                current_field_content.append(line)
-                current_task.fields[current_field] = "\n".join(current_field_content).strip()
-
-        # Save last task
-        if current_task:
-            if current_field:
-                current_task.fields[current_field] = "\n".join(current_field_content).strip()
-            task_blocks.append(current_task)
-
-        return task_blocks
-
-
-def task_display_name(task_block: TaskBlock) -> str:
-    """Return a stable task display name for diagnostics."""
-    return f"{task_block.id}: {task_block.name}" if task_block.name else task_block.id
-
-
-def is_bare_na(value: str) -> bool:
-    """Return True when a field says N/A without a meaningful reason."""
-    stripped = value.strip()
-    if not stripped.lower().startswith("n/a"):
-        return False
-
-    remainder = stripped[3:].strip(" \t-—:;,.()[]")
-    return not remainder
-
-
-def parse_contract_sections(block_body: str) -> dict[str, str]:
-    """Parse colon-delimited sections from a DCR or build-blocked body."""
-    sections: dict[str, list[str]] = {}
-    current_section = ""
-
-    for raw_line in block_body.splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-
-        section_name, separator, value = line.partition(":")
-        if separator and section_name in CONTRACT_SECTION_NAMES:
-            current_section = section_name
-            sections.setdefault(current_section, [])
-            if value.strip():
-                sections[current_section].append(value.strip())
-            continue
-
-        if current_section:
-            sections[current_section].append(line)
-
-    return {name: "\n".join(lines).strip() for name, lines in sections.items()}
-
-
-def parse_contract_blocks(content: str) -> list[ContractBlock]:
-    """Parse markdown-carried DCR and build-blocked packets from tasks.md."""
-    matches = list(CONTRACT_BLOCK_HEADER_RE.finditer(content))
-    blocks: list[ContractBlock] = []
-
-    for index, match in enumerate(matches):
-        kind, task_id, name = match.groups()
-        end_candidates = [len(content)]
-
-        if index + 1 < len(matches):
-            end_candidates.append(matches[index + 1].start())
-
-        next_task = TASK_HEADING_RE.search(content, match.end())
-        if next_task:
-            end_candidates.append(next_task.start())
-
-        block_body = content[match.end() : min(end_candidates)]
-        blocks.append(
-            ContractBlock(
-                kind=kind,
-                task_id=task_id,
-                name=name.strip(),
-                sections=parse_contract_sections(block_body),
-            )
-        )
-
-    return blocks
-
-
-def validate_contract_blocks(content: str) -> list[str]:
-    """Validate required sections for markdown workflow contract blocks."""
-    errors = []
-
-    for block in parse_contract_blocks(content):
-        missing_sections = [
-            section
-            for section in required_sections_for_contract_block(block.kind)
-            if not block.sections.get(section, "").strip()
-        ]
-        if missing_sections:
-            errors.append(
-                f"Incomplete {block.kind} packet for Task {block.task_id}: "
-                f"Missing required section(s): {', '.join(missing_sections)}"
-            )
-
-    return errors
-
-
-def combine_validation_results(*results: ValidationResult) -> ValidationResult:
-    """Combine multiple ValidationResult objects."""
-    combined_errors = []
-    combined_warnings = []
-    is_valid = True
-
-    for result in results:
-        combined_errors.extend(result.errors)
-        combined_warnings.extend(result.warnings)
-        is_valid &= result.is_valid
-
-    return ValidationResult(is_valid=is_valid, errors=combined_errors, warnings=combined_warnings)
-
-
-class ValidationError(Exception):
-    """Base exception for validation errors."""
-
-    pass
-
-
-class SpecNotFoundError(ValidationError):
-    """Raised when spec directory is not found."""
-
-    pass
-
-
-class FileReadError(ValidationError):
-    """Raised when spec files cannot be read."""
-
-    pass
-
-
-class ContractViolationError(ValidationError):
-    """Raised when markdown contract is violated."""
-
-    pass
-
-
-def get_git_modified_files(root_dir: Path | str = ".") -> set[Path]:
-    """Get files with staged, unstaged, or untracked changes.
-
-    Uses `git status --porcelain` which works even on initial commits
-    (no HEAD yet) and covers all change categories in a single command.
-    Falls back to an empty set if not in a git repository.
-    """
-    root = Path(root_dir)
-    files: set[Path] = set()
-
-    try:
-        timeouts = get_timeout_config()
-        result = subprocess.run(
-            ["git", "-c", "core.quotePath=false", "status", "--porcelain", "-uall"],
-            capture_output=True,
-            text=True,
-            cwd=root,
-            encoding="utf-8",
-            timeout=timeouts["git_ls_files"],
-        )
-        for line in result.stdout.splitlines():
-            if len(line) < 4:
-                continue
-            # git status --porcelain output: XY <path> or XY <path> -> <new_path>
-            # XY are the staged (col 1) and unstaged (col 2) status codes
-            path_str = line[3:].strip()
-            # Handle renamed files: "R  old -> new"
-            if " -> " in path_str:
-                path_str = path_str.split(" -> ", 1)[1].strip()
-            # Strip surrounding quotes (git adds them for special-char paths)
-            if path_str.startswith('"') and path_str.endswith('"'):
-                path_str = path_str[1:-1]
-            files.add(root / path_str)
-    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
-        pass
-
-    return files
-
-
-class Colors:
-    """ANSI color codes for terminal output."""
-
-    GREEN = "\033[92m"
-    RED = "\033[91m"
-    YELLOW = "\033[93m"
-    BLUE = "\033[94m"
-    RESET = "\033[0m"
-
-
-def print_success(msg: str) -> None:
-    """Print a success message."""
-    click.echo(f"{Colors.GREEN}✅ {msg}{Colors.RESET}")
-
-
-def print_error(msg: str) -> None:
-    """Print an error message."""
-    click.echo(f"{Colors.RED}❌ {msg}{Colors.RESET}")
-
-
-def print_warning(msg: str) -> None:
-    """Print a warning message."""
-    click.echo(f"{Colors.YELLOW}⚠️  {msg}{Colors.RESET}")
-
-
-def print_info(msg: str) -> None:
-    """Print an info message."""
-    click.echo(f"{Colors.BLUE}ℹ️  {msg}{Colors.RESET}")
+from pb_spec.exceptions import SpecNotFoundError
+from pb_spec.output import Colors, print_error, print_info, print_success, print_warning
+from pb_spec.validation.build import validate_build, validate_task
+from pb_spec.validation.plan import validate_plan
+from pb_spec.validation.result import ErrorSeverity, ValidationError, ValidationResult
+from pb_spec.validation.rumdl import FormatResult, run_rumdl_format
 
 
 def get_latest_spec_dir(specs_dir: Path | None = None) -> Path:
@@ -382,433 +28,84 @@ def get_latest_spec_dir(specs_dir: Path | None = None) -> Path:
     if not spec_dirs:
         raise SpecNotFoundError("No feature specs found in 'specs/'.")
 
-    # Sort by name (relies on YYYY-MM-DD prefix)
-    return sorted(spec_dirs, key=lambda x: x.name)[-1]
+    date_pattern = re.compile(r"^\d{4}-\d{2}-\d{2}")
+
+    def sort_key(d: Path) -> tuple[int, str]:
+        if date_pattern.match(d.name):
+            return (1, d.name)  # date-prefixed dirs sort by name
+        return (0, d.name)  # non-date dirs sort after
+
+    return sorted(spec_dirs, key=sort_key)[-1]
 
 
-def is_rumdl_available() -> bool:
-    """Check if rumdl is available and working."""
-    try:
-        timeouts = get_timeout_config()
-        subprocess.run(
-            ["rumdl", "--version"], capture_output=True, check=True, timeout=timeouts["rumdl_check"]
-        )
-        return True
-    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        return False
-
-
-def read_file_content(file_path: Path) -> str:
-    """Safely read file content with error handling."""
-    try:
-        return file_path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as e:
-        raise FileReadError(f"Cannot read file {file_path}: {e}") from e
-
-
-def validate_required_files_exist(spec_dir: Path) -> ValidationResult:
-    """Check that required files exist."""
-    errors = []
-    design_file = spec_dir / "design.md"
-    tasks_file = spec_dir / "tasks.md"
-
-    for f in [design_file, tasks_file]:
-        if not f.exists():
-            errors.append(f"Missing required file: {f.relative_to(spec_dir.parent)}")
-
-    return ValidationResult(is_valid=len(errors) == 0, errors=errors)
-
-
-def detect_design_mode(content: str) -> tuple[bool, list[str]]:
-    """Detect design.md mode and return required sections."""
-    is_full_mode = "Executive Summary" in content or "Requirements & Goals" in content
-
-    if is_full_mode:
-        required_sections = [
-            "Executive Summary",
-            "Requirements & Goals",
-            "Architecture Overview",
-            "Detailed Design",
-            "Verification & Testing Strategy",
-            "Implementation Plan",
-        ]
-    else:
-        # Lightweight mode (per contract §6.4)
-        required_sections = [
-            "Architecture Decisions",
-            "BDD/TDD Strategy",
-            "Verification",
-        ]
-
-    return is_full_mode, required_sections
-
-
-def validate_design_structure(spec_dir: Path) -> ValidationResult:
-    """Validate design.md required sections."""
-    errors = []
-    warnings = []
-    design_file = spec_dir / "design.md"
-    if not design_file.exists():
-        errors.append("design.md file does not exist")
-        return ValidationResult(is_valid=False, errors=errors)
-
-    try:
-        content = read_file_content(design_file)
-    except FileReadError as e:
-        errors.append(str(e))
-        return ValidationResult(is_valid=False, errors=errors)
-
-    is_full_mode, required_sections = detect_design_mode(content)
-
-    for sec in required_sections:
-        if sec not in content:
-            errors.append(f"design.md is missing required section: '{sec}'")
-
-    if not errors:
-        mode_name = "full" if is_full_mode else "lightweight"
-        warnings.append(f"design.md ({mode_name} mode) structural checks passed.")
-
-    return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings)
-
-
-def validate_tasks_structure(spec_dir: Path) -> ValidationResult:
-    """Validate tasks.md structure and required fields."""
-    errors = []
-    warnings = []
-    tasks_file = spec_dir / "tasks.md"
-    if not tasks_file.exists():
-        errors.append("tasks.md file does not exist")
-        return ValidationResult(is_valid=False, errors=errors)
-
-    try:
-        content = read_file_content(tasks_file)
-    except FileReadError as e:
-        errors.append(str(e))
-        return ValidationResult(is_valid=False, errors=errors)
-
-    # Parse task blocks using proper markdown parser
-    parser = MarkdownParser()
-    task_blocks = parser.parse_task_blocks(content)
-
-    if not task_blocks:
-        errors.append(
-            "tasks.md does not contain any valid '## Task X.Y:' or '### Task X.Y:' definitions."
-        )
-        return ValidationResult(is_valid=False, errors=errors)
-
-    errors.extend(validate_contract_blocks(content))
-
-    required_task_fields = [
-        "Context:",
-        "Verification:",
-        "Scenario Coverage:",
-        "Loop Type:",
-        "Behavioral Contract:",
-        "Simplification Focus:",
-        "Status:",
-        "BDD Verification:",
-        "Advanced Test Verification:",
-        "Runtime Verification:",
-    ]
-
-    seen_task_ids: set[str] = set()
-
-    for task_block in task_blocks:
-        display_name = task_display_name(task_block)
-
-        if task_block.id in seen_task_ids:
-            errors.append(f"Duplicate task ID found in tasks.md: Task {task_block.id}")
-        seen_task_ids.add(task_block.id)
-
-        for required_field in required_task_fields:
-            if required_field not in task_block.fields:
-                errors.append(
-                    f"Task '{display_name}' is missing required field: '{required_field}'"
-                )
-            elif not task_block.fields[required_field].strip():
-                errors.append(f"Task '{display_name}' has empty required field: '{required_field}'")
-            elif required_field in NA_REASON_FIELDS and is_bare_na(
-                task_block.fields[required_field]
-            ):
-                errors.append(
-                    f"Task '{display_name}' field '{required_field}' must be N/A with a brief reason."
-                )
-
-        loop_type = task_block.fields.get("Loop Type:", "").strip()
-        if loop_type and loop_type not in ALLOWED_LOOP_TYPES:
-            errors.append(
-                f"Task '{display_name}' has invalid Loop Type: '{loop_type}'. "
-                f"Allowed values: {', '.join(sorted(ALLOWED_LOOP_TYPES))}"
-            )
-
-        status = task_block.fields.get("Status:", "").strip()
-        if status and status not in ALLOWED_TASK_STATUSES:
-            errors.append(
-                f"Task '{display_name}' has invalid Status: '{status}'. "
-                "Use one of the contract task state markers."
-            )
-
-        if not TASK_CHECKBOX_RE.search(task_block.content):
-            errors.append(
-                f"Task '{display_name}' contains no step checkboxes. "
-                "Contract requires at least one checkbox step."
-            )
-
-    if not errors:
-        warnings.append("tasks.md structural checks passed.")
-
-    return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings)
-
-
-def validate_features_directory(spec_dir: Path) -> ValidationResult:
-    """Validate features directory has feature files."""
-    warnings = []
-    features_dir = spec_dir / "features"
-    has_features = features_dir.exists() and list(features_dir.glob("*.feature"))
-
-    if not has_features:
-        warnings.append("No .feature files found. (OK if this is a TDD-only lightweight spec)")
-    else:
-        warnings.append("Found Gherkin .feature files.")
-
-    return ValidationResult(is_valid=True, warnings=warnings)  # This is not a hard failure
-
-
-def run_rumdl_format(spec_dir: Path) -> None:
-    """Format markdown files using rumdl.
-
-    rumdl is an optional external formatter. If it is not installed, this
-    step is skipped with a warning rather than failing the pipeline, since
-    markdown formatting is not a structural contract requirement.
-    """
-    md_files = list(spec_dir.rglob("*.md"))
-    if not md_files:
-        return
-
-    print_info(f"Formatting markdown files using 'rumdl' in {spec_dir}...")
-
-    if not is_rumdl_available():
-        print_warning(
-            "Command 'rumdl' not found — skipping markdown auto-format. "
-            "Install it with: cargo install rumdl  (or: pip install rumdl) "
-            "to enable automatic markdown formatting."
-        )
-        return
-
-    for md_file in md_files:
-        try:
-            timeouts = get_timeout_config()
-            subprocess.run(
-                ["rumdl", "fmt", str(md_file)],
-                capture_output=True,
-                text=True,
-                timeout=timeouts["rumdl_format"],
-                check=True,
-            )
-            print_success(f"Formatted: {md_file.name}")
-        except subprocess.TimeoutExpired:
-            print_warning(f"rumdl timed out on {md_file.name}")
-        except subprocess.CalledProcessError as e:
-            print_warning(f"rumdl failed on {md_file.name}: {e.stderr.strip()}")
-        except Exception as e:
-            print_warning(f"Unexpected error formatting {md_file.name}: {e}")
-
-
-def validate_plan(spec_dir: Path) -> ValidationResult:
-    """Validate pb-plan generated documents."""
-    print_info(f"Running Post-Plan Validation on: {spec_dir}")
-
-    results = [
-        validate_required_files_exist(spec_dir),
-        validate_design_structure(spec_dir),
-        validate_tasks_structure(spec_dir),
-        validate_features_directory(spec_dir),
-    ]
-
-    combined = combine_validation_results(*results)
-
-    # Print results for backward compatibility
-    for error in combined.errors:
-        print_error(error)
-    for warning in combined.warnings:
-        if "structural checks passed" in warning:
+def _report_validation_result(result: ValidationResult, label: str) -> None:
+    """Print validation errors and warnings with colored output."""
+    print_info(f"Running {label} Validation")
+    for error in result.errors:
+        _print_validation_error(error)
+    for warning in result.warnings:
+        if "structural checks passed" in warning or "properly marked as DONE" in warning:
             print_success(warning)
         else:
             print_warning(warning)
 
-    return combined
+
+def _print_validation_error(error: ValidationError) -> None:
+    """Print a single validation error with severity prefix."""
+    severity_prefix = {
+        ErrorSeverity.CRITICAL: "[CRITICAL]",
+        ErrorSeverity.HIGH: "[HIGH]",
+        ErrorSeverity.MEDIUM: "[MEDIUM]",
+        ErrorSeverity.LOW: "[LOW]",
+    }
+    prefix = severity_prefix.get(error.severity, "")
+    location = ""
+    if error.file_path:
+        location = f" ({error.file_path}"
+        if error.line_number:
+            location += f":{error.line_number}"
+        if error.field_name:
+            location += f" field '{error.field_name}'"
+        location += ")"
+    print_error(f"{prefix} {error.message}{location}")
 
 
-def validate_build(spec_dir: Path) -> ValidationResult:
-    """Validate pb-build task completion (Orchestrator level)."""
-    print_info(f"Running Post-Build Validation on: {spec_dir}")
-    errors = []
-    warnings = []
-    infos = []
-
-    tasks_file = spec_dir / "tasks.md"
-    if not tasks_file.exists():
-        errors.append(f"Missing {tasks_file}")
-        return ValidationResult(is_valid=False, errors=errors)
-
-    try:
-        content = read_file_content(tasks_file)
-    except FileReadError as e:
-        errors.append(str(e))
-        return ValidationResult(is_valid=False, errors=errors)
-
-    # Parse task blocks using proper markdown parser
-    parser = MarkdownParser()
-    task_blocks = parser.parse_task_blocks(content)
-
-    for task_block in task_blocks:
-        display_name = task_display_name(task_block)
-
-        # Check task status
-        status_field = task_block.fields.get("Status:", "")
-        if "🟢 DONE" not in status_field:
-            if "⏭️ SKIPPED" in status_field:
-                warnings.append(
-                    f"Task Skipped: {display_name}. (Ignored in strict completion check)"
-                )
-            elif "⛔ OBSOLETE" in status_field:
-                infos.append(f"Task Obsolete: {display_name}. (Ignored in strict completion check)")
-            elif "🔴 TODO" in status_field or "🟡 IN PROGRESS" in status_field:
-                errors.append(f"Task Unfinished: {display_name} is not marked as DONE.")
-            elif "🔄 DCR" in status_field:
-                errors.append(f"Task Blocked by DCR: {display_name}. Needs design refinement.")
-            else:
-                errors.append(f"Task Invalid Status: {display_name}. Missing 🟢 DONE.")
-            continue
-
-        # Check for unchecked steps
-        unchecked = UNCHECKED_TASK_CHECKBOX_RE.findall(task_block.content)
-        if unchecked:
-            errors.append(
-                f"Task '{display_name}' is marked DONE but has incomplete steps:\n  "
-                + "\n  ".join(unchecked)
-            )
-
-        # Check that at least one step checkbox exists (prevents LLM from deleting all steps)
-        all_checkboxes = TASK_CHECKBOX_RE.findall(task_block.content)
-        if not all_checkboxes:
-            errors.append(
-                f"Task '{display_name}' is marked DONE but contains no step checkboxes. "
-                "Contract requires at least one step."
-            )
-
-    if not errors:
-        infos.append("All targeted tasks in tasks.md are properly marked as DONE.")
-
-    # Deep codebase scan for mocks, TODOs, and skipped tests
-    scan_result = scan_codebase(mode="build")
-    if not scan_result:
-        errors.append("Codebase scan failed - found issues that need to be addressed.")
-
-    # Print results for backward compatibility
-    for error in errors:
-        print_error(error)
-    for warning in warnings:
-        print_warning(warning)
-    for info in infos:
-        if "properly marked as DONE" in info:
-            print_success(info)
+def _report_format_result(result: FormatResult) -> None:
+    """Print rumdl format results."""
+    if not result.messages:
+        return
+    for msg in result.messages:
+        if "timed out" in msg or "failed" in msg or "not found" in msg:
+            print_warning(msg)
         else:
-            print_info(info)
-
-    return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings)
+            print_success(msg)
 
 
-def validate_task() -> bool:
-    """Subagent self-check before signaling READY_FOR_EVAL."""
-    print_info("Running Subagent Task Self-Check (Pre-Eval Validation)...")
-    passed = scan_codebase(mode="task")
-
-    if passed:
-        print_success(
-            "Subagent self-check passed! Code is clean of mocks, skipped tests, and debug artifacts."
-        )
-        print_info("You may now signal READY_FOR_EVAL.")
-    else:
-        print_error(
-            "Subagent self-check failed! Please fix the dirty code, TODOs, or skipped tests before signaling READY_FOR_EVAL."
-        )
-
-    return passed
-
-
-def scan_codebase(mode: str) -> bool:
-    """Scan codebase for issues.
-
-    Args:
-        mode: "build" for full scan, "task" for subagent self-check.
-            In task mode, scanning is scoped to git-modified files only
-            to prevent subagents from chasing historical tech debt.
-    """
-    print_info(f"Scanning codebase for code quality issues (mode={mode})...")
-
-    target_files: set[Path] | None = None
-    if mode == "task":
-        target_files = get_git_modified_files()
-        if target_files:
-            print_info(f"Task mode: scanning only {len(target_files)} git-modified file(s).")
-        else:
-            print_info("Task mode: no git modifications detected; scanning all tracked files.")
-
-    scanner = CodeScanner(
-        root_dir=".",
-        check_skipped_tests=True,
-        check_not_implemented=True,
-        check_todos=True,
-        check_debug_artifacts=True,
-        target_files=target_files,
-    )
-
-    result = scanner.scan()
-
-    if not result.has_issues:
+def _report_scan_result(result: ValidationResult) -> bool:
+    """Print scan issues grouped by type. Returns True if clean."""
+    if result.is_valid:
         print_success("Codebase scan passed - no issues found.")
         return True
 
-    # Report issues by type
     passed = True
+    severity_counts: dict[ErrorSeverity, int] = {}
+    for error in result.errors:
+        severity_counts[error.severity] = severity_counts.get(error.severity, 0) + 1
 
-    skipped_tests = result.issues_by_type(IssueType.SKIPPED_TEST)
-    if skipped_tests:
-        print_error(f"Found {len(skipped_tests)} skipped test(s):")
-        for issue in skipped_tests[:10]:  # Limit output
-            click.echo(f"  {issue.file_path}:{issue.line_number} -> {issue.line_content}")
-        if len(skipped_tests) > 10:
-            click.echo(f"  ... and {len(skipped_tests) - 10} more")
+    for severity, count in sorted(severity_counts.items(), key=lambda x: x[0].value):
+        print_error(f"Found {count} {severity.value} issue(s):")
+        severity_errors = [e for e in result.errors if e.severity == severity]
+        for error in severity_errors[:10]:
+            location = ""
+            if error.file_path:
+                location = f" ({error.file_path}"
+                if error.line_number:
+                    location += f":{error.line_number}"
+                location += ")"
+            print_info(f"  {error.message}{location}")
+        if len(severity_errors) > 10:
+            print_info(f"  ... and {len(severity_errors) - 10} more")
         passed = False
-
-    not_implemented = result.issues_by_type(IssueType.NOT_IMPLEMENTED)
-    if not_implemented:
-        print_error(f"Found {len(not_implemented)} not-implemented/mock issue(s):")
-        for issue in not_implemented[:10]:
-            click.echo(f"  {issue.file_path}:{issue.line_number} -> {issue.line_content}")
-        if len(not_implemented) > 10:
-            click.echo(f"  ... and {len(not_implemented) - 10} more")
-        passed = False
-
-    todos = result.issues_by_type(IssueType.TODO)
-    if todos:
-        print_error(f"Found {len(todos)} TODO/FIXME(s):")
-        for issue in todos[:10]:
-            click.echo(f"  {issue.file_path}:{issue.line_number} -> {issue.line_content}")
-        if len(todos) > 10:
-            click.echo(f"  ... and {len(todos) - 10} more")
-        passed = False
-
-    debug_artifacts = result.issues_by_type(IssueType.DEBUG_ARTIFACT)
-    if debug_artifacts:
-        print_error(f"Found {len(debug_artifacts)} debug artifact(s):")
-        for issue in debug_artifacts[:10]:
-            click.echo(f"  {issue.file_path}:{issue.line_number} -> {issue.line_content}")
-        if len(debug_artifacts) > 10:
-            click.echo(f"  ... and {len(debug_artifacts) - 10} more")
-        passed = False
-
     return passed
 
 
@@ -859,16 +156,20 @@ def validate_cmd(mode: str | None, specs_dir: Path | None) -> None:
             sys.exit(1)
 
         if mode == "plan":
-            run_rumdl_format(latest_spec)
-            result = validate_plan(latest_spec)
+            format_result = run_rumdl_format(latest_spec)
+            _report_format_result(format_result)
+            result: ValidationResult = validate_plan(latest_spec)
+            _report_validation_result(result, "Post-Plan")
             all_passed = result.is_valid
 
         if mode == "build":
             result = validate_build(latest_spec)
+            _report_validation_result(result, "Post-Build")
             all_passed = result.is_valid
 
     if mode == "task":
-        all_passed = validate_task()
+        result = validate_task()
+        all_passed = _report_scan_result(result)
 
     if not all_passed:
         click.echo(

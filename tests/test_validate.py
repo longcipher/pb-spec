@@ -11,11 +11,9 @@ from pb_spec.cli import main
 from pb_spec.commands.validate import (
     SpecNotFoundError,
     get_latest_spec_dir,
-    validate_build,
-    validate_plan,
-    validate_task,
-    validate_tasks_structure,
 )
+from pb_spec.validation.build import validate_build, validate_task
+from pb_spec.validation.plan import validate_plan, validate_tasks_structure
 
 
 @pytest.fixture
@@ -24,59 +22,92 @@ def runner() -> CliRunner:
     return CliRunner()
 
 
+def _create_spec_files(
+    spec_dir: Path,
+    design_content: str | None = None,
+    tasks_content: str | None = None,
+    features_content: str | None = None,
+) -> None:
+    """Helper to create spec files."""
+    spec_dir.mkdir(parents=True, exist_ok=True)
+
+    if design_content is not None:
+        (spec_dir / "design.md").write_text(design_content)
+
+    if tasks_content is not None:
+        (spec_dir / "tasks.md").write_text(tasks_content)
+
+    if features_content is not None:
+        features_dir = spec_dir / "features"
+        features_dir.mkdir(exist_ok=True)
+        (features_dir / "test.feature").write_text(features_content)
+
+
+VALID_DESIGN_CONTENT = (
+    "# Design Document\n"
+    "\n"
+    "## Summary\n"
+    "A brief summary of the feature.\n"
+    "\n"
+    "## Approach\n"
+    "Implementation approach.\n"
+    "\n"
+    "## Architecture Decisions\n"
+    "Decision 1: Use Python\n"
+    "\n"
+    "## BDD/TDD Strategy\n"
+    "We will use BDD+TDD approach\n"
+    "\n"
+    "## Code Simplification Constraints\n"
+    "Keep it minimal.\n"
+    "\n"
+    "## BDD Scenario Inventory\n"
+    "Scenario 1: Basic flow\n"
+    "\n"
+    "## Existing Components to Reuse\n"
+    "None.\n"
+    "\n"
+    "## Verification\n"
+    "Tests will verify the implementation\n"
+)
+
+VALID_TASKS_CONTENT = (
+    "# Tasks\n"
+    "\n"
+    "### Task 1.1: Implement feature\n"
+    "Context: Implement the core feature logic.\n"
+    "Verification: Run the full test suite.\n"
+    "Scenario Coverage: Test scenario in test.feature.\n"
+    "Loop Type: TDD-only\n"
+    "Behavioral Contract: Must pass all tests.\n"
+    "Simplification Focus: Keep implementation minimal.\n"
+    "BDD Verification: N/A — TDD-only task.\n"
+    "Advanced Test Verification: N/A — no advanced tests planned.\n"
+    "Runtime Verification: N/A — no runtime changes.\n"
+    "Status: 🟢 DONE\n"
+    "- [x] Step 1: Write test\n"
+    "- [x] Step 2: Implement\n"
+)
+
+VALID_FEATURE_CONTENT = (
+    "Feature: Test Feature\n"
+    "  Scenario: Test scenario\n"
+    "    Given a condition\n"
+    "    When action\n"
+    "    Then result\n"
+)
+
+
 @pytest.fixture
 def valid_spec_dir(tmp_path: Path) -> Path:
     """Create a valid spec directory structure."""
     spec_dir = tmp_path / "specs" / "2026-03-28-test-feature"
-    spec_dir.mkdir(parents=True)
-
-    # Create design.md with required sections
-    design_file = spec_dir / "design.md"
-    design_file.write_text(
-        "# Design Document\n"
-        "\n"
-        "## Architecture Decisions\n"
-        "Decision 1: Use Python\n"
-        "\n"
-        "## BDD/TDD Strategy\n"
-        "We will use BDD+TDD approach\n"
-        "\n"
-        "## Verification\n"
-        "Tests will verify the implementation\n"
+    _create_spec_files(
+        spec_dir,
+        design_content=VALID_DESIGN_CONTENT,
+        tasks_content=VALID_TASKS_CONTENT,
+        features_content=VALID_FEATURE_CONTENT,
     )
-
-    # Create tasks.md with valid structure (all required fields per contract §7.2)
-    tasks_file = spec_dir / "tasks.md"
-    tasks_file.write_text(
-        "# Tasks\n"
-        "\n"
-        "### Task 1.1: Implement feature\n"
-        "Context: Implement the core feature logic.\n"
-        "Verification: Run the full test suite.\n"
-        "Scenario Coverage: Test scenario in test.feature.\n"
-        "Loop Type: TDD-only\n"
-        "Behavioral Contract: Must pass all tests.\n"
-        "Simplification Focus: Keep implementation minimal.\n"
-        "BDD Verification: N/A — TDD-only task.\n"
-        "Advanced Test Verification: N/A — no advanced tests planned.\n"
-        "Runtime Verification: N/A — no runtime changes.\n"
-        "Status: 🟢 DONE\n"
-        "- [x] Step 1: Write test\n"
-        "- [x] Step 2: Implement\n"
-    )
-
-    # Create features directory with a feature file
-    features_dir = spec_dir / "features"
-    features_dir.mkdir()
-    feature_file = features_dir / "test.feature"
-    feature_file.write_text(
-        "Feature: Test Feature\n"
-        "  Scenario: Test scenario\n"
-        "    Given a condition\n"
-        "    When action\n"
-        "    Then result\n"
-    )
-
     return spec_dir
 
 
@@ -84,16 +115,11 @@ def valid_spec_dir(tmp_path: Path) -> Path:
 def invalid_spec_dir(tmp_path: Path) -> Path:
     """Create an invalid spec directory structure."""
     spec_dir = tmp_path / "specs" / "2026-03-28-invalid-feature"
-    spec_dir.mkdir(parents=True)
-
-    # Create design.md missing required sections
-    design_file = spec_dir / "design.md"
-    design_file.write_text("# Design Document\n\n## Some Section\nContent here\n")
-
-    # Create tasks.md without valid task structure
-    tasks_file = spec_dir / "tasks.md"
-    tasks_file.write_text("# Tasks\n\nSome tasks here\n")
-
+    _create_spec_files(
+        spec_dir,
+        design_content="# Design Document\n\n## Some Section\nContent here\n",
+        tasks_content="# Tasks\n\nSome tasks here\n",
+    )
     return spec_dir
 
 
@@ -163,8 +189,7 @@ class TestValidatePlan:
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
 
-        tasks_file = spec_dir / "tasks.md"
-        tasks_file.write_text("### Task 1.1: Test\nStatus: TODO\n")
+        (spec_dir / "tasks.md").write_text("### Task 1.1: Test\nStatus: TODO\n")
 
         result = validate_plan(spec_dir)
         assert result.is_valid is False
@@ -174,8 +199,9 @@ class TestValidatePlan:
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
 
-        design_file = spec_dir / "design.md"
-        design_file.write_text("## Architecture Decisions\n## BDD/TDD Strategy\n## Verification\n")
+        (spec_dir / "design.md").write_text(
+            "## Architecture Decisions\n## BDD/TDD Strategy\n## Verification\n"
+        )
 
         result = validate_plan(spec_dir)
         assert result.is_valid is False
@@ -185,11 +211,11 @@ class TestValidatePlan:
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
 
-        design_file = spec_dir / "design.md"
-        design_file.write_text("## Some Section\n")
-
-        tasks_file = spec_dir / "tasks.md"
-        tasks_file.write_text("### Task 1.1: Test\nStatus: TODO\n")
+        _create_spec_files(
+            spec_dir,
+            design_content="## Some Section\n",
+            tasks_content="### Task 1.1: Test\nStatus: TODO\n",
+        )
 
         result = validate_plan(spec_dir)
         assert result.is_valid is False
@@ -199,11 +225,11 @@ class TestValidatePlan:
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
 
-        design_file = spec_dir / "design.md"
-        design_file.write_text("## Architecture Decisions\n## BDD/TDD Strategy\n## Verification\n")
-
-        tasks_file = spec_dir / "tasks.md"
-        tasks_file.write_text("# Tasks\nSome content without task definitions\n")
+        _create_spec_files(
+            spec_dir,
+            design_content="## Architecture Decisions\n## BDD/TDD Strategy\n## Verification\n",
+            tasks_content="# Tasks\nSome content without task definitions\n",
+        )
 
         result = validate_plan(spec_dir)
         assert result.is_valid is False
@@ -213,8 +239,7 @@ class TestValidatePlan:
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
 
-        tasks_file = spec_dir / "tasks.md"
-        tasks_file.write_text(
+        tasks_content = (
             "# Tasks\n"
             "\n"
             "### Task 1.1: First task\n"
@@ -243,11 +268,12 @@ class TestValidatePlan:
             "Status: 🔴 TODO\n"
             "- [ ] Step 1: Write test\n"
         )
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
 
         result = validate_tasks_structure(spec_dir)
 
         assert result.is_valid is False
-        assert any("Duplicate task ID" in error for error in result.errors)
+        assert any("Duplicate task ID" in e.message for e in result.errors)
 
     def test_task_missing_status_fails_even_when_other_task_has_status(
         self, tmp_path: Path
@@ -256,8 +282,7 @@ class TestValidatePlan:
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
 
-        tasks_file = spec_dir / "tasks.md"
-        tasks_file.write_text(
+        tasks_content = (
             "# Tasks\n"
             "\n"
             "### Task 1.1: Has status\n"
@@ -285,13 +310,14 @@ class TestValidatePlan:
             "Runtime Verification: N/A — no runtime changes.\n"
             "- [ ] Step 1: Write test\n"
         )
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
 
         result = validate_tasks_structure(spec_dir)
 
         assert result.is_valid is False
         assert any(
-            error == "Task '1.2: Missing status' is missing required field: 'Status:'"
-            for error in result.errors
+            e.message == "Task '1.2: Missing status' is missing required field: 'Status:'"
+            for e in result.errors
         )
 
     def test_invalid_task_status_fails(self, tmp_path: Path) -> None:
@@ -299,8 +325,7 @@ class TestValidatePlan:
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
 
-        tasks_file = spec_dir / "tasks.md"
-        tasks_file.write_text(
+        tasks_content = (
             "# Tasks\n"
             "\n"
             "### Task 1.1: Invalid status\n"
@@ -316,19 +341,19 @@ class TestValidatePlan:
             "Status: DONE\n"
             "- [ ] Step 1: Write test\n"
         )
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
 
         result = validate_tasks_structure(spec_dir)
 
         assert result.is_valid is False
-        assert any("invalid Status" in error for error in result.errors)
+        assert any("invalid Status" in e.message for e in result.errors)
 
     def test_task_without_checkbox_fails(self, tmp_path: Path) -> None:
         """Test that every task block must include at least one checkbox step."""
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
 
-        tasks_file = spec_dir / "tasks.md"
-        tasks_file.write_text(
+        tasks_content = (
             "# Tasks\n"
             "\n"
             "### Task 1.1: No checkbox\n"
@@ -343,19 +368,19 @@ class TestValidatePlan:
             "Runtime Verification: N/A — no runtime changes.\n"
             "Status: 🔴 TODO\n"
         )
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
 
         result = validate_tasks_structure(spec_dir)
 
         assert result.is_valid is False
-        assert any("contains no step checkboxes" in error for error in result.errors)
+        assert any("contains no step checkboxes" in e.message for e in result.errors)
 
     def test_na_required_field_without_reason_fails(self, tmp_path: Path) -> None:
         """Test that N/A placeholders must include a reason."""
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
 
-        tasks_file = spec_dir / "tasks.md"
-        tasks_file.write_text(
+        tasks_content = (
             "# Tasks\n"
             "\n"
             "### Task 1.1: Bare N/A\n"
@@ -371,19 +396,19 @@ class TestValidatePlan:
             "Status: 🔴 TODO\n"
             "- [ ] Step 1: Write test\n"
         )
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
 
         result = validate_tasks_structure(spec_dir)
 
         assert result.is_valid is False
-        assert any("N/A with a brief reason" in error for error in result.errors)
+        assert any("N/A with a brief reason" in e.message for e in result.errors)
 
     def test_incomplete_dcr_block_fails(self, tmp_path: Path) -> None:
         """Test that DCR packets must contain all required sections."""
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
 
-        tasks_file = spec_dir / "tasks.md"
-        tasks_file.write_text(
+        tasks_content = (
             "# Tasks\n"
             "\n"
             "### Task 1.1: Blocked task\n"
@@ -407,19 +432,19 @@ class TestValidatePlan:
             "Failing Step: When the user submits the form.\n"
             "Suggested Change: Update the design boundary.\n"
         )
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
 
         result = validate_tasks_structure(spec_dir)
 
         assert result.is_valid is False
-        assert any("Incomplete 🔄 Design Change Request packet" in error for error in result.errors)
+        assert any("Incomplete 🔄 Design Change Request packet" in e.message for e in result.errors)
 
     def test_incomplete_build_blocked_packet_fails(self, tmp_path: Path) -> None:
         """Test that build-block packets must contain all required sections."""
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
 
-        tasks_file = spec_dir / "tasks.md"
-        tasks_file.write_text(
+        tasks_content = (
             "# Tasks\n"
             "\n"
             "### Task 1.1: Failed task\n"
@@ -445,11 +470,12 @@ class TestValidatePlan:
             "Suggested Design Change: Update the design boundary.\n"
             "Impact: Task 1.1 remains blocked.\n"
         )
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
 
         result = validate_tasks_structure(spec_dir)
 
         assert result.is_valid is False
-        assert any("Incomplete 🛑 Build Blocked packet" in error for error in result.errors)
+        assert any("Incomplete 🛑 Build Blocked packet" in e.message for e in result.errors)
 
 
 class TestValidateBuild:
@@ -460,24 +486,23 @@ class TestValidateBuild:
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
 
-        tasks_file = spec_dir / "tasks.md"
-        tasks_file.write_text(
+        tasks_content = (
             "### Task 1.1: Test Task\n"
             "Status: 🟢 DONE\n"
             "- [x] Step 1: Complete\n"
             "- [x] Step 2: Complete\n"
         )
 
-        # Create a clean code file
         src_dir = tmp_path / "src"
         src_dir.mkdir()
         (src_dir / "clean.py").write_text("def foo():\n    return 42\n")
 
-        # Initialize a git repo so scanner can find files via git ls-files
         import subprocess
 
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
         subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
 
         monkeypatch.chdir(tmp_path)
         result = validate_build(spec_dir)
@@ -488,8 +513,8 @@ class TestValidateBuild:
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
 
-        tasks_file = spec_dir / "tasks.md"
-        tasks_file.write_text("### Task 1.1: Test Task\nStatus: 🔴 TODO\n- [ ] Step 1: Not done\n")
+        tasks_content = "### Task 1.1: Test Task\nStatus: 🔴 TODO\n- [ ] Step 1: Not done\n"
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
 
         result = validate_build(spec_dir)
         assert result.is_valid is False
@@ -499,10 +524,10 @@ class TestValidateBuild:
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
 
-        tasks_file = spec_dir / "tasks.md"
-        tasks_file.write_text(
+        tasks_content = (
             "### Task 1.1: Test Task\nStatus: 🟡 IN PROGRESS\n- [ ] Step 1: In progress\n"
         )
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
 
         result = validate_build(spec_dir)
         assert result.is_valid is False
@@ -512,8 +537,8 @@ class TestValidateBuild:
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
 
-        tasks_file = spec_dir / "tasks.md"
-        tasks_file.write_text("### Task 1.1: Test Task\nStatus: 🔄 DCR\n- [ ] Step 1: Blocked\n")
+        tasks_content = "### Task 1.1: Test Task\nStatus: 🔄 DCR\n- [ ] Step 1: Blocked\n"
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
 
         result = validate_build(spec_dir)
         assert result.is_valid is False
@@ -523,13 +548,13 @@ class TestValidateBuild:
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
 
-        tasks_file = spec_dir / "tasks.md"
-        tasks_file.write_text(
+        tasks_content = (
             "### Task 1.1: Test Task\n"
             "Status: 🟢 DONE\n"
             "- [x] Step 1: Complete\n"
             "- [ ] Step 2: Not complete\n"
         )
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
 
         result = validate_build(spec_dir)
         assert result.is_valid is False
@@ -539,8 +564,8 @@ class TestValidateBuild:
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
 
-        tasks_file = spec_dir / "tasks.md"
-        tasks_file.write_text("### Task 1.1: Test Task\nStatus: ⏭️ SKIPPED\n- [ ] Step 1: Skipped\n")
+        tasks_content = "### Task 1.1: Test Task\nStatus: ⏭️ SKIPPED\n- [ ] Step 1: Skipped\n"
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
 
         monkeypatch.chdir(tmp_path)
         result = validate_build(spec_dir)
@@ -556,7 +581,6 @@ class TestValidateTask:
         src_dir.mkdir()
         (src_dir / "clean.py").write_text("def foo():\n    return 42\n")
 
-        # Initialize a git repo so git ls-files finds our file
         import subprocess
 
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
@@ -564,7 +588,7 @@ class TestValidateTask:
 
         monkeypatch.chdir(tmp_path)
         result = validate_task()
-        assert result is True
+        assert result.is_valid is True
 
     def test_codebase_with_todos_fails(self, tmp_path: Path, monkeypatch) -> None:
         """Test that codebase with TODOs fails validation."""
@@ -573,8 +597,6 @@ class TestValidateTask:
         dirty_file = src_dir / "dirty.py"
         dirty_file.write_text("# TODO: fix this\n")
 
-        # Initialize a git repo with an initial commit, then modify the file
-        # so that get_git_modified_files() detects it as changed
         import subprocess
 
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
@@ -582,23 +604,21 @@ class TestValidateTask:
             ["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True
         )
         subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True)
-        # Commit a clean version first
         clean_file = src_dir / "clean.py"
         clean_file.write_text("pass\n")
         subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
         subprocess.run(
             ["git", "commit", "--no-gpg-sign", "-m", "init"], cwd=tmp_path, capture_output=True
         )
-        # Now dirty.py is an untracked file that git diff won't see,
-        # so we mock get_git_modified_files to include it
         monkeypatch.setattr(
-            "pb_spec.commands.validate.get_git_modified_files",
+            "pb_spec.validation.build.get_git_modified_files",
             lambda: {dirty_file},
         )
 
         monkeypatch.chdir(tmp_path)
         result = validate_task()
-        assert result is False
+        assert result.is_valid is False
+        assert len(result.errors) > 0
 
 
 class TestValidateCommand:
@@ -607,7 +627,6 @@ class TestValidateCommand:
     def test_task_mode_passes_on_clean_code(self, runner: CliRunner) -> None:
         """Test that --task mode passes on clean codebase."""
         with runner.isolated_filesystem():
-            # Create a clean Python file
             with open("clean.py", "w") as f:
                 f.write("def foo():\n    return 42\n")
 

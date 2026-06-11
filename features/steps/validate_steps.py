@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 
 from behave import given, then, when
+
+
+def _cleanup_temp_dir(context) -> None:
+    """Clean up temporary directory if it exists."""
+    temp_dir = getattr(context, "temp_dir", None)
+    if temp_dir and os.path.exists(temp_dir):
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 @given("I have a pb-spec project set up")
@@ -28,11 +36,26 @@ def step_valid_design_md(context) -> None:
     design_file.write_text(
         "# Design Document\n"
         "\n"
+        "## Summary\n"
+        "A brief summary.\n"
+        "\n"
+        "## Approach\n"
+        "Implementation approach.\n"
+        "\n"
         "## Architecture Decisions\n"
         "Decision 1\n"
         "\n"
         "## BDD/TDD Strategy\n"
         "Strategy\n"
+        "\n"
+        "## Code Simplification Constraints\n"
+        "Keep it minimal.\n"
+        "\n"
+        "## BDD Scenario Inventory\n"
+        "Scenario 1: Basic flow\n"
+        "\n"
+        "## Existing Components to Reuse\n"
+        "None.\n"
         "\n"
         "## Verification\n"
         "Verification approach\n"
@@ -119,11 +142,26 @@ def step_valid_tasks_md(context) -> None:
     design_file.write_text(
         "# Design Document\n"
         "\n"
+        "## Summary\n"
+        "A brief summary.\n"
+        "\n"
+        "## Approach\n"
+        "Implementation approach.\n"
+        "\n"
         "## Architecture Decisions\n"
         "Decision 1\n"
         "\n"
         "## BDD/TDD Strategy\n"
         "Strategy\n"
+        "\n"
+        "## Code Simplification Constraints\n"
+        "Keep it minimal.\n"
+        "\n"
+        "## BDD Scenario Inventory\n"
+        "Scenario 1: Basic flow\n"
+        "\n"
+        "## Existing Components to Reuse\n"
+        "None.\n"
         "\n"
         "## Verification\n"
         "Verification approach\n"
@@ -287,22 +325,19 @@ def step_codebase_with_not_implemented(context) -> None:
 @when('I run "{command}"')
 def step_run_command(context, command: str) -> None:
     """Run a pb-spec command."""
-    # Change to temp directory for the test
-    os.chdir(context.temp_dir)
-
-    # Run the command
-    result = subprocess.run(
-        command.split(),
-        capture_output=True,
-        text=True,
-        cwd=context.temp_dir,
-    )
-
-    context.return_code = result.returncode
-    context.output = result.stdout + result.stderr
-
-    # Restore original directory
-    os.chdir(context.cwd)
+    original_dir = os.getcwd()
+    try:
+        os.chdir(context.temp_dir)
+        result = subprocess.run(
+            command.split(),
+            capture_output=True,
+            text=True,
+            cwd=context.temp_dir,
+        )
+        context.return_code = result.returncode
+        context.output = result.stdout + result.stderr
+    finally:
+        os.chdir(original_dir)
 
 
 @then("the command should succeed")
@@ -345,3 +380,4 @@ def step_should_see(context, text: str) -> None:
                 break
 
     assert found, f"Should see '{text}' in output.\nActual output: {context.output}"
+    _cleanup_temp_dir(context)

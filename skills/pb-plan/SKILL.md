@@ -201,14 +201,31 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`. Only include sec
 
 > 2-3 sentences: problem + solution.
 
+## Requirements (EARS Notation)
+
+> Each requirement uses one of the 5 EARS patterns (Ubiquitous, State-driven, Event-driven, Unwanted, Exception).
+
+- **[REQ-01]:** The system *shall* [action] when [trigger].
+- **[REQ-02]:** The system *shall* [action] when [trigger].
+
 ## Approach
 
 > How to implement. Reference existing code/patterns to reuse.
 
-## Architecture Decisions
+## Architecture Decisions (MADR Format)
+
+> Each decision must use MADR format: `[Context]`, `[Decision]`, `[Consequences]`.
+
+### AD-01: [Decision Title]
+
+- **Status:** `Proposed` / `Accepted`
+- **Date:** YYYY-MM-DD
+
+**Context:** ...
+**Decision:** ...
+**Consequences:** ...
 
 - **Inherited Decisions:** Which items from the `Architecture Decision Snapshot` this change must preserve.
-- **Pattern Selection:** `Factory` / `Strategy` / `Observer` / `Adapter` / `Decorator` / `SRP-only split` / `DIP-only seam` / `N/A` with rationale.
 - **SRP / DIP Check:** Explain how responsibilities stay focused and where dependency inversion is required.
 - **Dependency Injection Plan:** All external dependencies must be routed through interfaces or abstract classes unless the repo already defines a different stable seam.
 - **Code Simplifier Alignment:** Explain why the chosen pattern reduces complexity, clarifies control flow, or limits coupling rather than adding ceremony.

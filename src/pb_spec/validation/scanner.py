@@ -2,19 +2,13 @@
 
 from __future__ import annotations
 
-import os
 import re
 import subprocess
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
-
-def get_timeout_config() -> dict[str, int]:
-    """Get timeout configuration from environment variables with defaults."""
-    return {
-        "git_ls_files": int(os.getenv("PB_SPEC_GIT_TIMEOUT", "60")),
-    }
+from pb_spec.config import get_timeout_config
 
 
 class IssueType(Enum):
@@ -53,7 +47,8 @@ class ScanResult:
         return [i for i in self.issues if i.issue_type == issue_type]
 
 
-# Directories to exclude from scanning
+VALIDATION_FILES: frozenset[str] = frozenset({"scanner.py", "validate.py"})
+
 EXCLUDE_DIRS: frozenset[str] = frozenset(
     {
         ".git",
@@ -71,7 +66,6 @@ EXCLUDE_DIRS: frozenset[str] = frozenset(
     }
 )
 
-# File extensions to scan
 SCAN_EXTENSIONS: frozenset[str] = frozenset(
     {
         ".py",
@@ -206,10 +200,21 @@ class CodeScanner:
             # Not a git repo or git not installed — fall back to os.walk
             return None
 
+    def _should_scan_file(self, file_path: Path) -> bool:
+        """Check whether a file should be scanned.
+
+        Consistent filtering applied regardless of file discovery method.
+        """
+        return (
+            file_path.name != "pb-spec"
+            and file_path.name not in VALIDATION_FILES
+            and "specs/" not in str(file_path)
+        )
+
     def _get_files_fallback(self) -> list[Path]:
         """Fall back to os.walk when git is unavailable."""
-        # Files to exclude from scanning (validation infrastructure)
-        exclude_files = {"scanner.py", "validate.py"}
+        import os
+
         files = []
         for root, dirs, filenames in os.walk(self.root_dir):
             dirs[:] = [d for d in dirs if d not in self.exclude_dirs and not d.startswith(".")]
@@ -217,11 +222,7 @@ class CodeScanner:
                 file_path = Path(root) / filename
                 if file_path.suffix not in self.scan_extensions:
                     continue
-                if file_path.name == "pb-spec":
-                    continue
-                if file_path.name in exclude_files:
-                    continue
-                if "specs/" in str(file_path):
+                if not self._should_scan_file(file_path):
                     continue
                 files.append(file_path)
         return files
@@ -249,22 +250,7 @@ class CodeScanner:
         """Scan the codebase and return results."""
         result = ScanResult()
 
-        # Files to exclude from scanning (validation infrastructure)
-        exclude_files = {"scanner.py", "validate.py"}
-
         for file_path in self._get_files_to_scan():
-            # Skip the pb-spec script itself
-            if file_path.name == "pb-spec":
-                continue
-
-            # Skip validation infrastructure files
-            if file_path.name in exclude_files:
-                continue
-
-            # Skip files in specs directory (markdown specs, not code)
-            if "specs/" in str(file_path):
-                continue
-
             self._scan_file(file_path, result)
 
         return result

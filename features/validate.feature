@@ -36,7 +36,7 @@ Feature: Validate pb-spec workflow artifacts
     And all task steps are checked "- [x]"
     When I run "pb-spec validate --build"
     Then the command should succeed
-    And I should see "All targeted tasks"
+    And I should see "All validations passed successfully!"
 
   Scenario: Validate build mode fails for TODO tasks
     Given I have a spec directory with tasks.md
@@ -57,7 +57,7 @@ Feature: Validate pb-spec workflow artifacts
     Given I have a clean codebase without issues
     When I run "pb-spec validate --task"
     Then the command should succeed
-    And I should see "Subagent self-check passed"
+    And I should see "Codebase scan passed"
 
   Scenario: Validate task mode detects TODO comments
     Given I have a codebase with "TODO:" comment

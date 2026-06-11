@@ -105,11 +105,14 @@ Note: Complexity levels (lightweight, medium, high) are orthogonal to mode. Both
 The following sections are required for a build-eligible full-mode `design.md`:
 
 1. `Executive Summary`
-2. `Requirements & Goals`
-3. `Architecture Overview`
-4. `Detailed Design`
-5. `Verification & Testing Strategy`
-6. `Implementation Plan`
+2. `Requirements & Goals` — must use **EARS (Easy Approach to Requirements Syntax)** notation with 5 sentence patterns (Ubiquitous, State-driven, Event-driven, Unwanted, Exception)
+3. `Architecture Overview` — must use **C4 Model** rendered in **Mermaid.js** syntax (Context, Container, Component diagrams)
+4. `Architecture Decisions` — must use **MADR (Markdown Any Decision Records)** format with `[Context]`, `[Decision]`, `[Consequences]`
+5. `Data Models` — must use **DBML** or **Prisma Schema** DSL (natural language table descriptions forbidden)
+6. `Interface Contracts` — must use **API-First** type signatures (OpenAPI YAML for external APIs, language-native type syntax for internal modules)
+7. `Detailed Design`
+8. `Verification & Testing Strategy`
+9. `Implementation Plan`
 
 ### 6.3 Conditional Sections for Full Mode
 
@@ -131,7 +134,7 @@ A lightweight `design.md` must still include:
 
 1. `Summary`
 2. `Approach`
-3. `Architecture Decisions`
+3. `Architecture Decisions` — must use **MADR** format even in lightweight mode
 4. `BDD/TDD Strategy`
 5. `Code Simplification Constraints`
 6. `BDD Scenario Inventory`
@@ -139,6 +142,8 @@ A lightweight `design.md` must still include:
 8. `Verification`
 
 Lightweight mode may omit the full-mode `Detailed Design` and `Implementation Plan` sections as standalone top-level sections if the same information is captured compactly in the required lightweight sections.
+
+Lightweight mode may also omit C4 diagrams, DBML/Prisma schemas, and full API contracts when the change is too small to warrant them — but Architecture Decisions must still use MADR format.
 
 ### 6.5 Lightweight-to-Full Mapping
 
@@ -165,6 +170,14 @@ For validation purposes:
 - empty placeholders such as `TBD`, `[To be written]`, or bracket-only templates do not satisfy a required section
 - a section may satisfy a conditional requirement by explicitly stating why it is `N/A`
 - repo-specific standards must be grounded in actual repo docs or code, not generic boilerplate
+
+**Format-specific validation rules:**
+
+- **EARS Requirements:** Each requirement must use one of the 5 EARS patterns (Ubiquitous, State-driven, Event-driven, Unwanted, Exception). Requirements written as vague goals ("the system should be fast") are invalid.
+- **C4/Mermaid Architecture:** Architecture sections must contain at least one ````mermaid` code block. Natural language architecture descriptions alone do not satisfy the Architecture Overview requirement.
+- **MADR Decisions:** Each Architecture Decision must have `Context`, `Decision`, and `Consequences` subsections. Decisions without consequences are incomplete.
+- **DBML/Prisma Data Models:** Data model sections must use DBML or Prisma Schema syntax inside a fenced code block. Natural language table descriptions ("users table has an id and name") are invalid.
+- **API-First Contracts:** Interface sections must use type signatures (OpenAPI YAML, TypeScript interfaces, Python Protocols, Rust traits). Narrative API descriptions without type definitions are invalid.
 
 ## 7. `tasks.md` Contract
 
