@@ -140,29 +140,27 @@ Then ask which findings to turn into specs (default suggestion: the top 3–5 pl
 
 Wait for the selection. Do not write 30 specs nobody asked for. If running non-interactively (no user available to choose), write specs for the top 3–5 by leverage and record that default in `specs/README.md`.
 
-### Phase 4 — Write the specs (BDD-First Order)
+### Phase 4 — Write the specs (BDD-First Order, Single Consolidated Spec)
 
-For each selected finding, write one spec using the same format as `/pb-plan`. **Write Feature files FIRST — they are the Source of Truth.**
+Consolidate ALL selected findings into ONE spec directory. This ensures `/pb-build` can execute all tasks sequentially without switching spec contexts. **Write Feature files FIRST — they are the Source of Truth.**
 
 ```text
 specs/
-  README.md          ← index: priority order, dependency graph, status table
-  2026-MM-DD-01-<feature-slug>/
-    features/        ← WRITE FIRST (Source of Truth)
-    design.md        ← Derives FROM features
-    tasks.md         ← Driven BY scenarios
-  2026-MM-DD-02-<feature-slug>/
-    features/
-    design.md
-    tasks.md
+  README.md              ← index: execution order, finding list, status
+  2026-MM-DD-01-<slug>/  ← ONE directory for ALL findings
+    features/            ← WRITE FIRST (Source of Truth), one file per finding category
+    design.md            ← ALL findings consolidated, one section per finding
+    tasks.md             ← ALL tasks numbered sequentially across findings
 ```
 
 **Spec directory naming convention:**
-`YYYY-MM-DD-NO-feature-name` where:
+`YYYY-MM-DD-NO-<feature-name>` where:
 
 - `YYYY-MM-DD` = today's date
-- `NO` = 2-digit sequence number (`01`, `02`, ...) — highest existing + 1 for today
-- `feature-name` = kebab-case slug derived from the finding
+- `NO` = 2-digit sequence number (`01`) — highest existing + 1 for today
+- `feature-name` = kebab-case slug summarizing the overall improvement scope (e.g., `codebase-quality`, `security-hardening`, `api-modernization`)
+
+**Why one directory:** Multiple spec directories force the user to run `/pb-build` multiple times and lose cross-finding dependency context. A single consolidated spec lets pb-build execute all tasks in one pass with full visibility.
 
 **Excerpts come from your own reads, never from a subagent's report.** Before writing each spec, open every cited file yourself — subagent line numbers and attributions are leads, not facts, and a wrong excerpt becomes a wrong spec that fails its own drift check.
 
@@ -182,17 +180,26 @@ Write each spec **for the weakest plausible builder**. That means:
 
 > **BDD-First Principle:** Feature files are the SOURCE OF TRUTH. All design and tasks derive FROM scenarios, not the other way around.
 
-Write Gherkin scenarios under `features/`:
+Write Gherkin scenarios under `features/`, organized by finding category:
+
+```text
+features/
+  correctness.feature    ← scenarios for correctness/bug findings
+  security.feature       ← scenarios for security findings
+  performance.feature    ← scenarios for performance findings
+  ...
+```
 
 - Standard Gherkin with `Feature`, `Scenario`, `Given`, `When`, `Then`
 - Use business language, not implementation detail
-- Cover ALL user-visible behavior from the finding
+- Cover ALL user-visible behavior from all findings
 - Each scenario must be:
   - **Independent** — can run in isolation
   - **Deterministic** — same input produces same output
   - **Verifiable** — has clear pass/fail criteria
-- Add tags for selective execution: `@finding-category`, `@priority-high`, etc.
+- Add tags for selective execution: `@finding-N`, `@category`, `@priority-high`, etc.
 - Include at minimum: happy path, error case, edge case per scenario
+- Group related scenarios from the same finding into one `.feature` file
 
 **Scenario Quality Checklist:**
 
@@ -202,38 +209,128 @@ Write Gherkin scenarios under `features/`:
 - [ ] Background (if used) contains ONLY shared preconditions
 - [ ] No implementation details leak into scenarios
 
-#### Step 2: Design Doc (`design.md`)
+#### Step 2: Design Doc (`design.md`) — Consolidated
 
-Write `design.md` following the pb-plan format. For each finding, create a design that covers:
+Write ONE `design.md` that consolidates all findings. Structure:
 
-- **Summary** — problem + solution
-- **Requirements (EARS Notation)** — each requirement uses EARS patterns
-- **Behavior Traceability Matrix** — maps every design component to a Feature scenario
-- **Core State Transitions** — Mermaid state diagrams from Given-When-Then
-- **Approach** — how to implement, referencing existing code/patterns to reuse
-- **Architecture Decisions (MADR Format)** — Context, Decision, Consequences
-- **BDD/TDD Strategy** — language, runner, commands, test tools
-- **Code Simplification Constraints** — behavioral contract, repo standards, readability priorities
-- **BDD Scenario Inventory** — complete list of all scenarios with task coverage
-- **Existing Components to Reuse** — from codebase audit
-- **Verification** — how to verify the change works
+```markdown
+# Design: <Overall improvement title>
 
-**Lightweight mode** (< 50 words equivalent): compact design with essential sections only.
+| Metadata | Details |
+| :--- | :--- |
+| **Status** | Draft |
+| **Created** | YYYY-MM-DD |
+| **Mode** | Lightweight / Full |
+| **Priority** | P1 |
+| **Planned at** | commit `<short SHA>`, <YYYY-MM-DD> |
+
+## Summary
+
+> 2-3 sentences: overall problem + overall solution covering all findings.
+
+## Why this matters
+
+> Combined rationale for all findings.
+
+## Approach
+
+> Overall implementation approach across all findings. Reference existing code/patterns to reuse.
+
+## Findings
+
+### Finding 1: <Title>
+
+- **Category:** bug / security / performance / ...
+- **Impact:** HIGH / MEDIUM / LOW
+- **Effort:** S / M / L
+
+#### Requirements (EARS Notation)
+
+- **[REQ-01]:** ...
+
+#### Current state
+
+- Relevant files and excerpts for this finding.
+
+#### Approach
+
+- How to implement this finding, referencing existing code/patterns.
+
+#### Architecture Decisions (MADR Format)
+
+- **AD-01:** [Decision for this finding]
+
+### Finding 2: <Title>
+
+... (repeat for each finding)
+
+## Architecture Decisions
+
+> Consolidated MADR decisions across all findings. Cross-reference Finding sections above.
+
+### AD-01: [Decision Title]
+
+...
+
+## BDD/TDD Strategy
+
+- **Primary Language:** ...
+- **BDD Runner:** ...
+- **BDD Command:** ...
+- **Unit Test Command:** ...
+- **Feature Files:** `specs/<spec-dir>/features/*.feature`
+- **Outside-in Loop:** Which scenarios fail first and then pass
+
+## Code Simplification Constraints
+
+- **Behavioral Contract:** Preserve existing behavior unless a listed scenario or requirement explicitly changes it.
+- **Repo Standards:** Use only the coding standards established by `AGENTS.md`, `CLAUDE.md`, and the existing codebase.
+- **Readability Priorities:** Prefer explicit control flow, clear names, reduced nesting.
+- **Refactor Scope:** Limit cleanup to touched modules unless the design explicitly justifies broader refactor.
+
+## BDD Scenario Inventory
+
+> Complete list of ALL scenarios across ALL findings with task coverage.
+
+- `features/correctness.feature` — [Scenario Name]: [Business outcome] → Task X.Y
+- `features/security.feature` — [Scenario Name]: [Business outcome] → Task X.Y
+...
+
+## Existing Components to Reuse
+
+> List components found during codebase audit, or "None identified".
+
+## Verification
+
+| Purpose   | Command                          | Expected on success |
+|-----------|----------------------------------|---------------------|
+| Install   | `uv sync --all-groups`           | exit 0              |
+| Lint      | `uv run ruff check`              | exit 0, no errors   |
+| Typecheck | `uv run ty check`                | exit 0, no errors   |
+| Tests     | `uv run pytest`                  | all pass            |
+| BDD       | `uv run behave`                  | all pass            |
+```
+
+**Lightweight mode** (< 50 words equivalent per finding): compact design with essential sections only.
 **Full mode** (≥ 50 words equivalent): complete design with all sections including Behavior Traceability Matrix and Mermaid diagrams.
 
-#### Step 3: Task Breakdown (`tasks.md`)
+#### Step 3: Task Breakdown (`tasks.md`) — All Findings Consolidated
 
-Write `tasks.md` following the pb-plan format. **Tasks are driven BY scenarios:**
+Write ONE `tasks.md` with tasks from ALL findings numbered sequentially. **Tasks are driven BY scenarios:**
 
 - Tasks in `Task X.Y` format for pb-build state tracking
+- `X` = finding number (Finding 1 → Phase 1, Finding 2 → Phase 2, ...)
+- `Y` = task number within that finding
 - **Scenario-driven organization:** Each BDD+TDD task maps to exactly ONE scenario
 - **MANDATORY RED→GREEN→REFACTOR:** Every BDD+TDD task must include:
   - RED step: run scenario, capture failing output
   - GREEN step: implement, run scenario, capture passing output
   - REFACTOR step: clean up, re-run to confirm
 - Each task includes: Context, Verification, Scenario Coverage, Loop Type (BDD+TDD or TDD-only), Behavioral Contract, Simplification Focus, Status (🔴 TODO), BDD Verification, Advanced Test Verification, Runtime Verification
-- Ordered: infrastructure first, then scenarios in business-priority order
+- Ordered: infrastructure/scaffolding first (Phase 1), then findings in priority order
 - Verification commands with expected results
+
+**Cross-finding dependencies:** If Finding B depends on Finding A, place Finding A's tasks first and note the dependency in the task Context.
 
 **Task Quality Checklist:**
 
@@ -241,27 +338,29 @@ Write `tasks.md` following the pb-plan format. **Tasks are driven BY scenarios:*
 - [ ] RED evidence is required (failing output captured)
 - [ ] GREEN evidence is required (passing output captured)
 - [ ] No task can be marked done without GREEN evidence
-- [ ] Tasks are ordered by dependency, not module
+- [ ] Tasks are ordered by dependency across findings, not just within findings
 
-Finish by writing `specs/README.md` with the recommended execution order, dependencies between specs, and a status column:
+Finish by writing `specs/README.md` with the consolidated spec entry:
 
 ```markdown
 # Implementation Specs
 
-Generated by pb-improve on <date>. Execute via `/pb-build <feature-name>` in the order below unless dependencies say otherwise.
+Generated by pb-improve on <date>. Execute via `/pb-build <feature-name>`.
 
 ## Execution order & status
 
-| Spec | Feature | Priority | Effort | Depends on | Status |
-|------|---------|----------|--------|------------|--------|
-| 2026-MM-DD-01-<slug> | <title> | P1 | S | — | TODO |
-| 2026-MM-DD-02-<slug> | <title> | P1 | M | 01 | TODO |
+| Spec                 | Findings                        | Priority | Effort                         | Status                             |
+| -------------------- | ------------------------------- | -------- | ------------------------------ | ---------------------------------- |
+| 2026-MM-DD-01-<slug> | Finding 1, Finding 2, Finding 3 | P1       | M                              | TODO                               |
+| Status values: TODO  | IN PROGRESS                     | DONE     | BLOCKED (with one-line reason) | REJECTED (with one-line rationale) |
 
-Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
+## Finding details
 
-## Dependency notes
-
-- 02 requires 01 because <reason>.
+| # | Finding | Category | Effort | Tasks |
+|---|---------|----------|--------|-------|
+| 1 | <title> | bug | S | Task 1.1, 1.2 |
+| 2 | <title> | security | M | Task 2.1, 2.2, 2.3 |
+| 3 | <title> | performance | S | Task 3.1 |
 
 ## Findings considered and rejected
 

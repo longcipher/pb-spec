@@ -212,7 +212,7 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`. Only include sec
 
 > How to implement. Reference existing code/patterns to reuse.
 
-## Architecture Decisions (MADR Format)
+## Architecture Decisions
 
 > Each decision must use MADR format: `[Context]`, `[Decision]`, `[Consequences]`.
 

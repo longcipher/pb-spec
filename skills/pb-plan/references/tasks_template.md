@@ -47,15 +47,12 @@
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
 - **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
-- **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
-- **Allowed Task States:** `🔴 TODO` -> `🟡 IN PROGRESS` -> `🟢 DONE`; exceptional states: `⏭️ SKIPPED`, `🔄 DCR`, `⛔ OBSOLETE`; if a task still uses legacy `TODO`, treat it as `🔴 TODO` before it can move to `🟡 IN PROGRESS`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
 - [ ] **BDD Verification:** [Concrete scenario check — e.g., "run `behave features/auth.feature` and confirm Scenario X fails first, then passes"]
-- [ ] **Verification:** [Concrete check — e.g., "run `pytest tests/test_config.py` and all pass"]
 - [ ] **Advanced Test Verification:** [Concrete command for `Hypothesis`, `fast-check`, `proptest`, `Atheris`, `jazzer.js`, `cargo-fuzz`, `pytest-benchmark`, `Vitest Bench`, or `criterion`; if not needed, write `N/A` with reason]
-- [ ] **Runtime Verification (if applicable):** [Capture runtime signals — e.g., `tail -n 50 app.log` and `curl http://localhost:8080/health`; if not applicable, write `N/A` with reason]
+- [ ] **Runtime Verification:** [Capture runtime signals — e.g., `tail -n 50 app.log` and `curl http://localhost:8080/health`; if not applicable, write `N/A` with reason]
 
 ### Task 1.2: [Task Name]
 
@@ -69,14 +66,12 @@
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
 - **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
-- **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
 - [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
-- [ ] **Verification:** ...
 - [ ] **Advanced Test Verification:** [Command or `N/A` with reason]
-- [ ] **Runtime Verification (if applicable):** [Logs + probe result, or `N/A` with reason]
+- [ ] **Runtime Verification:** [Logs + probe result, or `N/A` with reason]
 
 ---
 
@@ -94,15 +89,13 @@
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
 - **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
-- **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
 - [ ] **Step 3:** ...
 - [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
-- [ ] **Verification:** ...
 - [ ] **Advanced Test Verification:** [Command or `N/A` with reason]
-- [ ] **Runtime Verification (if applicable):** [Logs + probe result, or `N/A` with reason]
+- [ ] **Runtime Verification:** [Logs + probe result, or `N/A` with reason]
 
 ### Task 2.2: [Task Name]
 
@@ -116,14 +109,13 @@
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
 - **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
-- **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
 - [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
 - [ ] **Verification:** ...
 - [ ] **Advanced Test Verification:** [Command or `N/A` with reason]
-- [ ] **Runtime Verification (if applicable):** [Logs + probe result, or `N/A` with reason]
+- [ ] **Runtime Verification:** [Logs + probe result, or `N/A` with reason]
 
 ---
 
@@ -146,7 +138,7 @@
 - [ ] **Step 2:** ...
 - [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
 - [ ] **Verification:** ...
-- [ ] **Runtime Verification (if applicable):** [Logs + probe result, or `N/A` with reason]
+- [ ] **Runtime Verification:** [Logs + probe result, or `N/A` with reason]
 
 ---
 
@@ -164,12 +156,10 @@
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
 - **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
-- **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
 - [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
-- [ ] **Verification:** ...
 - [ ] **Advanced Test Verification:** [Command or `N/A` with reason]
 
 ---

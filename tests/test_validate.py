@@ -631,3 +631,409 @@ class TestValidateCommand:
             result = runner.invoke(main, ["validate", "--task"])
             assert result.exit_code == 0
             assert "passed" in result.output.lower() or "✅" in result.output
+
+
+CONSOLIDATED_VALID_DESIGN = (
+    "# Design: Codebase Quality Improvements\n"
+    "\n"
+    "## Summary\n"
+    "Consolidated improvements across correctness, security, and performance.\n"
+    "\n"
+    "## Approach\n"
+    "Implement findings sequentially.\n"
+    "\n"
+    "## Findings\n"
+    "\n"
+    "### Finding 1: Fix N+1 query\n"
+    "- **Category:** performance\n"
+    "- **Impact:** HIGH\n"
+    "\n"
+    "#### Approach\n"
+    "Add batch loading.\n"
+    "\n"
+    "## Architecture Decisions\n"
+    "### AD-01: Use batch loading\n"
+    "- **Status:** Accepted\n"
+    "\n"
+    "**Context:** N+1 queries detected.\n"
+    "**Decision:** Use DataLoader pattern.\n"
+    "**Consequences:** Reduces query count.\n"
+    "\n"
+    "## BDD/TDD Strategy\n"
+    "BDD+TDD with behave.\n"
+    "\n"
+    "## Code Simplification Constraints\n"
+    "Keep minimal.\n"
+    "\n"
+    "## BDD Scenario Inventory\n"
+    "- features/performance.feature — Batch loading → Task 1.1\n"
+    "\n"
+    "## Existing Components to Reuse\n"
+    "None.\n"
+    "\n"
+    "## Verification\n"
+    "Run full test suite.\n"
+)
+
+CONSOLIDATED_VALID_TASKS = (
+    "# Tasks\n"
+    "\n"
+    "### Task 1.1: Fix N+1 query\n"
+    "Context: Address performance issue.\n"
+    "Verification: Run tests.\n"
+    "Scenario Coverage: features/performance.feature — Batch loading.\n"
+    "Loop Type: BDD+TDD\n"
+    "Behavioral Contract: Preserve existing behavior.\n"
+    "Simplification Focus: Reduce nesting.\n"
+    "BDD Verification: uv run behave features/performance.feature\n"
+    "Advanced Test Verification: N/A — no advanced tests planned.\n"
+    "Runtime Verification: N/A — no runtime changes.\n"
+    "Status: 🔴 TODO\n"
+    "- [ ] Step 1: Write failing test\n"
+)
+
+CONSOLIDATED_CROSS_FINDING_TASKS = (
+    "# Tasks\n"
+    "\n"
+    "### Task 1.1: Finding 1 — Fix bug\n"
+    "Context: Fix the bug.\n"
+    "Verification: Run tests.\n"
+    "Scenario Coverage: features/correctness.feature — Bug fix.\n"
+    "Loop Type: BDD+TDD\n"
+    "Behavioral Contract: Must pass.\n"
+    "Simplification Focus: Keep minimal.\n"
+    "BDD Verification: uv run behave features/correctness.feature\n"
+    "Advanced Test Verification: N/A — no advanced tests.\n"
+    "Runtime Verification: N/A — no runtime changes.\n"
+    "Status: 🔴 TODO\n"
+    "- [ ] Step 1: Write test\n"
+    "\n"
+    "### Task 2.1: Finding 2 — Add feature\n"
+    "Context: Add new feature.\n"
+    "Verification: Run tests.\n"
+    "Scenario Coverage: features/security.feature — Auth check.\n"
+    "Loop Type: BDD+TDD\n"
+    "Behavioral Contract: Must pass.\n"
+    "Simplification Focus: Keep minimal.\n"
+    "BDD Verification: uv run behave features/security.feature\n"
+    "Advanced Test Verification: N/A — no advanced tests.\n"
+    "Runtime Verification: N/A — no runtime changes.\n"
+    "Status: 🔴 TODO\n"
+    "- [ ] Step 1: Write test\n"
+)
+
+FULL_MODE_DESIGN = (
+    "# Design: Full Feature\n"
+    "\n"
+    "## Executive Summary\n"
+    "Complete feature implementation.\n"
+    "\n"
+    "## Requirements & Goals\n"
+    "- **[REQ-01]:** The system *shall* validate inputs.\n"
+    "\n"
+    "## Architecture Overview\n"
+    "```mermaid\n"
+    "graph TD\n"
+    "  A[Client] --> B[Server]\n"
+    "```\n"
+    "\n"
+    "## Architecture Decisions\n"
+    "### AD-01: Use REST API\n"
+    "- **Status:** Accepted\n"
+    "\n"
+    "**Context:** Need external API.\n"
+    "**Decision:** Use REST.\n"
+    "**Consequences:** Simple integration.\n"
+    "\n"
+    "## Data Models\n"
+    "```dbml\n"
+    "Table users {\n"
+    "  id integer [pk]\n"
+    "  name varchar\n"
+    "}\n"
+    "```\n"
+    "\n"
+    "## Interface Contracts\n"
+    "```python\n"
+    "class UserProto(Protocol):\n"
+    "    def get_name(self) -> str: ...\n"
+    "```\n"
+    "\n"
+    "## Detailed Design\n"
+    "Implementation details.\n"
+    "\n"
+    "## Verification & Testing Strategy\n"
+    "BDD + unit tests.\n"
+    "\n"
+    "## Implementation Plan\n"
+    "- [ ] Phase 1: Core\n"
+)
+
+
+class TestConsolidatedSpec:
+    """Tests for consolidated spec format (pb-improve → pb-build flow)."""
+
+    def test_consolidated_design_passes_lightweight(self, tmp_path: Path) -> None:
+        """Test that consolidated design.md with Findings section passes lightweight validation."""
+        spec_dir = tmp_path / "specs" / "2026-06-12-improvements"
+        _create_spec_files(
+            spec_dir,
+            design_content=CONSOLIDATED_VALID_DESIGN,
+            tasks_content=CONSOLIDATED_VALID_TASKS,
+            features_content="Feature: Performance\n  Scenario: Batch loading\n    Given orders\n    When fetched\n    Then one query\n",
+        )
+        result = validate_plan(spec_dir)
+        assert result.is_valid is True
+
+    def test_consolidated_tasks_with_cross_finding_numbering(self, tmp_path: Path) -> None:
+        """Test that tasks numbered across findings (1.1, 2.1) pass validation."""
+        spec_dir = tmp_path / "specs" / "2026-06-12-multi-finding"
+        _create_spec_files(
+            spec_dir,
+            design_content=CONSOLIDATED_VALID_DESIGN,
+            tasks_content=CONSOLIDATED_CROSS_FINDING_TASKS,
+            features_content=(
+                "Feature: Correctness\n  Scenario: Bug fix\n    Given bug\n    When fixed\n    Then works\n"
+                "Feature: Security\n  Scenario: Auth\n    Given user\n    When auth\n    Then ok\n"
+            ),
+        )
+        result = validate_plan(spec_dir)
+        assert result.is_valid is True
+
+    def test_consolidated_design_missing_approach_fails(self, tmp_path: Path) -> None:
+        """Test that consolidated design.md missing Approach section fails."""
+        spec_dir = tmp_path / "specs" / "2026-06-12-no-approach"
+        design_content = (
+            "# Design: Improvements\n"
+            "\n"
+            "## Summary\n"
+            "Summary.\n"
+            "\n"
+            "## Architecture Decisions\n"
+            "Decision.\n"
+            "\n"
+            "## BDD/TDD Strategy\n"
+            "Strategy.\n"
+            "\n"
+            "## Code Simplification Constraints\n"
+            "Keep minimal.\n"
+            "\n"
+            "## BDD Scenario Inventory\n"
+            "Scenarios.\n"
+            "\n"
+            "## Existing Components to Reuse\n"
+            "None.\n"
+            "\n"
+            "## Verification\n"
+            "Run tests.\n"
+        )
+        _create_spec_files(
+            spec_dir,
+            design_content=design_content,
+            tasks_content=CONSOLIDATED_VALID_TASKS,
+        )
+        result = validate_plan(spec_dir)
+        assert result.is_valid is False
+        assert any("Approach" in e.message for e in result.errors)
+
+    def test_consolidated_tasks_missing_loop_type_fails(self, tmp_path: Path) -> None:
+        """Test that consolidated tasks.md missing Loop Type field fails."""
+        spec_dir = tmp_path / "specs" / "2026-06-12-no-loop-type"
+        tasks_content = (
+            "# Tasks\n"
+            "\n"
+            "### Task 1.1: Fix bug\n"
+            "Context: Fix it.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: N/A — internal task.\n"
+            "Behavioral Contract: Must pass.\n"
+            "Simplification Focus: Keep minimal.\n"
+            "BDD Verification: N/A — TDD-only task.\n"
+            "Advanced Test Verification: N/A — no advanced tests.\n"
+            "Runtime Verification: N/A — no runtime changes.\n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1: Write test\n"
+        )
+        _create_spec_files(
+            spec_dir,
+            design_content=CONSOLIDATED_VALID_DESIGN,
+            tasks_content=tasks_content,
+        )
+        result = validate_plan(spec_dir)
+        assert result.is_valid is False
+        assert any("Loop Type" in e.message for e in result.errors)
+
+    def test_consolidated_tasks_missing_status_fails(self, tmp_path: Path) -> None:
+        """Test that consolidated tasks.md missing Status field fails."""
+        spec_dir = tmp_path / "specs" / "2026-06-12-no-status"
+        tasks_content = (
+            "# Tasks\n"
+            "\n"
+            "### Task 1.1: Fix bug\n"
+            "Context: Fix it.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: N/A — internal task.\n"
+            "Loop Type: TDD-only\n"
+            "Behavioral Contract: Must pass.\n"
+            "Simplification Focus: Keep minimal.\n"
+            "BDD Verification: N/A — TDD-only task.\n"
+            "Advanced Test Verification: N/A — no advanced tests.\n"
+            "Runtime Verification: N/A — no runtime changes.\n"
+            "- [ ] Step 1: Write test\n"
+        )
+        _create_spec_files(
+            spec_dir,
+            design_content=CONSOLIDATED_VALID_DESIGN,
+            tasks_content=tasks_content,
+        )
+        result = validate_plan(spec_dir)
+        assert result.is_valid is False
+        assert any("Status" in e.message for e in result.errors)
+
+    def test_consolidated_build_passes_when_all_done(self, tmp_path: Path, monkeypatch) -> None:
+        """Test that consolidated spec passes build validation when all tasks are DONE."""
+        spec_dir = tmp_path / "specs" / "2026-06-12-done"
+        tasks_content = (
+            "# Tasks\n"
+            "\n"
+            "### Task 1.1: Fix bug\n"
+            "Status: 🟢 DONE\n"
+            "- [x] Step 1: Write test\n"
+            "- [x] Step 2: Implement\n"
+            "\n"
+            "### Task 2.1: Add feature\n"
+            "Status: 🟢 DONE\n"
+            "- [x] Step 1: Write test\n"
+            "- [x] Step 2: Implement\n"
+        )
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
+
+        src_dir = tmp_path / "src"
+        src_dir.mkdir()
+        (src_dir / "clean.py").write_text("def foo():\n    return 42\n")
+
+        import subprocess
+
+        subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+
+        monkeypatch.chdir(tmp_path)
+        result = validate_build(spec_dir)
+        assert result.is_valid is True
+
+    def test_consolidated_build_fails_when_first_task_todo(self, tmp_path: Path) -> None:
+        """Test that consolidated spec fails build when first task is TODO."""
+        spec_dir = tmp_path / "specs" / "2026-06-12-partial"
+        tasks_content = (
+            "# Tasks\n"
+            "\n"
+            "### Task 1.1: Fix bug\n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1: Write test\n"
+            "\n"
+            "### Task 2.1: Add feature\n"
+            "Status: 🟢 DONE\n"
+            "- [x] Step 1: Complete\n"
+        )
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
+        result = validate_build(spec_dir)
+        assert result.is_valid is False
+
+
+class TestFullModeSpec:
+    """Tests for full-mode spec format (pb-plan → pb-build flow)."""
+
+    def test_full_mode_design_passes(self, tmp_path: Path) -> None:
+        """Test that full-mode design.md with all required sections passes."""
+        spec_dir = tmp_path / "specs" / "2026-06-12-full-mode"
+        _create_spec_files(
+            spec_dir,
+            design_content=FULL_MODE_DESIGN,
+            tasks_content=CONSOLIDATED_VALID_TASKS,
+            features_content="Feature: Test\n  Scenario: Test\n    Given a\n    When b\n    Then c\n",
+        )
+        result = validate_plan(spec_dir)
+        assert result.is_valid is True
+
+    def test_full_mode_missing_architecture_decisions_fails(self, tmp_path: Path) -> None:
+        """Test that full-mode design.md missing Architecture Decisions fails."""
+        spec_dir = tmp_path / "specs" / "2026-06-12-no-ad"
+        design_content = (
+            "# Design: Full Feature\n"
+            "\n"
+            "## Executive Summary\n"
+            "Summary.\n"
+            "\n"
+            "## Requirements & Goals\n"
+            "- **[REQ-01]:** The system *shall* validate.\n"
+            "\n"
+            "## Architecture Overview\n"
+            "```mermaid\ngraph TD\n  A-->B\n```\n"
+            "\n"
+            "## Data Models\n"
+            "```dbml\nTable t { id integer [pk] }\n```\n"
+            "\n"
+            "## Interface Contracts\n"
+            "```python\nproto...\n```\n"
+            "\n"
+            "## Detailed Design\n"
+            "Details.\n"
+            "\n"
+            "## Verification & Testing Strategy\n"
+            "Strategy.\n"
+            "\n"
+            "## Implementation Plan\n"
+            "- [ ] Phase 1\n"
+        )
+        _create_spec_files(
+            spec_dir,
+            design_content=design_content,
+            tasks_content=CONSOLIDATED_VALID_TASKS,
+            features_content="Feature: Test\n  Scenario: Test\n    Given a\n    When b\n    Then c\n",
+        )
+        result = validate_plan(spec_dir)
+        assert result.is_valid is False
+        assert any("Architecture Decisions" in e.message for e in result.errors)
+
+    def test_full_mode_missing_data_models_fails(self, tmp_path: Path) -> None:
+        """Test that full-mode design.md missing Data Models fails."""
+        spec_dir = tmp_path / "specs" / "2026-06-12-no-dm"
+        design_content = (
+            "# Design: Full Feature\n"
+            "\n"
+            "## Executive Summary\n"
+            "Summary.\n"
+            "\n"
+            "## Requirements & Goals\n"
+            "- **[REQ-01]:** The system *shall* validate.\n"
+            "\n"
+            "## Architecture Overview\n"
+            "```mermaid\ngraph TD\n  A-->B\n```\n"
+            "\n"
+            "## Architecture Decisions\n"
+            "### AD-01: Decision\n"
+            "- **Status:** Accepted\n"
+            "\n"
+            "**Context:** C\n**Decision:** D\n**Consequences:** E\n"
+            "\n"
+            "## Interface Contracts\n"
+            "```python\nproto...\n```\n"
+            "\n"
+            "## Detailed Design\n"
+            "Details.\n"
+            "\n"
+            "## Verification & Testing Strategy\n"
+            "Strategy.\n"
+            "\n"
+            "## Implementation Plan\n"
+            "- [ ] Phase 1\n"
+        )
+        _create_spec_files(
+            spec_dir,
+            design_content=design_content,
+            tasks_content=CONSOLIDATED_VALID_TASKS,
+            features_content="Feature: Test\n  Scenario: Test\n    Given a\n    When b\n    Then c\n",
+        )
+        result = validate_plan(spec_dir)
+        assert result.is_valid is False
+        assert any("Data Models" in e.message for e in result.errors)

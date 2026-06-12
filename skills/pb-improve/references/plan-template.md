@@ -21,57 +21,78 @@ Three properties make a spec executable by a weaker model:
 | **Created** | YYYY-MM-DD |
 | **Mode** | Lightweight |
 | **Priority** | P1 |
-| **Effort** | S |
-| **Risk** | LOW |
-| **Category** | bug |
 | **Planned at** | commit `<short SHA>`, <YYYY-MM-DD> |
 
 ## Summary
 
-> 2-3 sentences: problem + solution.
+> 2-3 sentences: overall problem + overall solution covering all findings.
 
 ## Why this matters
 
-2–5 sentences. The problem, its concrete cost, and what improves when this lands. Written so the builder (and a human reviewer) understands the intent — intent is what lets a correct judgment call happen when a detail is off.
+2–5 sentences. The combined problem, concrete cost, and what improves when all findings land. Written so the builder (and a human reviewer) understands the intent.
 
-## Requirements (EARS Notation)
+## Approach
+
+> Overall implementation approach across all findings. Reference existing code/patterns to reuse.
+
+## Findings
+
+> One section per finding. Each finding is self-contained with its own requirements, context, and approach.
+
+### Finding 1: <Title>
+
+- **Category:** bug / security / performance / test-coverage / tech-debt / ...
+- **Impact:** HIGH / MEDIUM / LOW
+- **Effort:** S / M / L
+- **Confidence:** HIGH / MEDIUM / LOW
+
+#### Requirements (EARS Notation)
 
 > Each requirement uses one of the 5 EARS patterns (Ubiquitous, State-driven, Event-driven, Unwanted, Exception).
 
-- **[REQ-01]:** The system *shall* [action] when [trigger].
-- **[REQ-02]:** The system *shall* [action] when [trigger].
+- **[REQ-01-F1]:** The system *shall* [action] when [trigger].
 
-## Current state
+#### Current state
 
 The facts the builder needs, inlined — never "as discussed" or "see audit":
 
 - The relevant files, each with one line on its role:
   - `src/orders/api.py` — order-list endpoint; contains the N+1 (lines 130–160)
-- Excerpts of the code as it exists today (short, with `file:line` markers),
-  enough that the builder can confirm it's looking at the right thing.
-- The repo conventions that apply here, with a pointer to one exemplar file:
-  "Error handling follows the Result pattern — see `src/lib/result.py` and its
-  use in `src/users/api.py:40-60`. Match it."
+- Excerpts of the code as it exists today (short, with `file:line` markers).
 
-## Approach
+#### Approach
 
-> How to implement. Reference existing code/patterns to reuse.
+> How to implement this finding. Reference existing code/patterns to reuse.
 
-## Scope
+#### Scope for this finding
 
-**In scope** (the only files you should modify):
+**In scope:** ...
+**Out of scope:** ...
 
-- `src/orders/api.py`
-- `tests/test_orders_api.py` (create)
+### Finding 2: <Title>
 
-**Out of scope** (do NOT touch, even though they look related):
+- **Category:** ...
+- **Impact:** ...
+- **Effort:** ...
 
-- `src/orders/legacy_api.py` — deprecated path, scheduled for deletion;
-  changing it wastes effort and risks the v1 clients still pinned to it.
-- Any change to the public response shape — clients depend on it.
+#### Requirements (EARS Notation)
 
-## Architecture Decisions (MADR Format)
+- **[REQ-01-F2]:** ...
 
+#### Current state
+
+...
+
+#### Approach
+
+...
+
+(Repeat for each finding)
+
+## Architecture Decisions
+
+> Consolidated MADR decisions across all findings. Reference finding sections above.
+>
 > Each decision must use MADR format: `[Context]`, `[Decision]`, `[Consequences]`.
 
 ### AD-01: [Decision Title]
@@ -110,7 +131,11 @@ The facts the builder needs, inlined — never "as discussed" or "see audit":
 
 ## BDD Scenario Inventory
 
-- `features/[feature-name].feature` — [Scenario Name]: [Business outcome]
+> Complete list of ALL scenarios across ALL findings with task coverage.
+
+- `features/correctness.feature` — [Scenario Name]: [Business outcome] → Task X.Y
+- `features/security.feature` — [Scenario Name]: [Business outcome] → Task X.Y
+...
 
 ## Existing Components to Reuse
 
@@ -144,6 +169,11 @@ For the human/agent who owns this code after the change lands:
 
 ## tasks.md Template
 
+> **CRITICAL:** Every task block MUST include all 10 required fields or pb-build validation will fail.
+> Required fields: `Context:`, `Verification:`, `Scenario Coverage:`, `Loop Type:`,
+> `Behavioral Contract:`, `Simplification Focus:`, `Status:`, `BDD Verification:`,
+> `Advanced Test Verification:`, `Runtime Verification:`
+
 ```markdown
 # <Feature Name> — Tasks
 
@@ -154,24 +184,55 @@ For the human/agent who owns this code after the change lands:
 
 ## Tasks
 
-### Task 1.1: [Task Name]
+> Tasks are numbered across ALL findings: Phase X = Finding X.
+> Order by dependency: infrastructure/scaffolding first, then findings in priority order.
+> Cross-finding dependencies: if Finding B depends on Finding A, place A's tasks first.
+
+### Task 1.1: [Task Name — Finding 1 infrastructure or first task]
 
 > **Context:** ...
 > **Verification:** ...
-> **Requirement Coverage:** [Requirement IDs from source requirement ledger, or `N/A` with reason]
-> **Scenario Coverage:** [Feature/scenario names]
+> **Scenario Coverage:** [Feature/scenario names, or `N/A` with reason]
 
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
 - **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
-- **Advanced Test Coverage:** `Example-based only` / `Property` / `Fuzz` / `Benchmark` / `Combination`
 - **Status:** 🔴 TODO
 - [ ] Step 1: ...
 - [ ] Step 2: ...
-- [ ] BDD Verification: ...
-- [ ] Verification: ...
+- [ ] BDD Verification: [Concrete scenario check — e.g., "run `behave features/auth.feature` and confirm Scenario X fails first, then passes"]
 - [ ] Advanced Test Verification: [Command or `N/A` with reason]
-- [ ] Runtime Verification (if applicable): [Logs + probe result, or `N/A` with reason]
+- [ ] Runtime Verification: [Logs + probe result, or `N/A` with reason]
+
+### Task 1.2: [Task Name — Finding 1 next task]
+
+> **Context:** ...
+> **Verification:** ...
+> **Scenario Coverage:** ...
+
+- **Loop Type:** ...
+- **Behavioral Contract:** ...
+- **Simplification Focus:** ...
+- **Status:** 🔴 TODO
+- [ ] Step 1: ...
+- [ ] BDD Verification: ...
+- [ ] Advanced Test Verification: ...
+- [ ] Runtime Verification: ...
+
+### Task 2.1: [Task Name — Finding 2 first task]
+
+> **Context:** ... (note dependency on Finding 1 if applicable)
+> **Verification:** ...
+> **Scenario Coverage:** ...
+
+- **Loop Type:** ...
+- **Behavioral Contract:** ...
+- **Simplification Focus:** ...
+- **Status:** 🔴 TODO
+- [ ] Step 1: ...
+- [ ] BDD Verification: ...
+- [ ] Advanced Test Verification: ...
+- [ ] Runtime Verification: ...
 ```
 
 ---
@@ -205,20 +266,26 @@ Feature: <Feature Name>
 ```markdown
 # Implementation Specs
 
-Generated by pb-improve on <date>. Execute via `/pb-build <feature-name>` in the order below unless dependencies say otherwise. Each builder: read the spec fully before starting, honor its STOP conditions, and update the spec's tasks.md when done.
+Generated by pb-improve on <date>. Execute via `/pb-build <feature-name>`.
 
 ## Execution order & status
 
-| Spec | Feature | Priority | Effort | Depends on | Status |
-|------|---------|----------|--------|------------|--------|
-| 2026-MM-DD-01-<slug> | <title> | P1 | S | — | TODO |
-| 2026-MM-DD-02-<slug> | <title> | P1 | M | 01 | TODO |
+| Spec                 | Findings                        | Priority | Effort                         | Status                             |
+| -------------------- | ------------------------------- | -------- | ------------------------------ | ---------------------------------- |
+| 2026-MM-DD-01-<slug> | Finding 1, Finding 2, Finding 3 | P1       | M                              | TODO                               |
+| Status values: TODO  | IN PROGRESS                     | DONE     | BLOCKED (with one-line reason) | REJECTED (with one-line rationale) |
 
-Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
+## Finding details
+
+| # | Finding | Category | Effort | Tasks |
+|---|---------|----------|--------|-------|
+| 1 | <title> | bug | S | Task 1.1, 1.2 |
+| 2 | <title> | security | M | Task 2.1, 2.2, 2.3 |
+| 3 | <title> | performance | S | Task 3.1 |
 
 ## Dependency notes
 
-- 02 requires 01 because <reason>.
+- Finding 2 tasks come after Finding 1 because <reason>.
 
 ## Findings considered and rejected
 

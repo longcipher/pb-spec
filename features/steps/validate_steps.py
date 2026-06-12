@@ -252,6 +252,388 @@ def step_task_unchecked_step(context, checkbox: str) -> None:
     context.tasks_file.write_text(content)
 
 
+@given("I have a consolidated spec directory with valid design.md and tasks.md")
+def step_consolidated_valid_spec(context) -> None:
+    """Create a consolidated spec directory with all required sections."""
+    design_file = context.spec_dir / "design.md"
+    design_file.write_text(
+        "# Design: Codebase Quality Improvements\n"
+        "\n"
+        "## Summary\n"
+        "Consolidated improvements across correctness, security, and performance.\n"
+        "\n"
+        "## Approach\n"
+        "Implement findings sequentially, starting with highest-impact items.\n"
+        "\n"
+        "## Findings\n"
+        "\n"
+        "### Finding 1: Fix N+1 query\n"
+        "- **Category:** performance\n"
+        "- **Impact:** HIGH\n"
+        "\n"
+        "#### Approach\n"
+        "Add batch loading.\n"
+        "\n"
+        "## Architecture Decisions\n"
+        "### AD-01: Use batch loading\n"
+        "- **Status:** Accepted\n"
+        "\n"
+        "**Context:** N+1 queries detected.\n"
+        "**Decision:** Use DataLoader pattern.\n"
+        "**Consequences:** Reduces query count.\n"
+        "\n"
+        "## BDD/TDD Strategy\n"
+        "BDD+TDD with behave.\n"
+        "\n"
+        "## Code Simplification Constraints\n"
+        "Keep minimal.\n"
+        "\n"
+        "## BDD Scenario Inventory\n"
+        "- features/performance.feature — Batch loading: reduces queries → Task 1.1\n"
+        "\n"
+        "## Existing Components to Reuse\n"
+        "None.\n"
+        "\n"
+        "## Verification\n"
+        "Run full test suite.\n"
+    )
+
+    tasks_file = context.spec_dir / "tasks.md"
+    tasks_file.write_text(
+        "# Tasks\n"
+        "\n"
+        "### Task 1.1: Fix N+1 query\n"
+        "Context: Address performance issue in order listing.\n"
+        "Verification: Run tests.\n"
+        "Scenario Coverage: features/performance.feature — Batch loading.\n"
+        "Loop Type: BDD+TDD\n"
+        "Behavioral Contract: Preserve existing behavior.\n"
+        "Simplification Focus: Reduce nesting.\n"
+        "BDD Verification: uv run behave features/performance.feature\n"
+        "Advanced Test Verification: N/A — no advanced tests planned.\n"
+        "Runtime Verification: N/A — no runtime changes.\n"
+        "Status: 🔴 TODO\n"
+        "- [ ] Step 1: Write failing test\n"
+    )
+
+    features_dir = context.spec_dir / "features"
+    features_dir.mkdir(exist_ok=True)
+    (features_dir / "performance.feature").write_text(
+        "Feature: Performance improvements\n"
+        "  Scenario: Batch loading reduces queries\n"
+        "    Given a list of orders\n"
+        "    When orders are fetched\n"
+        "    Then only one query is executed\n"
+    )
+
+
+@given('I have a consolidated spec directory with design.md missing "{section}" section')
+def step_consolidated_missing_design_section(context, section: str) -> None:
+    """Create a consolidated spec with a missing design section."""
+    design_file = context.spec_dir / "design.md"
+    design_file.write_text(
+        "# Design: Improvements\n"
+        "\n"
+        "## Summary\n"
+        "Summary.\n"
+        "\n"
+        "## Approach\n"
+        "Approach.\n"
+        "\n"
+        "## Architecture Decisions\n"
+        "Decision.\n"
+        "\n"
+        "## Code Simplification Constraints\n"
+        "Keep minimal.\n"
+        "\n"
+        "## BDD Scenario Inventory\n"
+        "Scenarios.\n"
+        "\n"
+        "## Existing Components to Reuse\n"
+        "None.\n"
+        "\n"
+        "## Verification\n"
+        "Run tests.\n"
+    )
+
+    tasks_file = context.spec_dir / "tasks.md"
+    tasks_file.write_text(
+        "# Tasks\n"
+        "\n"
+        "### Task 1.1: Test Task\n"
+        "Context: Test.\n"
+        "Verification: Run tests.\n"
+        "Scenario Coverage: N/A — internal task.\n"
+        "Loop Type: TDD-only\n"
+        "Behavioral Contract: Must pass.\n"
+        "Simplification Focus: Keep minimal.\n"
+        "BDD Verification: N/A — TDD-only task.\n"
+        "Advanced Test Verification: N/A — no advanced tests.\n"
+        "Runtime Verification: N/A — no runtime changes.\n"
+        "Status: 🔴 TODO\n"
+        "- [ ] Step 1: Write test\n"
+    )
+
+
+@given('I have a consolidated spec directory with tasks.md missing "{field}" field')
+def step_consolidated_missing_task_field(context, field: str) -> None:
+    """Create a consolidated spec with a missing task field."""
+    design_file = context.spec_dir / "design.md"
+    design_file.write_text(
+        "# Design: Improvements\n"
+        "\n"
+        "## Summary\n"
+        "Summary.\n"
+        "\n"
+        "## Approach\n"
+        "Approach.\n"
+        "\n"
+        "## Architecture Decisions\n"
+        "Decision.\n"
+        "\n"
+        "## BDD/TDD Strategy\n"
+        "Strategy.\n"
+        "\n"
+        "## Code Simplification Constraints\n"
+        "Keep minimal.\n"
+        "\n"
+        "## BDD Scenario Inventory\n"
+        "Scenarios.\n"
+        "\n"
+        "## Existing Components to Reuse\n"
+        "None.\n"
+        "\n"
+        "## Verification\n"
+        "Run tests.\n"
+    )
+
+    tasks_file = context.spec_dir / "tasks.md"
+    # Write a task that is missing the specified field
+    tasks_file.write_text(
+        "# Tasks\n"
+        "\n"
+        "### Task 1.1: Test Task\n"
+        "Context: Test.\n"
+        "Verification: Run tests.\n"
+        "Scenario Coverage: N/A — internal task.\n"
+        "Behavioral Contract: Must pass.\n"
+        "Simplification Focus: Keep minimal.\n"
+        "BDD Verification: N/A — TDD-only task.\n"
+        "Advanced Test Verification: N/A — no advanced tests.\n"
+        "Runtime Verification: N/A — no runtime changes.\n"
+        "Status: 🔴 TODO\n"
+        "- [ ] Step 1: Write test\n"
+    )
+
+
+@given("I have a full-mode spec directory with all required sections")
+def step_full_mode_valid_spec(context) -> None:
+    """Create a full-mode spec directory with all required sections."""
+    design_file = context.spec_dir / "design.md"
+    design_file.write_text(
+        "# Design: Full Feature\n"
+        "\n"
+        "## Executive Summary\n"
+        "Complete feature implementation.\n"
+        "\n"
+        "## Requirements & Goals\n"
+        "- **[REQ-01]:** The system *shall* validate inputs when form is submitted.\n"
+        "\n"
+        "## Architecture Overview\n"
+        "```mermaid\n"
+        "graph TD\n"
+        "  A[Client] --> B[Server]\n"
+        "```\n"
+        "\n"
+        "## Architecture Decisions\n"
+        "### AD-01: Use REST API\n"
+        "- **Status:** Accepted\n"
+        "\n"
+        "**Context:** Need external API.\n"
+        "**Decision:** Use REST.\n"
+        "**Consequences:** Simple integration.\n"
+        "\n"
+        "## Data Models\n"
+        "```dbml\n"
+        "Table users {\n"
+        "  id integer [pk]\n"
+        "  name varchar\n"
+        "}\n"
+        "```\n"
+        "\n"
+        "## Interface Contracts\n"
+        "```python\n"
+        "class UserProto(Protocol):\n"
+        "    def get_name(self) -> str: ...\n"
+        "```\n"
+        "\n"
+        "## Detailed Design\n"
+        "Implementation details.\n"
+        "\n"
+        "## Verification & Testing Strategy\n"
+        "BDD + unit tests.\n"
+        "\n"
+        "## Implementation Plan\n"
+        "- [ ] Phase 1: Core\n"
+    )
+
+    tasks_file = context.spec_dir / "tasks.md"
+    tasks_file.write_text(
+        "# Tasks\n"
+        "\n"
+        "### Task 1.1: Implement feature\n"
+        "Context: Build the feature.\n"
+        "Verification: Run tests.\n"
+        "Scenario Coverage: Test scenario.\n"
+        "Loop Type: BDD+TDD\n"
+        "Behavioral Contract: Must pass.\n"
+        "Simplification Focus: Keep minimal.\n"
+        "BDD Verification: uv run behave\n"
+        "Advanced Test Verification: N/A — no advanced tests.\n"
+        "Runtime Verification: N/A — no runtime changes.\n"
+        "Status: 🔴 TODO\n"
+        "- [ ] Step 1: Write test\n"
+    )
+
+    features_dir = context.spec_dir / "features"
+    features_dir.mkdir(exist_ok=True)
+    (features_dir / "test.feature").write_text(
+        "Feature: Full feature\n"
+        "  Scenario: Happy path\n"
+        "    Given a user\n"
+        "    When they submit\n"
+        "    Then success\n"
+    )
+
+
+@given('I have a full-mode spec directory missing "{section}" section')
+def step_full_mode_missing_section(context, section: str) -> None:
+    """Create a full-mode spec missing a required section."""
+    design_file = context.spec_dir / "design.md"
+    # Write all sections except the missing one
+    sections = {
+        "Executive Summary": "## Executive Summary\nSummary.\n",
+        "Requirements & Goals": "## Requirements & Goals\n- **[REQ-01]:** The system *shall* validate.\n",
+        "Architecture Overview": "## Architecture Overview\n```mermaid\ngraph TD\n  A-->B\n```\n",
+        "Architecture Decisions": "## Architecture Decisions\n### AD-01: Decision\n- **Status:** Accepted\n\n**Context:** C\n**Decision:** D\n**Consequences:** E\n",
+        "Data Models": "## Data Models\n```dbml\nTable t { id integer [pk] }\n```\n",
+        "Interface Contracts": "## Interface Contracts\n```python\nproto...\n```\n",
+        "Detailed Design": "## Detailed Design\nDetails.\n",
+        "Verification & Testing Strategy": "## Verification & Testing Strategy\nStrategy.\n",
+        "Implementation Plan": "## Implementation Plan\n- [ ] Phase 1\n",
+    }
+    content = "# Design: Full Feature\n\n"
+    for sec_name, sec_content in sections.items():
+        if sec_name != section:
+            content += sec_content + "\n"
+    design_file.write_text(content)
+
+    tasks_file = context.spec_dir / "tasks.md"
+    tasks_file.write_text(
+        "# Tasks\n"
+        "\n"
+        "### Task 1.1: Implement\n"
+        "Context: Build.\n"
+        "Verification: Run tests.\n"
+        "Scenario Coverage: Scenario.\n"
+        "Loop Type: TDD-only\n"
+        "Behavioral Contract: Must pass.\n"
+        "Simplification Focus: Keep minimal.\n"
+        "BDD Verification: N/A — TDD-only.\n"
+        "Advanced Test Verification: N/A — no advanced tests.\n"
+        "Runtime Verification: N/A — no runtime.\n"
+        "Status: 🔴 TODO\n"
+        "- [ ] Step 1: Write test\n"
+    )
+
+    features_dir = context.spec_dir / "features"
+    features_dir.mkdir(exist_ok=True)
+    (features_dir / "test.feature").write_text(
+        "Feature: Test\n  Scenario: Test\n    Given a\n    When b\n    Then c\n"
+    )
+
+
+@given("I have a consolidated tasks.md with tasks across multiple findings")
+def step_consolidated_cross_finding_tasks(context) -> None:
+    """Create a consolidated tasks.md with tasks numbered across findings."""
+    design_file = context.spec_dir / "design.md"
+    design_file.write_text(
+        "# Design: Multiple Findings\n"
+        "\n"
+        "## Summary\n"
+        "Multiple improvements.\n"
+        "\n"
+        "## Approach\n"
+        "Approach.\n"
+        "\n"
+        "## Architecture Decisions\n"
+        "Decision.\n"
+        "\n"
+        "## BDD/TDD Strategy\n"
+        "Strategy.\n"
+        "\n"
+        "## Code Simplification Constraints\n"
+        "Keep minimal.\n"
+        "\n"
+        "## BDD Scenario Inventory\n"
+        "Scenarios.\n"
+        "\n"
+        "## Existing Components to Reuse\n"
+        "None.\n"
+        "\n"
+        "## Verification\n"
+        "Run tests.\n"
+    )
+
+    tasks_file = context.spec_dir / "tasks.md"
+    tasks_file.write_text(
+        "# Tasks\n"
+        "\n"
+        "### Task 1.1: Finding 1 — Fix bug\n"
+        "Context: Fix the bug.\n"
+        "Verification: Run tests.\n"
+        "Scenario Coverage: features/correctness.feature — Bug fix.\n"
+        "Loop Type: BDD+TDD\n"
+        "Behavioral Contract: Must pass.\n"
+        "Simplification Focus: Keep minimal.\n"
+        "BDD Verification: uv run behave features/correctness.feature\n"
+        "Advanced Test Verification: N/A — no advanced tests.\n"
+        "Runtime Verification: N/A — no runtime changes.\n"
+        "Status: 🔴 TODO\n"
+        "- [ ] Step 1: Write test\n"
+        "\n"
+        "### Task 2.1: Finding 2 — Add feature\n"
+        "Context: Add new feature.\n"
+        "Verification: Run tests.\n"
+        "Scenario Coverage: features/security.feature — Auth check.\n"
+        "Loop Type: BDD+TDD\n"
+        "Behavioral Contract: Must pass.\n"
+        "Simplification Focus: Keep minimal.\n"
+        "BDD Verification: uv run behave features/security.feature\n"
+        "Advanced Test Verification: N/A — no advanced tests.\n"
+        "Runtime Verification: N/A — no runtime changes.\n"
+        "Status: 🔴 TODO\n"
+        "- [ ] Step 1: Write test\n"
+    )
+
+    features_dir = context.spec_dir / "features"
+    features_dir.mkdir(exist_ok=True)
+    (features_dir / "correctness.feature").write_text(
+        "Feature: Correctness\n"
+        "  Scenario: Bug fix\n"
+        "    Given a bug\n"
+        "    When fixed\n"
+        "    Then works\n"
+    )
+    (features_dir / "security.feature").write_text(
+        "Feature: Security\n"
+        "  Scenario: Auth check\n"
+        "    Given a user\n"
+        "    When authenticated\n"
+        "    Then access granted\n"
+    )
+
+
 def _init_git_repo(context) -> None:
     """Initialize a git repo with an initial commit so scanner can find files."""
     subprocess.run(["git", "init"], cwd=context.temp_dir, capture_output=True, check=True)

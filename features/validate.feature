@@ -83,6 +83,49 @@ Feature: Validate pb-spec workflow artifacts
     Then the command should fail
     And I should see "NotImplemented/Mock found"
 
+  Scenario: Validate consolidated spec (pb-improve flow) passes
+    Given I have a pb-spec project set up
+    And I have a consolidated spec directory with valid design.md and tasks.md
+    When I run "pb-spec validate --plan"
+    Then the command should succeed
+    And I should see "design.md (lightweight mode) structural checks passed"
+    And I should see "tasks.md structural checks passed"
+
+  Scenario: Validate consolidated spec fails on missing design section
+    Given I have a pb-spec project set up
+    And I have a consolidated spec directory with design.md missing "BDD/TDD Strategy" section
+    When I run "pb-spec validate --plan"
+    Then the command should fail
+    And I should see "is missing required section"
+
+  Scenario: Validate consolidated spec fails on missing task field
+    Given I have a pb-spec project set up
+    And I have a consolidated spec directory with tasks.md missing "Loop Type:" field
+    When I run "pb-spec validate --plan"
+    Then the command should fail
+    And I should see "is missing required field"
+
+  Scenario: Validate full-mode spec (pb-plan flow) passes
+    Given I have a pb-spec project set up
+    And I have a full-mode spec directory with all required sections
+    When I run "pb-spec validate --plan"
+    Then the command should succeed
+    And I should see "design.md (full mode) structural checks passed"
+
+  Scenario: Validate full-mode spec fails on missing Architecture Decisions
+    Given I have a pb-spec project set up
+    And I have a full-mode spec directory missing "Architecture Decisions" section
+    When I run "pb-spec validate --plan"
+    Then the command should fail
+    And I should see "is missing required section"
+
+  Scenario: Validate consolidated tasks with cross-finding numbering
+    Given I have a pb-spec project set up
+    And I have a consolidated tasks.md with tasks across multiple findings
+    When I run "pb-spec validate --plan"
+    Then the command should succeed
+    And I should see "tasks.md structural checks passed"
+
   Scenario: Validate help shows all options
     When I run "pb-spec validate --help"
     Then I should see "--plan"

@@ -8,7 +8,7 @@
 | **Reviewers** | [Name 1], [Name 2] |
 | **Related Issues** | #[Issue ID] or N/A |
 
-## 1. Executive Summary
+## Executive Summary
 
 > 2-3 sentences: What problem are we solving? What is the proposed solution?
 
@@ -35,7 +35,7 @@
 
 ---
 
-## 3. Requirements & Goals (EARS Notation)
+## Requirements & Goals
 
 > All acceptance criteria use **EARS (Easy Approach to Requirements Syntax)** — 5 sentence patterns that eliminate ambiguity and produce machine-checkable acceptance criteria.
 
@@ -106,7 +106,7 @@
 
 ---
 
-## 5. Architecture Overview (C4 Model + Mermaid)
+## Architecture Overview
 
 > Architecture is expressed using **C4 Model** (Context, Containers, Components, Code) rendered in **Mermaid.js** syntax. Agents parse Mermaid directly — no image files.
 
@@ -183,7 +183,7 @@ graph LR
 
 ---
 
-## 6. Architecture Decisions (MADR Format)
+## Architecture Decisions
 
 > Decisions follow **MADR (Markdown Any Decision Records)** — lightweight ADR format with `[Context]`, `[Decision]`, `[Consequences]`. Each decision is a numbered record that agents cannot override without explicit re-evaluation.
 
@@ -262,7 +262,7 @@ graph LR
 
 ---
 
-## 7. Data Models (DBML / Prisma Schema)
+## Data Models
 
 > Data models are expressed using **DBML** or **Prisma Schema** — structured DSL with strict types, relationships, and index definitions. Natural language table descriptions are forbidden.
 
@@ -328,7 +328,7 @@ Table posts {
 
 ---
 
-## 8. Interface Contracts (API-First / Type Signatures)
+## Interface Contracts
 
 > All module boundaries and external APIs are defined as **type signatures** before implementation. Agents use these as compile-time contracts — parameter mismatches are caught at design time, not runtime.
 
@@ -473,7 +473,7 @@ class ServiceError:
 
 ---
 
-## 9. Detailed Design
+## Detailed Design
 
 ### 9.1 Module Structure
 
@@ -525,7 +525,7 @@ sequenceDiagram
 
 ---
 
-## 10. Verification & Testing Strategy
+## Verification & Testing Strategy
 
 ### 10.1 Unit Testing
 
@@ -581,7 +581,7 @@ sequenceDiagram
 
 ---
 
-## 11. Implementation Plan
+## Implementation Plan
 
 > Phase checklist — high-level roadmap mapping to tasks.md.
 
