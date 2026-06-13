@@ -169,10 +169,22 @@ For the human/agent who owns this code after the change lands:
 
 ## tasks.md Template
 
-> **CRITICAL:** Every task block MUST include all 10 required fields or pb-build validation will fail.
-> Required fields: `Context:`, `Verification:`, `Scenario Coverage:`, `Loop Type:`,
-> `Behavioral Contract:`, `Simplification Focus:`, `Status:`, `BDD Verification:`,
-> `Advanced Test Verification:`, `Runtime Verification:`
+> **⚠️ CRITICAL — pb-build REJECTS tasks.md if ANY of these 10 fields is missing:**
+>
+> | # | Field | Common Mistake |
+> |---|-------|----------------|
+> | 1 | `Context:` | — |
+> | 2 | `Verification:` | — |
+> | 3 | `Scenario Coverage:` | — |
+> | 4 | `Loop Type:` | — |
+> | 5 | `Behavioral Contract:` | — |
+> | 6 | **`Simplification Focus:`** | **#1 forgotten field** — always add it |
+> | 7 | `Status:` | — |
+> | 8 | **`BDD Verification:`** | **#2 forgotten field** — always add it |
+> | 9 | `Advanced Test Verification:` | — |
+> | 10 | `Runtime Verification:` | — |
+>
+> **Before writing tasks.md, verify each task block has ALL 10 fields.**
 
 ```markdown
 # <Feature Name> — Tasks

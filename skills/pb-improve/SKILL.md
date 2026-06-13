@@ -326,19 +326,56 @@ Write ONE `tasks.md` with tasks from ALL findings numbered sequentially. **Tasks
   - RED step: run scenario, capture failing output
   - GREEN step: implement, run scenario, capture passing output
   - REFACTOR step: clean up, re-run to confirm
-- Each task includes: Context, Verification, Scenario Coverage, Loop Type (BDD+TDD or TDD-only), Behavioral Contract, Simplification Focus, Status (🔴 TODO), BDD Verification, Advanced Test Verification, Runtime Verification
 - Ordered: infrastructure/scaffolding first (Phase 1), then findings in priority order
 - Verification commands with expected results
 
 **Cross-finding dependencies:** If Finding B depends on Finding A, place Finding A's tasks first and note the dependency in the task Context.
 
-**Task Quality Checklist:**
+> **⚠️ CRITICAL — Required Fields Contract (MUST follow for every task):**
+>
+> Every `### Task X.Y:` block MUST include ALL 10 of these fields, or pb-build will reject the spec:
+>
+> 1. `Context:` — why this task exists
+> 2. `Verification:` — how to verify the task is complete
+> 3. `Scenario Coverage:` — feature file + scenario name, or `N/A — [reason]`
+> 4. `Loop Type:` — `BDD+TDD` or `TDD-only`
+> 5. `Behavioral Contract:` — what behavior must be preserved
+> 6. **`Simplification Focus:`** — what to simplify, or `N/A — [reason]`
+> 7. `Status:` — `🔴 TODO`
+> 8. **`BDD Verification:`** — concrete scenario check command, or `N/A — [reason]`
+> 9. `Advanced Test Verification:` — command or `N/A — [reason]`
+> 10. `Runtime Verification:` — command or `N/A — [reason]`
+>
+> **Template for every task block:**
+>
+> ```markdown
+> ### Task X.Y: [Name]
+>
+> > **Context:** [why]
+> > **Verification:** [how]
+> > **Scenario Coverage:** [feature/scenario or N/A with reason]
+>
+> - **Loop Type:** `BDD+TDD` or `TDD-only`
+> - **Behavioral Contract:** `Preserve existing behavior` or `[change]`
+> - **Simplification Focus:** `[what]` or `N/A — [reason]`
+> - **Status:** 🔴 TODO
+> - [ ] Step 1: ...
+> - [ ] BDD Verification: [command or N/A — reason]
+> - [ ] Advanced Test Verification: [command or N/A — reason]
+> - [ ] Runtime Verification: [command or N/A — reason]
+> ```
 
+**Task Quality Checklist (verify EVERY task before writing):**
+
+- [ ] **ALL 10 required fields present** (Context, Verification, Scenario Coverage, Loop Type, Behavioral Contract, Simplification Focus, Status, BDD Verification, Advanced Test Verification, Runtime Verification)
+- [ ] **Simplification Focus** is filled in (not missing) — this is the #1 field pb-improve forgets
+- [ ] **BDD Verification** is filled in (not missing) — this is the #2 field pb-improve forgets
 - [ ] Each BDD+TDD task maps to ONE scenario
 - [ ] RED evidence is required (failing output captured)
 - [ ] GREEN evidence is required (passing output captured)
 - [ ] No task can be marked done without GREEN evidence
 - [ ] Tasks are ordered by dependency across findings, not just within findings
+- [ ] Run `uv run pb-spec validate --plan <spec-dir>` before finishing to catch missing fields
 
 Finish by writing `specs/README.md` with the consolidated spec entry:
 

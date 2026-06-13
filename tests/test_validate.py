@@ -318,6 +318,94 @@ class TestValidatePlan:
             for e in result.errors
         )
 
+    def test_missing_simplification_focus_fails(self, tmp_path: Path) -> None:
+        """Test that tasks must include Simplification Focus field."""
+        spec_dir = tmp_path / "specs" / "test"
+        spec_dir.mkdir(parents=True)
+
+        tasks_content = (
+            "# Tasks\n"
+            "\n"
+            "### Task 1.1: Has all fields\n"
+            "Context: Build first piece.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: N/A — internal task.\n"
+            "Loop Type: TDD-only\n"
+            "Behavioral Contract: Must pass.\n"
+            "Simplification Focus: Keep minimal.\n"
+            "BDD Verification: N/A — TDD-only task.\n"
+            "Advanced Test Verification: N/A — no advanced tests planned.\n"
+            "Runtime Verification: N/A — no runtime changes.\n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1: Write test\n"
+            "\n"
+            "### Task 1.2: Missing simplification focus\n"
+            "Context: Build second piece.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: N/A — internal task.\n"
+            "Loop Type: TDD-only\n"
+            "Behavioral Contract: Must pass.\n"
+            "BDD Verification: N/A — TDD-only task.\n"
+            "Advanced Test Verification: N/A — no advanced tests planned.\n"
+            "Runtime Verification: N/A — no runtime changes.\n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1: Write test\n"
+        )
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
+
+        result = validate_tasks_structure(spec_dir)
+
+        assert result.is_valid is False
+        assert any(
+            e.message
+            == "Task '1.2: Missing simplification focus' is missing required field: 'Simplification Focus:'"
+            for e in result.errors
+        )
+
+    def test_missing_bdd_verification_fails(self, tmp_path: Path) -> None:
+        """Test that tasks must include BDD Verification field."""
+        spec_dir = tmp_path / "specs" / "test"
+        spec_dir.mkdir(parents=True)
+
+        tasks_content = (
+            "# Tasks\n"
+            "\n"
+            "### Task 1.1: Has all fields\n"
+            "Context: Build first piece.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: N/A — internal task.\n"
+            "Loop Type: TDD-only\n"
+            "Behavioral Contract: Must pass.\n"
+            "Simplification Focus: Keep minimal.\n"
+            "BDD Verification: N/A — TDD-only task.\n"
+            "Advanced Test Verification: N/A — no advanced tests planned.\n"
+            "Runtime Verification: N/A — no runtime changes.\n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1: Write test\n"
+            "\n"
+            "### Task 1.2: Missing BDD verification\n"
+            "Context: Build second piece.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: N/A — internal task.\n"
+            "Loop Type: TDD-only\n"
+            "Behavioral Contract: Must pass.\n"
+            "Simplification Focus: Keep minimal.\n"
+            "Advanced Test Verification: N/A — no advanced tests planned.\n"
+            "Runtime Verification: N/A — no runtime changes.\n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1: Write test\n"
+        )
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
+
+        result = validate_tasks_structure(spec_dir)
+
+        assert result.is_valid is False
+        assert any(
+            e.message
+            == "Task '1.2: Missing BDD verification' is missing required field: 'BDD Verification:'"
+            for e in result.errors
+        )
+
     def test_invalid_task_status_fails(self, tmp_path: Path) -> None:
         """Test that task statuses must use the contract's allowed markers."""
         spec_dir = tmp_path / "specs" / "test"
@@ -610,7 +698,7 @@ class TestValidateTask:
         )
         monkeypatch.setattr(
             "pb_spec.validation.build.get_git_modified_files",
-            lambda: {dirty_file},
+            lambda _root_dir=".": {dirty_file},
         )
 
         monkeypatch.chdir(tmp_path)
@@ -1037,3 +1125,141 @@ class TestFullModeSpec:
         result = validate_plan(spec_dir)
         assert result.is_valid is False
         assert any("Data Models" in e.message for e in result.errors)
+
+
+class TestTaskMissingFields:
+    """Tests for tasks.md missing required fields (pb-improve → pb-build contract)."""
+
+    def test_missing_simplification_focus_fails(self, tmp_path: Path) -> None:
+        """Test that task missing Simplification Focus field fails validation."""
+        spec_dir = tmp_path / "specs" / "2026-06-13-missing-sf"
+        tasks_content = (
+            "# Tasks\n"
+            "\n"
+            "### Task 1.1: Fix bug\n"
+            "Context: Fix the bug.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: features/correctness.feature — Bug fix.\n"
+            "Loop Type: BDD+TDD\n"
+            "Behavioral Contract: Must pass.\n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1: Write test\n"
+            "- [ ] BDD Verification: run behave\n"
+            "- [ ] Advanced Test Verification: N/A — no advanced tests.\n"
+            "- [ ] Runtime Verification: N/A — no runtime changes.\n"
+        )
+        _create_spec_files(
+            spec_dir,
+            design_content=CONSOLIDATED_VALID_DESIGN,
+            tasks_content=tasks_content,
+            features_content="Feature: Test\n  Scenario: Test\n    Given a\n    When b\n    Then c\n",
+        )
+        result = validate_tasks_structure(spec_dir)
+        assert result.is_valid is False
+        assert any(
+            "Simplification Focus" in e.message and "missing required field" in e.message
+            for e in result.errors
+        )
+
+    def test_missing_bdd_verification_fails(self, tmp_path: Path) -> None:
+        """Test that task missing BDD Verification field fails validation."""
+        spec_dir = tmp_path / "specs" / "2026-06-13-missing-bddv"
+        tasks_content = (
+            "# Tasks\n"
+            "\n"
+            "### Task 1.1: Fix bug\n"
+            "Context: Fix the bug.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: features/correctness.feature — Bug fix.\n"
+            "Loop Type: BDD+TDD\n"
+            "Behavioral Contract: Must pass.\n"
+            "Simplification Focus: Keep minimal.\n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1: Write test\n"
+            "- [ ] Advanced Test Verification: N/A — no advanced tests.\n"
+            "- [ ] Runtime Verification: N/A — no runtime changes.\n"
+        )
+        _create_spec_files(
+            spec_dir,
+            design_content=CONSOLIDATED_VALID_DESIGN,
+            tasks_content=tasks_content,
+            features_content="Feature: Test\n  Scenario: Test\n    Given a\n    When b\n    Then c\n",
+        )
+        result = validate_tasks_structure(spec_dir)
+        assert result.is_valid is False
+        assert any(
+            "BDD Verification" in e.message and "missing required field" in e.message
+            for e in result.errors
+        )
+
+    def test_missing_both_simplification_and_bdd_verification_fails(self, tmp_path: Path) -> None:
+        """Test that task missing both Simplification Focus and BDD Verification fails."""
+        spec_dir = tmp_path / "specs" / "2026-06-13-missing-both"
+        tasks_content = (
+            "# Tasks\n"
+            "\n"
+            "### Task 1.1: Fix bug\n"
+            "Context: Fix the bug.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: features/correctness.feature — Bug fix.\n"
+            "Loop Type: BDD+TDD\n"
+            "Behavioral Contract: Must pass.\n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1: Write test\n"
+            "- [ ] Advanced Test Verification: N/A — no advanced tests.\n"
+            "- [ ] Runtime Verification: N/A — no runtime changes.\n"
+        )
+        _create_spec_files(
+            spec_dir,
+            design_content=CONSOLIDATED_VALID_DESIGN,
+            tasks_content=tasks_content,
+            features_content="Feature: Test\n  Scenario: Test\n    Given a\n    When b\n    Then c\n",
+        )
+        result = validate_tasks_structure(spec_dir)
+        assert result.is_valid is False
+        sf_missing = any(
+            "Simplification Focus" in e.message and "missing required field" in e.message
+            for e in result.errors
+        )
+        bddv_missing = any(
+            "BDD Verification" in e.message and "missing required field" in e.message
+            for e in result.errors
+        )
+        assert sf_missing, "Expected Simplification Focus missing error"
+        assert bddv_missing, "Expected BDD Verification missing error"
+
+    def test_multiple_tasks_missing_fields_reports_all(self, tmp_path: Path) -> None:
+        """Test that validation reports missing fields for ALL tasks, not just the first."""
+        spec_dir = tmp_path / "specs" / "2026-06-13-multi-missing"
+        tasks_content = (
+            "# Tasks\n"
+            "\n"
+            "### Task 1.1: First task\n"
+            "Context: First.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: features/test.feature — Scenario.\n"
+            "Loop Type: TDD-only\n"
+            "Behavioral Contract: Must pass.\n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1: Write test\n"
+            "\n"
+            "### Task 1.2: Second task\n"
+            "Context: Second.\n"
+            "Verification: Run tests.\n"
+            "Scenario Coverage: features/test.feature — Scenario.\n"
+            "Loop Type: TDD-only\n"
+            "Behavioral Contract: Must pass.\n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1: Write test\n"
+        )
+        _create_spec_files(
+            spec_dir,
+            design_content=CONSOLIDATED_VALID_DESIGN,
+            tasks_content=tasks_content,
+            features_content="Feature: Test\n  Scenario: Test\n    Given a\n    When b\n    Then c\n",
+        )
+        result = validate_tasks_structure(spec_dir)
+        assert result.is_valid is False
+        # Both tasks should report missing Simplification Focus
+        sf_errors = [e for e in result.errors if "Simplification Focus" in e.message]
+        assert len(sf_errors) == 2, f"Expected 2 Simplification Focus errors, got {len(sf_errors)}"

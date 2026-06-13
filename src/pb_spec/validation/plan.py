@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import re
+import threading
 import tomllib
 from pathlib import Path
 
 from pb_spec.exceptions import FileReadError
+from pb_spec.validation.io import read_file_content
 from pb_spec.validation.parser import (
     ALLOWED_LOOP_TYPES,
     ALLOWED_TASK_STATUSES,
@@ -30,6 +32,8 @@ _FULL_MODE_REQUIRED: list[str] = []
 _LIGHTWEIGHT_MODE_REQUIRED: list[str] = []
 _TASK_REQUIRED_FIELDS: list[str] = []
 _NA_REASON_FIELDS: frozenset[str] = frozenset()
+_config_loaded = False
+_config_lock = threading.Lock()
 
 
 def _load_contract_config(config_path: Path | None = None) -> None:
@@ -37,46 +41,29 @@ def _load_contract_config(config_path: Path | None = None) -> None:
 
     When config_path is None, loads from the default bundled config.
     Projects may override by placing a contract_sections.toml in their spec directory.
+    Thread-safe with double-checked locking.
     """
     global _CONTRACT_CONFIG, _FULL_MODE_REQUIRED, _LIGHTWEIGHT_MODE_REQUIRED
-    global _TASK_REQUIRED_FIELDS, _NA_REASON_FIELDS
+    global _TASK_REQUIRED_FIELDS, _NA_REASON_FIELDS, _config_loaded
 
-    path = config_path or _DEFAULT_CONTRACT_CONFIG_PATH
-    with path.open("rb") as f:
-        _CONTRACT_CONFIG = tomllib.load(f)
+    with _config_lock:
+        path = config_path or _DEFAULT_CONTRACT_CONFIG_PATH
+        with path.open("rb") as f:
+            _CONTRACT_CONFIG = tomllib.load(f)
 
-    _FULL_MODE_REQUIRED = list(_CONTRACT_CONFIG["full_mode"]["required_sections"])
-    _LIGHTWEIGHT_MODE_REQUIRED = list(_CONTRACT_CONFIG["lightweight_mode"]["required_sections"])
-    _TASK_REQUIRED_FIELDS = list(_CONTRACT_CONFIG["tasks"]["required_fields"])
-    _NA_REASON_FIELDS = frozenset(_CONTRACT_CONFIG["tasks"]["na_reason_fields"])
-
-
-_load_contract_config()
-
-
-def read_file_content(file_path: Path) -> str:
-    """Safely read file content with error handling."""
-    try:
-        return file_path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as e:
-        raise FileReadError(f"Cannot read file {file_path}: {e}") from e
-
-
-def read_spec_file(file_path: Path) -> tuple[str, None] | tuple[None, ValidationResult]:
-    """Read a spec file, returning (content, None) on success or (None, error_result) on failure."""
-    try:
-        return read_file_content(file_path), None
-    except FileReadError as e:
-        return None, ValidationResult(
-            is_valid=False,
-            errors=[
-                make_validation_error(
-                    message=str(e),
-                    file_path=str(file_path),
-                    severity=ErrorSeverity.CRITICAL,
-                )
-            ],
+        _FULL_MODE_REQUIRED = list(_CONTRACT_CONFIG["full_mode"]["required_sections"])
+        _LIGHTWEIGHT_MODE_REQUIRED = list(
+            _CONTRACT_CONFIG["lightweight_mode"]["required_sections"]
         )
+        _TASK_REQUIRED_FIELDS = list(_CONTRACT_CONFIG["tasks"]["required_fields"])
+        _NA_REASON_FIELDS = frozenset(_CONTRACT_CONFIG["tasks"]["na_reason_fields"])
+        _config_loaded = True
+
+
+def _ensure_contract_config() -> None:
+    """Ensure contract configuration is loaded (lazy initialization)."""
+    if not _config_loaded:
+        _load_contract_config()
 
 
 def validate_required_files_exist(spec_dir: Path) -> ValidationResult:
@@ -108,6 +95,7 @@ def detect_design_mode(content: str) -> tuple[bool, list[str]]:
     from the same words appearing in prose.
     Required sections are loaded from contract_sections.toml (single source of truth).
     """
+    _ensure_contract_config()
     headings = {m.group(1).strip() for m in _HEADING_RE.finditer(content)}
     is_full_mode = "Executive Summary" in headings or "Requirements & Goals" in headings
 
@@ -172,6 +160,7 @@ def validate_design_structure(spec_dir: Path) -> ValidationResult:
 
 def validate_tasks_structure(spec_dir: Path) -> ValidationResult:
     """Validate tasks.md structure and required fields."""
+    _ensure_contract_config()
     errors: list[ValidationError] = []
     warnings: list[str] = []
     tasks_file = spec_dir / "tasks.md"

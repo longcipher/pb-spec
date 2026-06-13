@@ -7,13 +7,14 @@ from pathlib import Path
 
 from pb_spec.exceptions import FileReadError
 from pb_spec.git_utils import get_git_modified_files
+from pb_spec.validation.io import read_file_content, read_spec_file
 from pb_spec.validation.parser import (
     TASK_CHECKBOX_RE,
     UNCHECKED_TASK_CHECKBOX_RE,
+    TaskBlock,
     parse_task_blocks,
     task_display_name,
 )
-from pb_spec.validation.plan import read_file_content, read_spec_file
 from pb_spec.validation.result import (
     ErrorSeverity,
     ValidationError,
@@ -51,12 +52,13 @@ def validate_feature_scenarios(spec_dir: Path) -> list[ValidationError]:
     return errors
 
 
-def run_codebase_scan(mode: ValidationMode) -> ScanResult:
+def run_codebase_scan(mode: ValidationMode, root_dir: Path | str = ".") -> ScanResult:
     """Scan codebase for code quality issues.
 
     Args:
         mode: ValidationMode.TASK for subagent self-check (scoped to git-modified
             files), ValidationMode.BUILD for full scan.
+        root_dir: Root directory to scan. Defaults to current working directory.
 
     Returns:
         Pure ScanResult without side effects. Callers are responsible
@@ -64,10 +66,10 @@ def run_codebase_scan(mode: ValidationMode) -> ScanResult:
     """
     target_files: set[Path] | None = None
     if mode == ValidationMode.TASK:
-        target_files = get_git_modified_files()
+        target_files = get_git_modified_files(root_dir)
 
     scanner = CodeScanner(
-        root_dir=".",
+        root_dir=root_dir,
         check_skipped_tests=True,
         check_not_implemented=True,
         check_todos=True,
@@ -99,7 +101,7 @@ def _scan_result_to_errors(scan_result: ScanResult) -> list[ValidationError]:
     return errors
 
 
-def _validate_task_completion(task_blocks: list, content: str) -> list[ValidationError]:
+def _validate_task_completion(task_blocks: list[TaskBlock], content: str) -> list[ValidationError]:
     """Validate that all tasks are marked DONE with complete steps.
 
     Args:
@@ -176,7 +178,7 @@ def _validate_task_completion(task_blocks: list, content: str) -> list[Validatio
     return errors
 
 
-def _validate_task_completion_warnings(task_blocks: list) -> list[str]:
+def _validate_task_completion_warnings(task_blocks: list[TaskBlock]) -> list[str]:
     """Collect warnings for non-DONE tasks (SKIPPED, OBSOLETE).
 
     Args:
@@ -193,9 +195,9 @@ def _validate_task_completion_warnings(task_blocks: list) -> list[str]:
     return warnings
 
 
-def _validate_codebase_scan() -> list[ValidationError]:
+def _validate_codebase_scan(root_dir: Path | str = ".") -> list[ValidationError]:
     """Run codebase scan and return errors."""
-    scan_result = run_codebase_scan(mode=ValidationMode.BUILD)
+    scan_result = run_codebase_scan(mode=ValidationMode.BUILD, root_dir=root_dir)
     if not scan_result.has_issues:
         return []
 
@@ -231,7 +233,6 @@ def validate_build(spec_dir: Path) -> ValidationResult:
             ],
         )
 
-    tasks_file = spec_dir / "tasks.md"
     content, error_result = read_spec_file(tasks_file)
     if error_result is not None:
         return error_result
@@ -250,19 +251,27 @@ def validate_build(spec_dir: Path) -> ValidationResult:
     task_blocks = parse_task_blocks(content)
     warnings.extend(_validate_task_completion_warnings(task_blocks))
     errors.extend(_validate_task_completion(task_blocks, content))
-    errors.extend(_validate_codebase_scan())
+
+    # Determine project root: spec_dir is typically specs/xxx, so root is two levels up
+    project_root = spec_dir.parent.parent if spec_dir.parent.name == "specs" else spec_dir.parent
+    errors.extend(_validate_codebase_scan(root_dir=project_root))
+
     errors.extend(validate_feature_scenarios(spec_dir))
 
     return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings)
 
 
-def validate_task() -> ValidationResult:
+def validate_task(root_dir: Path | str = ".") -> ValidationResult:
     """Subagent self-check before signaling READY_FOR_EVAL.
 
-    Returns a pure ValidationResult without side effects.
-    Callers are responsible for presenting the results.
+    Args:
+        root_dir: Root directory to scan. Defaults to current working directory.
+
+    Returns:
+        A pure ValidationResult without side effects.
+        Callers are responsible for presenting the results.
     """
-    scan_result = run_codebase_scan(mode=ValidationMode.TASK)
+    scan_result = run_codebase_scan(mode=ValidationMode.TASK, root_dir=root_dir)
     if not scan_result.has_issues:
         return ValidationResult(is_valid=True)
 

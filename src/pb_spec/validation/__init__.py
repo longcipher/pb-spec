@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pb_spec.validation.build import validate_build, validate_task
+from pb_spec.validation.io import read_file_content, read_spec_file
 from pb_spec.validation.parser import (
     ALLOWED_LOOP_TYPES,
     ALLOWED_TASK_STATUSES,
@@ -21,11 +22,7 @@ from pb_spec.validation.parser import (
     validate_contract_blocks,
 )
 from pb_spec.validation.plan import (
-    _CONTRACT_CONFIG,
-    _FULL_MODE_REQUIRED,
-    _LIGHTWEIGHT_MODE_REQUIRED,
-    _NA_REASON_FIELDS,
-    _TASK_REQUIRED_FIELDS,
+    _load_contract_config,
     validate_plan,
 )
 from pb_spec.validation.result import (
@@ -54,12 +51,9 @@ __all__ = [
     "ValidationError",
     "ValidationMode",
     "ValidationResult",
-    "_CONTRACT_CONFIG",
-    "_FULL_MODE_REQUIRED",
-    "_LIGHTWEIGHT_MODE_REQUIRED",
-    "_NA_REASON_FIELDS",
-    "_TASK_REQUIRED_FIELDS",
     "make_validation_error",
+    "read_file_content",
+    "read_spec_file",
     "validate_build",
     "validate_plan",
     "validate_task",
@@ -70,4 +64,5 @@ __all__ = [
     "required_sections_for_contract_block",
     "task_display_name",
     "validate_contract_blocks",
+    "_load_contract_config",
 ]

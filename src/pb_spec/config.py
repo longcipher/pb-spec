@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -31,24 +32,29 @@ class TimeoutConfig:
 
 
 _timeout_config: TimeoutConfig | None = None
+_config_lock = threading.Lock()
 
 
 def get_timeout_config() -> TimeoutConfig:
     """Get timeout configuration from environment variables with defaults.
 
-    Cached after first call. Call _reset_timeout_config_cache() to refresh.
+    Cached after first call with thread-safe double-checked locking.
+    Call _reset_timeout_config_cache() to refresh.
     """
     global _timeout_config
     if _timeout_config is None:
-        _timeout_config = TimeoutConfig(
-            git_ls_files=_parse_int_env("PB_SPEC_GIT_TIMEOUT", 60),
-            rumdl_check=_parse_int_env("PB_SPEC_RUMDL_CHECK_TIMEOUT", 10),
-            rumdl_format=_parse_int_env("PB_SPEC_RUMDL_FORMAT_TIMEOUT", 30),
-        )
+        with _config_lock:
+            if _timeout_config is None:
+                _timeout_config = TimeoutConfig(
+                    git_ls_files=_parse_int_env("PB_SPEC_GIT_TIMEOUT", 60),
+                    rumdl_check=_parse_int_env("PB_SPEC_RUMDL_CHECK_TIMEOUT", 10),
+                    rumdl_format=_parse_int_env("PB_SPEC_RUMDL_FORMAT_TIMEOUT", 30),
+                )
     return _timeout_config
 
 
 def _reset_timeout_config_cache() -> None:
     """Reset the cached config. For testing only."""
     global _timeout_config
-    _timeout_config = None
+    with _config_lock:
+        _timeout_config = None

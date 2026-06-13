@@ -285,7 +285,7 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`. Only include sec
 
 > Map critical business flows from Given-When-Then to Mermaid state diagrams. Gherkin is essentially state transitions: `Given` (initial state) → `When` (triggering event) → `Then` (result state).
 
-```mermaid
+```
 stateDiagram-v2
     [*] --> InitialState : Given [precondition]
     InitialState --> ActionState : When [action/event]
