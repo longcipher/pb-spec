@@ -6,7 +6,7 @@ import logging
 import subprocess
 from pathlib import Path
 
-from pb_spec.config import get_timeout_config
+from pb_spec.config import GIT_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +24,13 @@ def get_git_modified_files(root_dir: Path | str = ".") -> set[Path]:
     files: set[Path] = set()
 
     try:
-        timeouts = get_timeout_config()
         result = subprocess.run(
             ["git", "-c", "core.quotePath=false", "status", "--porcelain", "-uall"],
             capture_output=True,
             text=True,
             cwd=root,
             encoding="utf-8",
-            timeout=timeouts.git_ls_files,
+            timeout=GIT_TIMEOUT,
         )
         for line in result.stdout.splitlines():
             if len(line) < 4:

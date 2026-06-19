@@ -60,7 +60,7 @@ When agents return:
 
 - Read each summary
 - Verify fixes don't conflict
-- Run full test suite
+- Run full test suite: `uv run pytest`
 - Integrate all changes
 
 ## Agent Prompt Structure
@@ -72,11 +72,11 @@ Good agent prompts are:
 3. **Specific about output** — What should the agent return?
 
 ```markdown
-Fix the 3 failing tests in src/agents/agent-tool-abort.test.ts:
+Fix the 3 failing tests in tests/test_abort.py:
 
-1. "should abort tool with partial output capture" - expects 'interrupted at' in message
-2. "should handle mixed completed and aborted tools" - fast tool aborted instead of completed
-3. "should properly track pendingToolCount" - expects 3 results but gets 0
+1. "test_abort_tool_with_partial_output" - expects 'interrupted at' in message
+2. "test_mixed_completed_and_aborted" - fast tool aborted instead of completed
+3. "test_pending_count_tracking" - expects 3 results but gets 0
 
 Your task:
 
@@ -93,7 +93,7 @@ Return: Summary of what you found and what you fixed.
 ## Common Mistakes
 
 **❌ Too broad:** "Fix all the tests" — agent gets lost
-**✅ Specific:** "Fix agent-tool-abort.test.ts" — focused scope
+**✅ Specific:** "Fix test_abort.py" — focused scope
 
 **❌ No context:** "Fix the race condition" — agent doesn't know where
 **✅ Context:** Paste the error messages and test names
@@ -110,6 +110,15 @@ Return: Summary of what you found and what you fixed.
 - **Need full context:** Understanding requires seeing entire system
 - **Exploratory debugging:** You don't know what's broken yet
 - **Shared state:** Agents would interfere (editing same files, using same resources)
+
+## Verification
+
+After all agents complete and you integrate changes:
+
+1. Run full test suite
+2. Check for merge conflicts
+3. Verify no regressions introduced
+4. Spot-check key files for correctness
 
 ## Integration with pb-spec
 

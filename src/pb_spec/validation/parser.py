@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from pathlib import Path
 
 TASK_HEADING_RE = re.compile(r"^(#{2,3})\s+Task\s+(\d+\.\d+):\s*(.*)$", re.MULTILINE)
 TASK_CHECKBOX_RE = re.compile(r"^[ \t]*- \[[ xX]\].*", re.MULTILINE)
@@ -26,14 +25,6 @@ ALLOWED_TASK_STATUSES = frozenset(
         "🔄 DCR",
         "⛔ OBSOLETE",
         "TODO",
-    }
-)
-NA_REASON_FIELDS = frozenset(
-    {
-        "Scenario Coverage:",
-        "BDD Verification:",
-        "Advanced Test Verification:",
-        "Runtime Verification:",
     }
 )
 BUILD_BLOCKED_REQUIRED_SECTIONS = (
@@ -58,7 +49,11 @@ DCR_REQUIRED_SECTIONS = (
 )
 CONTRACT_SECTION_NAMES = frozenset(BUILD_BLOCKED_REQUIRED_SECTIONS + DCR_REQUIRED_SECTIONS)
 
-_DEFAULT_KNOWN_TASK_FIELDS = frozenset(
+_CONTRACT_REQUIRED_SECTIONS: dict[str, tuple[str, ...]] = {
+    "🛑 Build Blocked": BUILD_BLOCKED_REQUIRED_SECTIONS,
+}
+
+KNOWN_TASK_FIELDS = frozenset(
     {
         "Context:",
         "Verification:",
@@ -76,44 +71,6 @@ _DEFAULT_KNOWN_TASK_FIELDS = frozenset(
         "Requirement Coverage:",
     }
 )
-
-_KNOWN_TASK_FIELDS_FILE = Path(__file__).parent / "known_task_fields.txt"
-_known_task_fields_cache: frozenset[str] | None = None
-
-
-def _load_known_task_fields() -> frozenset[str]:
-    """Load known task fields from file or return defaults.
-
-    Supports external file at validation/known_task_fields.txt for easier
-    maintenance without code changes.
-    """
-    global _known_task_fields_cache
-    if _known_task_fields_cache is not None:
-        return _known_task_fields_cache
-
-    if _KNOWN_TASK_FIELDS_FILE.exists():
-        fields: set[str] = set()
-        for line in _KNOWN_TASK_FIELDS_FILE.read_text(encoding="utf-8").splitlines():
-            stripped = line.strip()
-            if stripped and not stripped.startswith("#"):
-                if not stripped.endswith(":"):
-                    stripped += ":"
-                fields.add(stripped)
-        if fields:
-            _known_task_fields_cache = frozenset(fields)
-            return _known_task_fields_cache
-
-    _known_task_fields_cache = _DEFAULT_KNOWN_TASK_FIELDS
-    return _known_task_fields_cache
-
-
-def _reset_known_task_fields_cache() -> None:
-    """Reset the cached fields. For testing only."""
-    global _known_task_fields_cache
-    _known_task_fields_cache = None
-
-
-KNOWN_TASK_FIELDS = _load_known_task_fields()
 
 
 @dataclass(frozen=True)
@@ -136,13 +93,6 @@ class ContractBlock:
     sections: dict[str, str]
 
 
-def required_sections_for_contract_block(kind: str) -> tuple[str, ...]:
-    """Return required section names for a workflow contract block kind."""
-    if kind == "🛑 Build Blocked":
-        return BUILD_BLOCKED_REQUIRED_SECTIONS
-    return DCR_REQUIRED_SECTIONS
-
-
 def _is_continuation_line(line: str) -> bool:
     """Check if a line is a continuation of a multi-line field value."""
     stripped = line.strip()
@@ -154,11 +104,7 @@ def _is_continuation_line(line: str) -> bool:
 
 
 def parse_task_blocks(content: str) -> list[TaskBlock]:
-    """Parse markdown content and extract task blocks.
-
-    Handles multi-line field values by continuing to accumulate content
-    until the next known field, checkbox, or task heading is encountered.
-    """
+    """Parse markdown content and extract task blocks."""
     lines = content.split("\n")
     task_blocks: list[TaskBlock] = []
 
@@ -208,7 +154,7 @@ def parse_task_blocks(content: str) -> list[TaskBlock]:
         field_match = FIELD_RE.match(line)
         if field_match:
             candidate_name = field_match.group(1) + ":"
-            if candidate_name in _load_known_task_fields():
+            if candidate_name in KNOWN_TASK_FIELDS:
                 _flush_field()
                 field_value = field_match.group(2).strip()
                 current_field = candidate_name
@@ -237,7 +183,6 @@ def is_bare_na(value: str) -> bool:
     stripped = value.strip()
     if not stripped.lower().startswith("n/a"):
         return False
-
     remainder = _NA_TRAILING_RE.sub("", stripped[3:])
     return not remainder.strip()
 
@@ -300,10 +245,9 @@ def validate_contract_blocks(content: str) -> list[str]:
     errors = []
 
     for block in parse_contract_blocks(content):
+        required = _CONTRACT_REQUIRED_SECTIONS.get(block.kind, DCR_REQUIRED_SECTIONS)
         missing_sections = [
-            section
-            for section in required_sections_for_contract_block(block.kind)
-            if not block.sections.get(section, "").strip()
+            section for section in required if not block.sections.get(section, "").strip()
         ]
         if missing_sections:
             errors.append(

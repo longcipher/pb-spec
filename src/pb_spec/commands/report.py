@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pb_spec.output import print_error, print_info, print_success, print_warning
-from pb_spec.validation import ErrorSeverity, ValidationError, ValidationResult
+from pb_spec.validation.result import ErrorSeverity, ValidationError, ValidationResult
 from pb_spec.validation.rumdl import FormatResult
 
 _SEVERITY_PREFIX: dict[ErrorSeverity, str] = {
@@ -12,6 +12,17 @@ _SEVERITY_PREFIX: dict[ErrorSeverity, str] = {
     ErrorSeverity.MEDIUM: "[MEDIUM]",
     ErrorSeverity.LOW: "[LOW]",
 }
+
+
+def _format_location(error: ValidationError) -> str:
+    if not error.file_path:
+        return ""
+    parts = [error.file_path]
+    if error.line_number:
+        parts.append(str(error.line_number))
+    if error.field_name:
+        parts.append(f"field '{error.field_name}'")
+    return f" ({':'.join(parts[:2])}{' ' + ' '.join(parts[2:]) if len(parts) > 2 else ''})"
 
 
 def report_validation_result(result: ValidationResult, label: str) -> None:
@@ -26,15 +37,7 @@ def report_validation_result(result: ValidationResult, label: str) -> None:
 def print_validation_error(error: ValidationError) -> None:
     """Print a single validation error with severity prefix."""
     prefix = _SEVERITY_PREFIX.get(error.severity, "")
-    location = ""
-    if error.file_path:
-        location = f" ({error.file_path}"
-        if error.line_number:
-            location += f":{error.line_number}"
-        if error.field_name:
-            location += f" field '{error.field_name}'"
-        location += ")"
-    print_error(f"{prefix} {error.message}{location}")
+    print_error(f"{prefix} {error.message}{_format_location(error)}")
 
 
 def report_format_result(result: FormatResult) -> None:
@@ -67,13 +70,7 @@ def report_scan_result(result: ValidationResult) -> bool:
         print_error(f"Found {count} {severity.value} issue(s):")
         severity_errors = [e for e in result.errors if e.severity == severity]
         for error in severity_errors[:10]:
-            location = ""
-            if error.file_path:
-                location = f" ({error.file_path}"
-                if error.line_number:
-                    location += f":{error.line_number}"
-                location += ")"
-            print_info(f"  {error.message}{location}")
+            print_info(f"  {error.message}{_format_location(error)}")
         if len(severity_errors) > 10:
             print_info(f"  ... and {len(severity_errors) - 10} more")
         passed = False

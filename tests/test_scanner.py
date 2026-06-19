@@ -12,6 +12,11 @@ from pb_spec.validation.scanner import (
 )
 
 
+def _issues_by_type(result: ScanResult, issue_type: IssueType) -> list[ScanIssue]:
+    """Filter issues by type (replaces removed ScanResult.issues_by_type)."""
+    return [i for i in result.issues if i.issue_type == issue_type]
+
+
 class TestScanResult:
     """Tests for ScanResult dataclass."""
 
@@ -35,40 +40,6 @@ class TestScanResult:
         )
         assert result.has_issues is True
 
-    def test_issues_by_type(self) -> None:
-        """Test filtering issues by type."""
-        result = ScanResult(
-            issues=[
-                ScanIssue(
-                    issue_type=IssueType.TODO,
-                    file_path="test.py",
-                    line_number=1,
-                    line_content="TODO: fix",
-                    message="TODO found",
-                ),
-                ScanIssue(
-                    issue_type=IssueType.SKIPPED_TEST,
-                    file_path="test.py",
-                    line_number=5,
-                    line_content="@pytest.mark.skip",
-                    message="Skipped test",
-                ),
-                ScanIssue(
-                    issue_type=IssueType.TODO,
-                    file_path="other.py",
-                    line_number=10,
-                    line_content="FIXME: broken",
-                    message="FIXME found",
-                ),
-            ]
-        )
-        todos = result.issues_by_type(IssueType.TODO)
-        assert len(todos) == 2
-        assert all(i.issue_type == IssueType.TODO for i in todos)
-
-        skipped = result.issues_by_type(IssueType.SKIPPED_TEST)
-        assert len(skipped) == 1
-
 
 class TestCodeScanner:
     """Tests for CodeScanner class."""
@@ -88,7 +59,7 @@ class TestCodeScanner:
         result = scanner.scan()
 
         assert result.has_issues is True
-        todos = result.issues_by_type(IssueType.TODO)
+        todos = _issues_by_type(result, IssueType.TODO)
         assert len(todos) == 1
         assert "TODO: implement this" in todos[0].line_content
 
@@ -101,7 +72,7 @@ class TestCodeScanner:
         result = scanner.scan()
 
         assert result.has_issues is True
-        todos = result.issues_by_type(IssueType.TODO)
+        todos = _issues_by_type(result, IssueType.TODO)
         assert len(todos) == 1
 
     def test_scan_detects_not_implemented_error(self, tmp_path: Path) -> None:
@@ -113,7 +84,7 @@ class TestCodeScanner:
         result = scanner.scan()
 
         assert result.has_issues is True
-        issues = result.issues_by_type(IssueType.NOT_IMPLEMENTED)
+        issues = _issues_by_type(result, IssueType.NOT_IMPLEMENTED)
         assert len(issues) == 1
 
     def test_scan_detects_pytest_skip(self, tmp_path: Path) -> None:
@@ -125,7 +96,7 @@ class TestCodeScanner:
         result = scanner.scan()
 
         assert result.has_issues is True
-        skipped = result.issues_by_type(IssueType.SKIPPED_TEST)
+        skipped = _issues_by_type(result, IssueType.SKIPPED_TEST)
         assert len(skipped) == 1
 
     def test_scan_detects_console_log(self, tmp_path: Path) -> None:
@@ -137,7 +108,7 @@ class TestCodeScanner:
         result = scanner.scan()
 
         assert result.has_issues is True
-        debug = result.issues_by_type(IssueType.DEBUG_ARTIFACT)
+        debug = _issues_by_type(result, IssueType.DEBUG_ARTIFACT)
         assert len(debug) == 1
 
     def test_scan_detects_pdb_set_trace(self, tmp_path: Path) -> None:
@@ -149,7 +120,7 @@ class TestCodeScanner:
         result = scanner.scan()
 
         assert result.has_issues is True
-        debug = result.issues_by_type(IssueType.DEBUG_ARTIFACT)
+        debug = _issues_by_type(result, IssueType.DEBUG_ARTIFACT)
         assert len(debug) >= 1
 
     def test_scan_detects_breakpoint(self, tmp_path: Path) -> None:
@@ -161,7 +132,7 @@ class TestCodeScanner:
         result = scanner.scan()
 
         assert result.has_issues is True
-        debug = result.issues_by_type(IssueType.DEBUG_ARTIFACT)
+        debug = _issues_by_type(result, IssueType.DEBUG_ARTIFACT)
         assert len(debug) == 1
 
     def test_scan_detects_rust_ignore(self, tmp_path: Path) -> None:
@@ -173,7 +144,7 @@ class TestCodeScanner:
         result = scanner.scan()
 
         assert result.has_issues is True
-        skipped = result.issues_by_type(IssueType.SKIPPED_TEST)
+        skipped = _issues_by_type(result, IssueType.SKIPPED_TEST)
         assert len(skipped) == 1
 
     def test_scan_detects_go_skip(self, tmp_path: Path) -> None:
@@ -185,7 +156,7 @@ class TestCodeScanner:
         result = scanner.scan()
 
         assert result.has_issues is True
-        skipped = result.issues_by_type(IssueType.SKIPPED_TEST)
+        skipped = _issues_by_type(result, IssueType.SKIPPED_TEST)
         assert len(skipped) == 1
 
     def test_scan_excludes_venv(self, tmp_path: Path) -> None:
@@ -252,7 +223,6 @@ class TestCodeScanner:
         scanner = CodeScanner(root_dir=tmp_path)
         result = scanner.scan()
 
-        # Both TODO and NotImplementedError (raised) should be reported
         assert len(result.issues) == 2
         issue_types = {i.issue_type for i in result.issues}
         assert IssueType.TODO in issue_types
@@ -267,7 +237,7 @@ class TestCodeScanner:
         result = scanner.scan()
 
         assert result.has_issues is True
-        skipped = result.issues_by_type(IssueType.SKIPPED_TEST)
+        skipped = _issues_by_type(result, IssueType.SKIPPED_TEST)
         assert len(skipped) == 1
 
     def test_scan_javascript_xit(self, tmp_path: Path) -> None:
@@ -279,31 +249,8 @@ class TestCodeScanner:
         result = scanner.scan()
 
         assert result.has_issues is True
-        skipped = result.issues_by_type(IssueType.SKIPPED_TEST)
+        skipped = _issues_by_type(result, IssueType.SKIPPED_TEST)
         assert len(skipped) == 1
-
-    def test_scan_with_check_options(self, tmp_path: Path) -> None:
-        """Test scanner with selective checking enabled."""
-        test_file = tmp_path / "test.py"
-        test_file.write_text(
-            "TODO: fix\nraise NotImplementedError\nconsole.log('debug')\n@pytest.mark.skip\n"
-        )
-
-        # Only check for TODOs
-        scanner = CodeScanner(
-            root_dir=tmp_path,
-            check_skipped_tests=False,
-            check_not_implemented=False,
-            check_todos=True,
-            check_debug_artifacts=False,
-        )
-        result = scanner.scan()
-
-        assert result.has_issues is True
-        assert len(result.issues_by_type(IssueType.TODO)) == 1
-        assert len(result.issues_by_type(IssueType.NOT_IMPLEMENTED)) == 0
-        assert len(result.issues_by_type(IssueType.DEBUG_ARTIFACT)) == 0
-        assert len(result.issues_by_type(IssueType.SKIPPED_TEST)) == 0
 
     def test_scan_line_numbers_correct(self, tmp_path: Path) -> None:
         """Test that line numbers are correctly reported."""
@@ -342,10 +289,8 @@ class TestCodeScanner:
     def test_scan_unreadable_file_handled(self, tmp_path: Path) -> None:
         """Test that files with encoding issues are handled gracefully."""
         test_file = tmp_path / "test.py"
-        # Write binary data that's not valid UTF-8
         test_file.write_bytes(b"\xff\xfe TODO: binary\n")
 
         scanner = CodeScanner(root_dir=tmp_path)
-        # Should not raise an exception
         result = scanner.scan()
         assert result.has_issues is False

@@ -14,8 +14,8 @@ from pb_spec.commands.report import (
 )
 from pb_spec.exceptions import SpecNotFoundError
 from pb_spec.output import print_error, print_success
-from pb_spec.validation import validate_build, validate_plan, validate_task
-from pb_spec.validation.plan import _load_contract_config
+from pb_spec.validation.build import validate_build, validate_task
+from pb_spec.validation.plan import load_contract_config, validate_plan
 from pb_spec.validation.rumdl import run_rumdl_format
 
 
@@ -66,7 +66,7 @@ def validate_cmd(
     Use --config to load project-specific validation rules.
     """
     if config_path is not None:
-        _load_contract_config(config_path)
+        load_contract_config(config_path)
     if mode is None:
         print_error("Must specify one of --plan, --build, or --task")
         click.echo("Run 'pb-spec validate --help' for usage information.")

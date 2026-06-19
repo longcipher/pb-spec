@@ -29,6 +29,7 @@ WHEN receiving code review feedback:
 - "You're absolutely right!" (performative agreement)
 - "Great point!" / "Excellent feedback!" (social padding)
 - "Let me implement that now" (before verification)
+- "Thanks for catching that!" / ANY gratitude expression
 
 **INSTEAD:**
 
@@ -36,6 +37,8 @@ WHEN receiving code review feedback:
 - Ask clarifying questions
 - Push back with technical reasoning if wrong
 - Just start working (actions > words)
+
+**Why no thanks:** Actions speak. Just fix it. The code itself shows you heard the feedback.
 
 ## Handling Unclear Feedback
 
@@ -50,16 +53,16 @@ WHY: Items may be related. Partial understanding = wrong implementation.
 **Example:**
 
 ```text
-Reviewer: "Fix 1-6"
+User: "Fix 1-6"
 You understand 1,2,3,6. Unclear on 4,5.
 
-❌ WRONG: Implement 1,2,3,6 now, ask about 4,5 later
-✅ RIGHT: "I understand items 1,2,3,6. Need clarification on 4 and 5 before proceeding."
+WRONG: Implement 1,2,3,6 now, ask about 4,5 later
+RIGHT: "I understand items 1,2,3,6. Need clarification on 4 and 5 before proceeding."
 ```
 
 ## Source-Specific Handling
 
-### From the user (human partner)
+### From the user
 
 - **Trusted** - implement after understanding
 - **Still ask** if scope unclear
@@ -81,6 +84,9 @@ IF suggestion seems wrong:
 
 IF can't easily verify:
   Say so: "I can't verify this without [X]. Should I [investigate/ask/proceed]?"
+
+IF conflicts with user's prior decisions:
+  Stop and discuss with user first
 ```
 
 ## YAGNI Check for "Professional" Features
@@ -124,22 +130,65 @@ Push back when:
 - Reference working tests/code
 - Involve the user if architectural
 
+## Gracefully Correcting Your Pushback
+
+If you pushed back and were wrong:
+
+```text
+"Verified this and you're correct. My initial understanding was wrong because [reason]. Fixing."
+
+NOT: Long apology
+NOT: Defending why you pushed back
+NOT: Over-explaining
+```
+
+State the correction factually and move on.
+
 ## Acknowledging Correct Feedback
 
 When feedback IS correct:
 
 ```text
-✅ "Fixed. [Brief description of what changed]"
-✅ "Good catch - [specific issue]. Fixed in [location]."
-✅ [Just fix it and show in the code]
+"Fixed. [Brief description of what changed]"
+"Good catch - [specific issue]. Fixed in [location]."
+[Just fix it and show in the code]
 
-❌ "You're absolutely right!"
-❌ "Great point!"
-❌ "Thanks for catching that!"
-❌ ANY gratitude expression
+NOT: "You're absolutely right!"
+NOT: "Great point!"
+NOT: "Thanks for catching that!"
 ```
 
-**Why no thanks:** Actions speak. Just fix it. The code itself shows you heard the feedback.
+## Common Mistakes
+
+| Mistake | Fix |
+|---------|-----|
+| Performative agreement | State requirement or just act |
+| Blind implementation | Verify against codebase first |
+| Batch without testing | One at a time, test each |
+| Assuming reviewer is right | Check if breaks things |
+| Avoiding pushback | Technical correctness > comfort |
+| Partial implementation | Clarify all items first |
+| Can't verify, proceed anyway | State limitation, ask for direction |
+
+## Real Examples
+
+**Performative Agreement (Bad):**
+```text
+Reviewer: "Remove legacy code"
+"You're absolutely right! Let me remove that..."
+```
+
+**Technical Verification (Good):**
+```text
+Reviewer: "Remove legacy code"
+"Checking... build target is 10.15+, this API needs 13+. Need legacy for backward compat."
+```
+
+**YAGNI (Good):**
+```text
+Reviewer: "Implement proper metrics tracking with database, date filters, CSV export"
+"Grepped codebase - nothing calls this endpoint. Remove it (YAGNI)? Or is there usage I'm missing?"
+```
 
 ## Integration with pb-spec
 

@@ -314,6 +314,17 @@ Write ONE `design.md` that consolidates all findings. Structure:
 **Lightweight mode** (< 50 words equivalent per finding): compact design with essential sections only.
 **Full mode** (≥ 50 words equivalent): complete design with all sections including Behavior Traceability Matrix and Mermaid diagrams.
 
+**Design Standards:** All generated `design.md` artifacts must conform to:
+
+| Standard | Purpose | pb-spec Application |
+|---|---|---|
+| **EARS Notation** | Eliminate ambiguous requirements with 5 sentence patterns | Every requirement uses EARS syntax with `[REQ-XX]` IDs |
+| **C4 Model + Mermaid** | Architecture topology in parseable text | Architecture sections use `` ```mermaid `` blocks |
+| **DBML / Prisma Schema** | Structured data models with strict types | Data model sections use DBML or Prisma Schema DSL |
+| **MADR (ADR Records)** | Architecture decision records | Every AD has `[Context]`, `[Decision]`, `[Consequences]` |
+| **RFC 2119 Constraints** | Binding behavioral constraints for agents | `§Architectural Constraints` with MUST/SHOULD/MAY |
+| **Behavior Traceability Matrix** | Every component maps to a Feature scenario | No scenario = remove from design |
+
 #### Step 3: Task Breakdown (`tasks.md`) — All Findings Consolidated
 
 Write ONE `tasks.md` with tasks from ALL findings numbered sequentially. **Tasks are driven BY scenarios:**

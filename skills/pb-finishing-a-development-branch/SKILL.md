@@ -16,7 +16,6 @@ Guide completion of development work by presenting clear options and handling ch
 **Before presenting options, verify tests pass:**
 
 ```bash
-# Run project's test suite
 uv run pytest
 uv run ruff check
 uv run ty check
@@ -94,6 +93,33 @@ If confirmed:
 git checkout -- .
 git clean -fd
 ```
+
+## Red Flags
+
+**Never:**
+
+- Proceed to Step 2 with failing tests
+- Commit without running verification
+- Skip the confirmation step for discard
+- Force-push without explicit user consent
+- Create PR with incomplete test plan
+
+**Always:**
+
+- Run full verification before presenting options
+- List all files that will be committed
+- Show the diff before committing
+- Confirm destructive actions (discard, force-push)
+
+## Common Mistakes
+
+| Mistake | Fix |
+|---------|-----|
+| Committing with lint warnings | Fix warnings first, or acknowledge explicitly |
+| Skipping type check | `uv run ty check` is mandatory |
+| Vague commit messages | Use conventional commits: `feat:`, `fix:`, etc. |
+| PR without test plan | Include verification steps in PR body |
+| Discarding without confirming | Always require explicit confirmation |
 
 ## Quick Reference
 

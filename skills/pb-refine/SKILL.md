@@ -105,6 +105,7 @@ If feedback changes user-visible behavior, update the relevant files under `spec
 
 Apply design changes to `specs/<spec-dir>/design.md`:
 
+- **Preserve Design Standards:** All design artifacts must conform to: EARS Notation (requirements with `[REQ-XX]` IDs), C4 Model + Mermaid (architecture), DBML / Prisma Schema (data models), MADR (architecture decisions with `[Context]`/`[Decision]`/`[Consequences]`), RFC 2119 Constraints (MUST/SHOULD/MAY), and Behavior Traceability Matrix (component → scenario mapping).
 - **Use precise edits.** Modify only the affected sections. Do not rewrite the entire file.
 - **Update the metadata table:** Change `Status` to `Revised` and update the date.
 - **Add a Revision History section** at the bottom (if not already present):

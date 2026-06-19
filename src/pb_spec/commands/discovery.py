@@ -7,6 +7,8 @@ from pathlib import Path
 
 from pb_spec.exceptions import SpecNotFoundError
 
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}")
+
 
 def get_latest_spec_dir(specs_dir: Path | None = None) -> Path:
     """Get the latest feature spec directory from specs/."""
@@ -20,10 +22,8 @@ def get_latest_spec_dir(specs_dir: Path | None = None) -> Path:
     if not spec_dirs:
         raise SpecNotFoundError("No feature specs found in 'specs/'.")
 
-    date_pattern = re.compile(r"^\d{4}-\d{2}-\d{2}")
-
     def sort_key(d: Path) -> tuple[int, str]:
-        if date_pattern.match(d.name):
+        if _DATE_RE.match(d.name):
             return (1, d.name)
         return (0, d.name)
 

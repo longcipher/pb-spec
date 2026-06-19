@@ -9,6 +9,8 @@ Claiming work is complete without verification is dishonesty, not efficiency.
 
 **Core principle:** Evidence before claims, always.
 
+**Violating the letter of this rule is violating the spirit of this rule.**
+
 ## The Iron Law
 
 ```text
@@ -42,6 +44,7 @@ Skip any step = lying, not verifying
 | Build succeeds | Build command: exit 0 | Linter passing, logs look good |
 | Bug fixed | Test original symptom: passes | Code changed, assumed fixed |
 | Regression test works | Red-green cycle verified | Test passes once |
+| Agent completed | VCS diff shows changes | Agent reports "success" |
 | Requirements met | Line-by-line checklist | Tests passing |
 
 ## Red Flags - STOP
@@ -66,36 +69,62 @@ Skip any step = lying, not verifying
 | "Agent said success" | Verify independently |
 | "I'm tired" | Exhaustion ≠ excuse |
 | "Partial check is enough" | Partial proves nothing |
+| "Different words so rule doesn't apply" | Spirit over letter |
 
 ## Key Patterns
 
 **Tests:**
 
 ```text
-✅ [Run test command] [See: 34/34 pass] "All tests pass"
-❌ "Should pass now" / "Looks correct"
+[Run test command] [See: 34/34 pass] "All tests pass"
+"Should pass now" / "Looks correct" = WRONG
 ```
 
 **Regression tests (TDD Red-Green):**
 
 ```text
-✅ Write → Run (pass) → Revert fix → Run (MUST FAIL) → Restore → Run (pass)
-❌ "I've written a regression test" (without red-green verification)
+Write → Run (pass) → Revert fix → Run (MUST FAIL) → Restore → Run (pass)
+"I've written a regression test" (without red-green verification) = WRONG
 ```
 
 **Build:**
 
 ```text
-✅ [Run build] [See: exit 0] "Build passes"
-❌ "Linter passed" (linter doesn't check compilation)
+[Run build] [See: exit 0] "Build passes"
+"Linter passed" (linter doesn't check compilation) = WRONG
 ```
 
 **Requirements:**
 
 ```text
-✅ Re-read plan → Create checklist → Verify each → Report gaps or completion
-❌ "Tests pass, phase complete"
+Re-read plan → Create checklist → Verify each → Report gaps or completion
+"Tests pass, phase complete" = WRONG
 ```
+
+**Agent delegation:**
+
+```text
+Agent reports success → Check VCS diff → Verify changes → Report actual state
+Trust agent report = WRONG
+```
+
+## When To Apply
+
+**ALWAYS before:**
+
+- ANY variation of success/completion claims
+- ANY expression of satisfaction
+- ANY positive statement about work state
+- Committing, PR creation, task completion
+- Moving to next task
+- Delegating to agents
+
+**Rule applies to:**
+
+- Exact phrases
+- Paraphrases and synonyms
+- Implications of success
+- ANY communication suggesting completion/correctness
 
 ## Integration with pb-spec
 

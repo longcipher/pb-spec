@@ -6,7 +6,9 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from pb_spec.config import get_timeout_config
+from pb_spec.config import RUMDL_CHECK_TIMEOUT, RUMDL_FORMAT_TIMEOUT
+
+MAX_RUMDL_TIMEOUT = 120
 
 
 @dataclass(frozen=True)
@@ -22,16 +24,12 @@ class FormatResult:
 def is_rumdl_available() -> bool:
     """Check if rumdl is available and working."""
     try:
-        timeouts = get_timeout_config()
         subprocess.run(
-            ["rumdl", "--version"], capture_output=True, check=True, timeout=timeouts.rumdl_check
+            ["rumdl", "--version"], capture_output=True, check=True, timeout=RUMDL_CHECK_TIMEOUT
         )
         return True
     except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
         return False
-
-
-MAX_RUMDL_TIMEOUT = 120
 
 
 def run_rumdl_format(spec_dir: Path) -> FormatResult:
@@ -57,13 +55,12 @@ def run_rumdl_format(spec_dir: Path) -> FormatResult:
         )
 
     try:
-        timeouts = get_timeout_config()
         file_args = [str(f) for f in md_files]
         subprocess.run(
             ["rumdl", "fmt", *file_args],
             capture_output=True,
             text=True,
-            timeout=min(timeouts.rumdl_format * len(md_files), MAX_RUMDL_TIMEOUT),
+            timeout=min(RUMDL_FORMAT_TIMEOUT * len(md_files), MAX_RUMDL_TIMEOUT),
             check=True,
         )
         return FormatResult(
