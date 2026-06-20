@@ -30,6 +30,19 @@ Use for ANY technical issue:
 - Build failures
 - Integration issues
 
+```dot
+digraph when_to_use {
+    "Something broken?" [shape=diamond];
+    "Know root cause?" [shape=diamond];
+    "Fix directly" [shape=box];
+    "Systematic debugging" [shape=box style=filled fillcolor=lightgreen];
+
+    "Something broken?" -> "Know root cause?" [label="yes"];
+    "Know root cause?" -> "Fix directly" [label="yes - verified"];
+    "Know root cause?" -> "Systematic debugging" [label="no / unsure"];
+}
+```
+
 **Use this ESPECIALLY when:**
 
 - Under time pressure (emergencies make guessing tempting)

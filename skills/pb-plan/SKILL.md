@@ -338,6 +338,15 @@ Write a **scenario-driven task list** to `specs/<spec-dir>/tasks.md`. Tasks are 
 | **Status** | Planning |
 | **Mode** | Lightweight |
 
+## Task Right-Sizing
+
+A task is the smallest unit that carries its own test cycle and is worth a
+fresh reviewer's gate. When drawing task boundaries: fold setup,
+configuration, scaffolding, and documentation steps into the task whose
+deliverable needs them; split only where a reviewer could meaningfully
+reject one task while approving its neighbor. Each task ends with an
+independently testable deliverable.
+
 ## Execution Strategy
 
 > **Outside-In TDD:** Each task implements ONE scenario. Follow RED → GREEN → REFACTOR strictly.
@@ -374,6 +383,9 @@ Write a **scenario-driven task list** to `specs/<spec-dir>/tasks.md`. Tasks are 
 - **Complexity:** `Low` | `Medium` | `High`
 - **Required Skills:** [e.g., Python, SQLAlchemy, JWT]
 - **EvalRule:** `[BDD command] --tags=@[tag]` must pass; `uv run pytest` must pass
+- **Interfaces:**
+  - **Consumes:** [what this task uses from earlier tasks — exact signatures]
+  - **Produces:** [what later tasks rely on — exact function names, parameter and return types. A task's implementer sees only their own task; this block is how they learn the names and types neighboring tasks use.]
 - **Loop Type:** `BDD+TDD`
 - **Behavioral Contract:** `[Describe behavior]`
 - **Status:** 🔴 TODO

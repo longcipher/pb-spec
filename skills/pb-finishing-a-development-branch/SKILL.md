@@ -60,8 +60,15 @@ git commit -m "feat: <description>"
 #### Option 2: Push and Create PR
 
 ```bash
+# Detect remote platform
+REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+
+# Push branch
 git push -u origin <branch>
-gh pr create --title "<title>" --body "$(cat <<'EOF'
+
+# Create PR/MR based on platform
+if echo "$REMOTE_URL" | grep -q "github.com"; then
+  gh pr create --title "<title>" --body "$(cat <<'EOF'
 ## Summary
 <2-3 bullets of what changed>
 
@@ -69,6 +76,18 @@ gh pr create --title "<title>" --body "$(cat <<'EOF'
 - [ ] <verification steps>
 EOF
 )"
+elif echo "$REMOTE_URL" | grep -q "gitlab"; then
+  glab mr create --title "<title>" --description "$(cat <<'EOF'
+## Summary
+<2-3 bullets of what changed>
+
+## Test Plan
+- [ ] <verification steps>
+EOF
+)"
+else
+  echo "Pushed branch. Create a merge request manually on your platform."
+fi
 ```
 
 #### Option 3: Keep As-Is

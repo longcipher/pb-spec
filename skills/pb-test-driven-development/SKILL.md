@@ -45,6 +45,26 @@ Thinking "skip TDD just this once"? Stop. That's rationalization.
 
 ## Red-Green-Refactor
 
+```dot
+digraph tdd_cycle {
+    rankdir=TB;
+    "RED: Write failing test" [shape=box style=filled fillcolor="#ffcccc"];
+    "Verify RED: test fails?" [shape=diamond];
+    "GREEN: Minimal code" [shape=box style=filled fillcolor="#ccffcc"];
+    "Verify GREEN: test passes?" [shape=diamond];
+    "REFACTOR: Clean up" [shape=box style=filled fillcolor="#ccccff"];
+    "Next behavior" [shape=box];
+
+    "RED: Write failing test" -> "Verify RED: test fails?";
+    "Verify RED: test fails?" -> "GREEN: Minimal code" [label="yes"];
+    "Verify RED: test fails?" -> "Fix test" [label="no - test passes"];
+    "GREEN: Minimal code" -> "Verify GREEN: test passes?";
+    "Verify GREEN: test passes?" -> "REFACTOR: Clean up" [label="yes"];
+    "Verify GREEN: test passes?" -> "Fix code" [label="no"];
+    "REFACTOR: Clean up" -> "Next behavior";
+}
+```
+
 ### RED - Write Failing Test
 
 Write one minimal test showing what should happen.

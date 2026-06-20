@@ -54,6 +54,8 @@ Task("Fix tool-approval-race-conditions.test.ts failures")
 // All three run concurrently
 ```
 
+Multiple dispatch calls in one response = parallel execution. One per response = sequential.
+
 ### 4. Review and Integrate
 
 When agents return:
@@ -119,6 +121,33 @@ After all agents complete and you integrate changes:
 2. Check for merge conflicts
 3. Verify no regressions introduced
 4. Spot-check key files for correctness
+
+## Real Example from Session
+
+**Scenario:** 6 test failures across 3 files after major refactoring
+
+**Failures:**
+
+- test_abort.py: 3 failures (timing issues)
+- test_batch_completion.py: 2 failures (tools not executing)
+- test_tool_approval_race.py: 1 failure (execution count = 0)
+
+**Decision:** Independent domains — abort logic separate from batch completion separate from race conditions
+
+**Dispatch:**
+```
+Agent 1 → Fix test_abort.py
+Agent 2 → Fix test_batch_completion.py
+Agent 3 → Fix test_tool_approval_race.py
+```
+
+**Results:**
+
+- Agent 1: Replaced timeouts with event-based waiting
+- Agent 2: Fixed event structure bug (threadId in wrong place)
+- Agent 3: Added wait for async tool execution to complete
+
+**Integration:** All fixes independent, no conflicts, full suite green
 
 ## Integration with pb-spec
 

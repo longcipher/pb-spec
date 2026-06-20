@@ -21,6 +21,20 @@ A **skill** is a reference guide for proven techniques, patterns, or tools. Skil
 
 **Skills are NOT:** Narratives about how you solved a problem once
 
+## Skill Types
+
+### Technique
+
+Concrete method with steps to follow (condition-based-waiting, root-cause-tracing)
+
+### Pattern
+
+Way of thinking about problems (flatten-with-flags, test-invariants)
+
+### Reference
+
+API docs, syntax guides, tool documentation (office docs)
+
 ## TDD Mapping for Skills
 
 | TDD Concept | Skill Creation |
@@ -277,6 +291,18 @@ Run same scenarios WITH skill. Agent should now comply.
 
 Agent found new rationalization? Add explicit counter. Re-test until bulletproof.
 
+### Micro-Test Wording Before Full Scenarios
+
+Full pressure-scenario runs are the final gate, but they are slow and expensive per iteration. Verify the wording itself first with micro-tests:
+
+1. **One fresh-context sample per call** — a raw API call, or a single-shot subagent if you don't have API access. System prompt = the realistic context the guidance will live in (the full skill or prompt template, not the guidance in isolation); user message = a task that tempts the failure.
+2. **Always include a no-guidance control.** If the control doesn't exhibit the failure, there is nothing to fix — stop, don't author the guidance.
+3. **5+ reps per variant.** Single samples lie.
+4. **Manually read every flagged match.** Score programmatically if you like, but template echoes and quoted counter-examples masquerade as hits; automated counts alone overstate both failure and success.
+5. **Variance is a metric.** When guidance lands, reps converge on the same shape. Five different interpretations across five reps means the wording isn't binding — tighten the form before adding words.
+
+Micro-tests verify wording; they do not replace pressure scenarios for discipline skills.
+
 ## Testing All Skill Types
 
 ### Discipline-Enforcing Skills (rules/requirements)
@@ -334,6 +360,8 @@ helper1, helper2, step3, pattern4
 **Why bad:** Labels should have semantic meaning
 
 ## Skill Creation Checklist (TDD Adapted)
+
+**IMPORTANT: Create a todo for EACH checklist item. Deploy each skill before starting the next.**
 
 **RED Phase - Write Failing Test:**
 
