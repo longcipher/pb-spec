@@ -99,6 +99,17 @@ Follow the outside-in cycle strictly. `BDD+TDD` tasks must first prove the busin
 
 #### 2d. GREEN — Write Minimum Implementation
 
+**Ponytail ladder (mandatory before writing code):**
+Before writing any implementation, climb the ladder:
+
+1. Does this need to exist at all? (YAGNI)
+2. Stdlib does it? Use it.
+3. Native platform feature? Use it.
+4. Already-installed dependency? Use it.
+5. One line? One line.
+6. Only then: minimum code that works.
+Mark deliberate simplifications with `ponytail:` comments naming the ceiling and upgrade path.
+
 - Write the **minimum code** needed to make the failing test pass.
 - Do not add features, optimizations, or abstractions not required by this task.
 - **Constraint:** Do not edit files you did not read in Step 1. If you need to modify a new file, read it first.
@@ -156,6 +167,14 @@ Output this analysis enclosed in `<error_analysis>` tags before rewriting code.
 
 - Confirm implementation matches the task contract and does not include extra scope.
 - If extra scope slipped in, remove it before submitting.
+
+#### 2k. Simplicity Check (Ponytail)
+
+- Did you apply the ponytail ladder before writing code?
+- Is there an unnecessary abstraction (interface with one implementation, factory for one product, config for a value that never changes)?
+- Could stdlib/native handle this without custom code?
+- If you wrote >10 lines, could it be 1 line?
+- Mark any deliberate simplifications with `ponytail:` comments.
 
 #### Design Infeasibility
 

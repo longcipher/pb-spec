@@ -84,15 +84,27 @@
 
 > Any assumptions or constraints. List decisions made when requirements were ambiguous.
 
-### 3.6 Code Simplification Constraints
+### 3.6 Code Simplification Constraints (Ponytail Ladder)
 
-> Document the maintainability rules that should shape implementation decisions.
+> Apply the ponytail ladder at every design and implementation decision.
+
+1. Does this need to exist at all? Speculative need = skip it. (YAGNI)
+2. Stdlib does it? Use it.
+3. Native platform feature covers it? Use it.
+4. Already-installed dependency? Use it.
+5. One line? One line.
+6. Only then: minimum code that works.
+
+**Mark deferrals:** Use `ponytail:` comments for deliberate simplifications with known ceilings and upgrade paths.
+
+**Never simplify away:** input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, anything explicitly requested.
+
+**Additional constraints:**
 
 - **Behavior Preservation Boundary:** What must remain unchanged unless an acceptance scenario or explicit requirement says otherwise.
 - **Repo Standards To Follow:** Language- and framework-specific coding standards inferred from `AGENTS.md`, `CLAUDE.md`, and the live codebase. Only include standards that are actually relevant to this repo.
-- **Readability Priorities:** Prefer explicit control flow, clear naming, reduced nesting, and removal of redundant abstractions when that improves maintainability.
+- **Readability Priorities:** Prefer explicit control flow, clear names, reduced nesting. Avoid dense or clever rewrites.
 - **Refactoring Non-Goals:** Unrelated cleanup stays out of scope unless the design explicitly justifies a broader refactor.
-- **Clarity Guardrails:** Avoid dense or clever rewrites. In languages where it applies, avoid nested ternary operators in favor of clearer branching.
 
 ---
 

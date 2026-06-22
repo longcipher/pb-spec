@@ -24,7 +24,7 @@
 - **Architecture Decisions Rule:** Follow the approved `Architecture Decisions` from `design.md`. For work likely to exceed 200 lines or introduce new boundaries, state the relevant **SRP**, **DIP**, **Factory**, **Strategy**, **Observer**, **Adapter**, or **Decorator** decision in task context and do not improvise a new pattern mid-build.
 - **Dependency Injection Rule:** External dependencies should be introduced or refactored through interfaces or abstract classes unless the design explicitly documents a different repo-native seam.
 - **Behavior Preservation Rule:** State whether each task preserves existing behavior or intentionally changes it; validate that with scenario and regression coverage.
-- **Simplification Rule:** Prefer explicit, readable implementation steps that reduce unnecessary nesting, redundancy, or naming ambiguity without broadening scope.
+- **Simplification Rule:** Apply the ponytail ladder (YAGNI → stdlib → native → existing dep → one-liner → minimum code) at every implementation decision. Mark deferrals with `ponytail:` comments naming the ceiling and upgrade path.
 - **Clarity Guardrail:** Avoid planning dense or clever rewrites; where relevant, avoid nested ternary operators in favor of clearer branching.
 - **Phase 1: BDD Harness & Scaffolding** — Feature files, runner setup, task skeletons
 - **Phase 2: Scenario Implementation** — Primary behavior implemented via TDD
@@ -46,7 +46,7 @@
 - **Scenario Coverage:** `[Feature/scenario names, or N/A for infrastructure-only work]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
-- **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
+- **Simplification Focus:** `[Apply ponytail ladder: YAGNI → stdlib → native → existing dep → one-liner → minimum / N/A]`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
@@ -65,7 +65,7 @@
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
-- **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
+- **Simplification Focus:** `[Apply ponytail ladder: YAGNI → stdlib → native → existing dep → one-liner → minimum / N/A]`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
@@ -88,7 +88,7 @@
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
-- **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
+- **Simplification Focus:** `[Apply ponytail ladder: YAGNI → stdlib → native → existing dep → one-liner → minimum / N/A]`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
@@ -108,7 +108,7 @@
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
-- **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
+- **Simplification Focus:** `[Apply ponytail ladder: YAGNI → stdlib → native → existing dep → one-liner → minimum / N/A]`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
@@ -132,7 +132,7 @@
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
-- **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
+- **Simplification Focus:** `[Apply ponytail ladder: YAGNI → stdlib → native → existing dep → one-liner → minimum / N/A]`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...
@@ -155,7 +155,7 @@
 - **Scenario Coverage:** `[Feature/scenario names, or N/A]`
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
-- **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
+- **Simplification Focus:** `[Apply ponytail ladder: YAGNI → stdlib → native → existing dep → one-liner → minimum / N/A]`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...

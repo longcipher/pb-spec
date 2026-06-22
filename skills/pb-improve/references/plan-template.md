@@ -123,11 +123,25 @@ The facts the builder needs, inlined — never "as discussed" or "see audit":
 
 ## Code Simplification Constraints
 
+**Ponytail Ladder (mandatory at every decision point):**
+
+1. Does this need to exist at all? Speculative need = skip it. (YAGNI)
+2. Stdlib does it? Use it.
+3. Native platform feature covers it? Use it.
+4. Already-installed dependency? Use it.
+5. One line? One line.
+6. Only then: minimum code that works.
+
+**Mark deferrals:** Use `ponytail:` comments for deliberate simplifications with known ceilings and upgrade paths.
+
+**Never simplify away:** input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, anything explicitly requested.
+
+**Additional constraints:**
+
 - **Behavioral Contract:** Preserve existing behavior unless a listed scenario or requirement explicitly changes it.
-- **Repo Standards:** Use only the coding standards that are actually established by `AGENTS.md`, `CLAUDE.md`, and the existing codebase for this repo.
-- **Readability Priorities:** Prefer explicit control flow, clear names, reduced nesting, and removal of redundant abstractions when that improves maintainability.
-- **Refactor Scope:** Limit cleanup to touched modules unless the design explicitly justifies a broader refactor.
-- **Clarity Guardrails:** Avoid dense or clever rewrites; where relevant, avoid nested ternary operators in favor of clearer branching.
+- **Repo Standards:** Use only the coding standards established by `AGENTS.md`, `CLAUDE.md`, and the existing codebase.
+- **Readability Priorities:** Prefer explicit control flow, clear names, reduced nesting. Avoid dense or clever rewrites.
+- **Refactor Scope:** Limit cleanup to touched modules unless the design explicitly justifies broader refactor.
 
 ## BDD Scenario Inventory
 

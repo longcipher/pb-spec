@@ -67,6 +67,19 @@ The goal is not a percentage — it's *which untested code is dangerous*.
 - Inconsistent patterns: three ways of doing data fetching / error handling / styling in the same repo — pick the winner (the one the team converged on most recently) and plan the consolidation.
 - Abstraction mismatches: premature abstractions with a single implementation, or missing abstractions where the same change always requires touching N files in lockstep.
 
+### Over-Engineering (Ponytail Ladder)
+
+Apply the ponytail ladder to find unnecessary complexity:
+
+- **Unnecessary abstractions:** interfaces/protocols with exactly one implementation, abstract base classes with one concrete child, factory functions that only produce one product type.
+- **Config for constants:** configuration files or environment variables for values that never actually change in the deployed system.
+- **Custom vs stdlib:** hand-rolled implementations of what stdlib provides (e.g., custom URL parser when `urllib.parse` exists, custom JSON encoder when `json.dumps` suffices, custom retry when `tenacity` is already installed).
+- **Boilerplate "for later":** scaffolding, interfaces, extension points, plugin systems that nothing currently uses.
+- **Premature optimization:** caching, batching, lazy loading, connection pooling implemented before profiling shows a need.
+- **Ceremony over substance:** more than 3 lines of setup/config/wiring for what could be a one-liner.
+
+**Impact metric:** Count the lines removable if the simpler approach were used. This is the "deletion value" of the finding.
+
 ## 6. Dependencies & Migrations
 
 - Major-version lag on core framework/runtime (not every minor bump — the ones with real cost to staying behind: EOL, security-fix cutoffs, ecosystem incompatibility).

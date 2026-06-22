@@ -543,7 +543,7 @@ Use `- [ ]` and `- [x]` inside the task block as evidence checkboxes, not as a s
 - **ALWAYS** run the full test suite after each task.
 - **ALWAYS** run runtime verification for runtime-facing tasks.
 - **ALWAYS** report failures with retry/skip/abort options.
-- **ALWAYS** follow YAGNI — implement only what the task requires.
+- **ALWAYS** apply the ponytail ladder — (1) Does this need to exist? (2) Stdlib? (3) Native? (4) Existing dep? (5) One line? (6) Minimum code. Never simplify away: validation, error handling, security.
 - **ALWAYS** use existing project patterns and conventions.
 - **ALWAYS** file a DCR if the design is infeasible.
 - **ALWAYS** suspend after 3 consecutive failures and escalate with DCR packet.
@@ -566,3 +566,4 @@ Use `- [ ]` and `- [x]` inside the task block as evidence checkboxes, not as a s
 11. **Escalate deterministically.** After 3 failures, route to `pb-refine` with DCR.
 12. **Architecture decisions are binding.** `pb-build` executes the approved design.
 13. **Adaptive evaluation.** Full adversarial for `BDD+TDD`, light review for simple `TDD-only`.
+14. **ponytail ladder.** Before writing code, climb the 6-rung ladder: YAGNI → stdlib → native → existing dep → one-liner → minimum code. The Evaluator checks for over-engineering using the same ladder.

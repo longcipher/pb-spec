@@ -72,7 +72,12 @@ Analyze the git diff against the task contract.
    - Secrets, API keys, or credentials in the code
    - Debug artifacts (`console.log`, `print()`, `debugger`, TODO comments from other tasks)
    - Import of libraries not in the project's dependency manifest
-   - Over-engineering (abstractions beyond what the task requires)
+   - Over-engineering (ponytail ladder check):
+     - Unnecessary abstractions: interfaces with one implementation, factories for one product, configs for values that never change
+     - Custom code where stdlib/native suffices
+     - Boilerplate "for later" that doesn't serve the current task
+     - Missing `ponytail:` comment on deliberate simplifications
+     - Code that could be 1 line but isn't
    - Missing error handling for external calls
 
 4. **Dependency integrity:**
@@ -136,6 +141,18 @@ Test the implementation beyond what the scenario explicitly requires.
 5. **Security basics:** Are inputs validated/sanitized? Are there SQL injection or XSS risks?
 
 **Output:** List every edge case tested and its result.
+
+### Check D — Simplicity Audit (Ponytail)
+
+Apply the ponytail ladder to the diff:
+
+1. **YAGNI:** Does everything in the diff serve the task? No speculative features, no "while I'm here" additions.
+2. **Stdlib:** Could any custom code be replaced by stdlib/native? (e.g., `dataclass` over pydantic for simple DTOs, `pathlib` over os.path, stdlib `http.server` for simple endpoints)
+3. **One-liner:** Are there multi-line implementations that could be one line?
+4. **Abstractions:** Are there interfaces with one implementation? Factories for one product? Config files for values that never change?
+5. **Boilerplate:** Is there scaffolding "for later"? Later can scaffold for itself.
+
+**Output:** Flag any over-engineering found. Each issue should reference the specific ponytail ladder rung violated.
 
 ---
 
