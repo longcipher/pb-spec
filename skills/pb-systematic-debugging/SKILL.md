@@ -130,6 +130,21 @@ You MUST complete each phase before proceeding to the next.
    - Keep tracing up until you find the source
    - Fix at source, not at symptom
 
+**Example — Wrong vs Right:**
+
+```
+User reports: "Empty emails crash the validator"
+
+Wrong: Immediately patches validate_user() to handle empty strings.
+  → May fix symptom, may not fix root cause.
+
+Right:
+  1. Reproduce: call validate_user({'email': ''}) → confirms crash
+  2. Trace: empty string → splits on '@' → IndexError
+  3. Root cause: no guard before string operation
+  4. Minimal fix: add empty check before split
+```
+
 ### Phase 2: Pattern Analysis
 
 **Find the pattern before fixing:**

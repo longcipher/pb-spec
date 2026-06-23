@@ -551,6 +551,21 @@ Use `- [ ]` and `- [x]` inside the task block as evidence checkboxes, not as a s
 
 ---
 
+## Anti-Pattern Quick Reference
+
+The Evaluator should watch for these common agent mistakes:
+
+| Anti-Pattern | Example | Correct Behavior |
+|---|---|---|
+| **Drive-by refactoring** | Fixing a bug but also reformatting adjacent code, adding type hints nobody asked for | Only change lines that fix the reported issue |
+| **Over-abstraction** | Strategy pattern + ABC + config class for a single `calculate_discount()` function | One function until complexity is actually needed |
+| **Silent assumptions** | Implementing "export users" without clarifying scope, format, fields | List assumptions, ask for clarification |
+| **Speculative features** | Adding caching, validation, notifications to a "save preferences" request | Build only what was asked; add later when needed |
+| **Vague success criteria** | "I'll review and improve the code" | "Write test for bug X → make it pass → verify no regressions" |
+| **Style drift** | Changing quote style, whitespace, or return logic while adding logging | Match existing code style exactly |
+
+---
+
 ## Key Principles
 
 1. **Small, focused, sequential, independent.** Each task is self-contained.

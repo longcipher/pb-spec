@@ -102,6 +102,37 @@ Vague name, tests mock not code.
 - Clear name
 - Real code (no mocks unless unavoidable)
 
+### Bug Fix: Reproduce First
+
+For bugs, the RED phase doubles as a reproducer. Don't fix without confirming the bug exists.
+
+**User reports:** "Sorting breaks when there are duplicate scores"
+
+**Wrong:** Immediately changes sort logic.
+
+**Right:**
+```python
+# 1. RED: Write test that exposes the bug
+def test_sort_with_duplicate_scores():
+    scores = [
+        {'name': 'Alice', 'score': 100},
+        {'name': 'Bob', 'score': 100},
+        {'name': 'Charlie', 'score': 90},
+    ]
+    result = sort_scores(scores)
+    assert result[0]['score'] == 100
+    assert result[1]['score'] == 100
+    assert result[2]['score'] == 90
+
+# Verify RED: run 10 times → inconsistent ordering → bug confirmed
+
+# 2. GREEN: Fix with stable sort
+def sort_scores(scores):
+    return sorted(scores, key=lambda x: (-x['score'], x['name']))
+
+# Verify GREEN: test passes consistently
+```
+
 ### Verify RED - Watch It Fail
 
 **MANDATORY. Never skip.**
