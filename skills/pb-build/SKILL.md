@@ -207,7 +207,7 @@ The subagent operates as **Generator** — its sole objective is to make tests p
 
 5. **[REFACTOR] Clean Up** — If needed, refactor for clarity/performance. Re-run the scenario to confirm still passing.
 
-6. **Unit Test Verification** — Run unit tests: `[Unit test command]`. Ensure no regressions.
+6. **Unit Test Verification (Incremental)** — Run ONLY tests affected by this task's changes (see "Incremental Test Strategy" below). Ensure no regressions.
 
 7. **Runtime Verification (when applicable)** — Run runtime checks from task Verification and capture outputs.
 
@@ -218,10 +218,10 @@ The subagent operates as **Generator** — its sole objective is to make tests p
 ##### For TDD-Only Tasks (Non-Scenario)
 
 1. **RED** — Write a failing unit test. **STOP after this step.**
-2. **Confirm RED** — Run test suite. New test must fail for the right reason.
+2. **Confirm RED** — Run the new test file (or targeted test). New test must fail for the right reason.
 3. **GREEN** — Write minimum implementation. **Only proceed after confirming RED.**
-4. **Confirm GREEN** — Run test suite. All tests pass.
-5. **REFACTOR** — Clean up. Re-run tests.
+4. **Confirm GREEN** — Run the new test + affected tests. All must pass.
+5. **REFACTOR** — Clean up. Re-run affected tests.
 6. **Runtime Verification (when applicable)** — Run runtime checks.
 7. **Architecture Conformance Check** — Verify design conformance.
 8. **Scope Check** — Verify scope compliance.
@@ -289,11 +289,11 @@ After the Generator signals `READY_FOR_EVAL`, the orchestrator must perform an *
      - The exact BDD command run (same as RED)
      - All steps passing
      - The scenario name that passed
-   - **Independent Re-run:** Evaluator MUST independently run the scenario to verify it passes:
+   - **Independent Re-run:** Evaluator MUST independently run the scenario to verify it passes, plus related unit tests per the Incremental Test Strategy:
 
-     ```text
-     [BDD command] --tags@[scenario_tag]
-     ```
+      ```text
+      [BDD command] --tags@[scenario_tag]
+      ```
 
    - If independent re-run FAILS, evaluation FAILS regardless of Generator's claims.
 
@@ -328,7 +328,7 @@ After the Generator signals `READY_FOR_EVAL`, the orchestrator must perform an *
 **Light Review Process (for simple `TDD-only` tasks):**
 
 1. Read the `git diff` to confirm scope.
-2. Verify test suite passes.
+2. Run affected tests only (follow Incremental Test Strategy).
 3. Check for architecture violations in the diff.
 4. If clean, emit PASS immediately.
 
@@ -446,7 +446,18 @@ If during implementation a subagent discovers that the design is **infeasible or
 
 ### Step 5: Final State Verification & Output Completion Summary
 
-#### 5a. Final State Sweep (Mandatory)
+#### 5a. Full Test Suite Run (Mandatory)
+
+After ALL tasks are `🟢 DONE`, run the full test suite ONCE to verify no regressions across the entire build:
+
+```bash
+# Run the project's full test suite
+uv run pytest tests/ -v
+```
+
+If the full suite fails, investigate the failing tests and determine whether they are related to the tasks just completed or pre-existing failures. Only address failures caused by the build.
+
+#### 5b. Final State Sweep (Mandatory)
 
 Before outputting the summary, perform a **full reconciliation** of `tasks.md` against the build session's execution log.
 
@@ -457,7 +468,7 @@ Before outputting the summary, perform a **full reconciliation** of `tasks.md` a
    - If a task triggered a DCR but not marked → auto-fix to `🔄 DCR`.
 3. Report any auto-fixes applied.
 
-#### 5b. Output Completion Summary
+#### 5c. Output Completion Summary
 
 ```text
 📊 pb-build Summary: specs/<spec-dir>/
@@ -476,7 +487,6 @@ Files changed:
 
 Next steps:
   - Review changes: git diff
-  - Run full test suite: [project test command]
   - If tasks were skipped, fix and re-run: /pb-build <feature-name>
 ```
 
@@ -540,7 +550,7 @@ Use `- [ ]` and `- [x]` inside the task block as evidence checkboxes, not as a s
 - **ALWAYS** mark completed tasks in `tasks.md` only after Evaluator PASS.
 - **ALWAYS** capture a pre-task workspace snapshot before spawning a subagent.
 - **ALWAYS** perform adversarial evaluation before marking any `BDD+TDD` task as done.
-- **ALWAYS** run the full test suite after each task.
+- **ALWAYS** run incremental tests (affected files only) after each task — see "Incremental Test Strategy" below.
 - **ALWAYS** run runtime verification for runtime-facing tasks.
 - **ALWAYS** report failures with retry/skip/abort options.
 - **ALWAYS** apply the ponytail ladder — (1) Does this need to exist? (2) Stdlib? (3) Native? (4) Existing dep? (5) One line? (6) Minimum code. Never simplify away: validation, error handling, security.
@@ -548,6 +558,50 @@ Use `- [ ]` and `- [x]` inside the task block as evidence checkboxes, not as a s
 - **ALWAYS** file a DCR if the design is infeasible.
 - **ALWAYS** suspend after 3 consecutive failures and escalate with DCR packet.
 - **ALWAYS** use fresh context for the Evaluator.
+
+---
+
+## Incremental Test Strategy
+
+After each task, run ONLY tests affected by the task's changes. Full test suite is reserved for final verification after ALL tasks complete.
+
+### How to Determine Affected Tests
+
+1. **Identify changed source files:**
+   ```bash
+   git diff --name-only HEAD
+   # or vs pre-task snapshot
+   ```
+
+2. **Find corresponding test files** using project conventions:
+   - `src/foo/bar.py` → `tests/test_bar.py` or `tests/test_foo_bar.py`
+   - `src/foo/bar.py` → `tests/foo/test_bar.py` (mirror layout)
+   - Check `conftest.py` for shared fixtures used by the changed module
+
+3. **Trace import dependencies** (for non-test source changes):
+   - If `src/foo/bar.py` imports `src/foo/baz.py`, also run tests for `baz`
+   - If `src/foo/bar.py` is imported by `src/foo/qux.py`, run tests for `qux` too
+   - Use `grep -r "from.*bar import\|import.*bar" src/ tests/` to find dependents
+
+4. **Run the affected test set:**
+   ```bash
+   # Specific test files
+   uv run pytest tests/test_bar.py tests/test_baz.py -v
+
+   # Or by keyword/module
+   uv run pytest -v -k "bar or baz"
+
+   # Or by test path pattern
+   uv run pytest tests/ -v --co -q  # list collected tests first
+   ```
+
+### Rules
+
+- **BDD+TDD tasks:** BDD scenarios already target specific scenarios — run those + related unit tests only.
+- **TDD-only tasks:** Run the new test file + any test file that imports from the changed module.
+- **Cross-module changes:** If a task touches 3+ modules, still run only affected tests — do not escalate to full suite.
+- **Final verification:** After ALL tasks in `tasks.md` are `🟢 DONE`, run the full test suite once as the last step before marking the build complete.
+- **Evaluator re-run:** The Evaluator independently runs the same affected tests — not the full suite.
 
 ---
 
