@@ -163,6 +163,16 @@ Output this analysis enclosed in `<error_analysis>` tags before rewriting code.
 - Confirm external dependencies still flow through interfaces or abstract classes when required.
 - If you discover the planned architecture no longer fits, stop and raise a Design Change Request instead of improvising a new pattern mid-build.
 
+#### 2i-a. Performance Sanity Check (when applicable)
+
+For tasks touching data access, API endpoints, or hot paths:
+
+1. **N+1 detection:** Scan for loops that make individual DB/API calls where batching or eager loading would work.
+2. **Eager loading:** If the design specifies eager loading or joins, verify they are present.
+3. **Over-fetching:** Check that API responses return only what the scenario requires.
+4. **Performance constraints:** If the design includes latency/throughput targets, verify the implementation doesn't obviously violate them.
+5. **Skip** this check for tasks that don't touch data access, API boundaries, or hot paths.
+
 #### 2j. Scope Check
 
 - Confirm implementation matches the task contract and does not include extra scope.

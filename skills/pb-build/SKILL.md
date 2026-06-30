@@ -213,7 +213,14 @@ The subagent operates as **Generator** — its sole objective is to make tests p
 
 8. **Architecture Conformance Check** — Confirm implementation matches Architecture Decisions.
 
-9. **Scope Check** — Confirm no extra scope beyond the scenario.
+9. **Performance Sanity Check (when applicable)** — For tasks touching data access, API endpoints, or hot paths:
+   - Scan for obvious N+1 query patterns (looping with individual DB calls)
+   - Verify eager loading or batching is used where the design specifies it
+   - Check that API responses don't over-fetch beyond what the scenario requires
+   - If the design includes performance constraints (latency, throughput), verify the implementation doesn't violate them
+   - Skip this step for tasks that don't touch data access or hot paths
+
+10. **Scope Check** — Confirm no extra scope beyond the scenario.
 
 ##### For TDD-Only Tasks (Non-Scenario)
 
@@ -224,7 +231,8 @@ The subagent operates as **Generator** — its sole objective is to make tests p
 5. **REFACTOR** — Clean up. Re-run affected tests.
 6. **Runtime Verification (when applicable)** — Run runtime checks.
 7. **Architecture Conformance Check** — Verify design conformance.
-8. **Scope Check** — Verify scope compliance.
+8. **Performance Sanity Check (when applicable)** — Same checks as BDD+TDD tasks above.
+9. **Scope Check** — Verify scope compliance.
 
 **The Generator MUST end its output with exactly this signal (no extra text after it):**
 
@@ -617,6 +625,8 @@ The Evaluator should watch for these common agent mistakes:
 | **Speculative features** | Adding caching, validation, notifications to a "save preferences" request | Build only what was asked; add later when needed |
 | **Vague success criteria** | "I'll review and improve the code" | "Write test for bug X → make it pass → verify no regressions" |
 | **Style drift** | Changing quote style, whitespace, or return logic while adding logging | Match existing code style exactly |
+| **N+1 queries** | Looping with individual DB calls instead of batch/eager loading | Use eager loading, batch queries, or prefetch where the design specifies |
+| **Over-fetching** | Returning all columns/fields when the consumer only needs a few | Return only required fields; document why wider payload is justified |
 
 ---
 

@@ -72,7 +72,11 @@
 
 > Performance, reliability, security, observability, etc.
 
-- **Performance:** ...
+- **Performance:**
+  - **Database access:** [Identify new queries, N+1 risks, index needs]
+  - **Caching:** [Cacheable responses, existing cache infrastructure reuse]
+  - **API payload:** [Over-fetching risks, pagination needs]
+  - **Hot paths:** [Throughput requirements for frequently-executed code]
 - **Reliability:** ...
 - **Security:** ...
 
@@ -241,6 +245,14 @@ graph LR
 - **SRP Check:** Explain how responsibilities stay isolated and which modules should not absorb new concerns.
 - **DIP Check:** Identify the seams where dependencies must be inverted.
 - **Dependency Injection Plan:** All external dependencies should flow through interfaces or abstract classes unless the repo already has a documented alternative seam.
+
+### 5.8a Performance Impact Assessment
+
+> For architectural decisions that touch data access, API boundaries, or hot paths. Keep it brief — flag obvious wins and risks, not a full performance spec.
+
+| Decision | Performance Characteristic | Risk | Mitigation |
+| :--- | :--- | :--- | :--- |
+| [e.g., "Use ORM for user queries"] | [e.g., "O(n) for n<100 users"] | [e.g., "N+1 if relations not eager-loaded"] | [e.g., "Use select_related/joinedload"] |
 
 ### 5.9 BDD/TDD Strategy
 

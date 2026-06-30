@@ -66,6 +66,7 @@ Analyze the git diff against the task contract.
    - Are external dependencies routed through interfaces or abstract classes (DIP)?
    - Does each module/class have a single responsibility (SRP)?
    - Are the `Architecture Decision Snapshot` constraints from the project preserved?
+   - Are performance-related design decisions honored (e.g., eager loading, batch queries, field selection)?
 
 3. **Code quality red flags:**
    - Hardcoded values that should be configurable
@@ -79,6 +80,11 @@ Analyze the git diff against the task contract.
      - Missing `ponytail:` comment on deliberate simplifications
      - Code that could be 1 line but isn't
    - Missing error handling for external calls
+   - **Performance red flags** (when the task touches data access or hot paths):
+     - N+1 query patterns: loops with individual DB calls where batching/eager loading would work
+     - Over-fetching: returning all columns/fields when the consumer only needs a subset
+     - Missing eager loading where the design specifies it
+     - Unbounded result sets without pagination
 
 4. **Dependency integrity:**
    - Does this task correctly use outputs from previously completed tasks?
@@ -154,6 +160,20 @@ Apply the ponytail ladder to the diff:
 
 **Output:** Flag any over-engineering found. Each issue should reference the specific ponytail ladder rung violated.
 
+### Check E — Performance Sanity (when applicable)
+
+For tasks that touch data access, API endpoints, or hot paths:
+
+1. **N+1 detection:** Are there loops making individual DB/API calls where batching or eager loading would work?
+2. **Eager loading:** Does the implementation use eager loading or joins where the design specifies it?
+3. **Over-fetching:** Do API responses return only what the scenario requires, or are extra fields included without justification?
+4. **Unbounded results:** Are there queries without pagination or limits that could return unbounded result sets?
+5. **Performance constraints:** If the design includes latency/throughput targets, does the implementation obviously violate them?
+
+**Skip** this check for tasks that don't touch data access, API boundaries, or hot paths.
+
+**Output:** List any performance issues found with file:line references.
+
 ---
 
 ## Verdict
@@ -169,6 +189,7 @@ After completing all three checks, output your verdict in exactly one of these f
 - Scope: [Confirmed clean / note any concerns]
 - Architecture: [Conformance confirmed / specific violations]
 - Code quality: [Clean / issues found and resolved]
+- Performance: [Clean / N+1 or over-fetching issues found and resolved / N/A for non-data tasks]
 
 ### Live Verification
 - [Method used: Playwright MCP / HTTP MCP / CLI]

@@ -110,6 +110,7 @@ Subagent rules:
    - Existing abstractions (base classes, interfaces, protocols) to extend
    - Shared infrastructure (database connections, HTTP clients, cache layers)
    - Similar prior implementations that establish patterns to follow
+   - **Performance-relevant patterns:** Existing caching layers, query optimization helpers, connection pools, pagination utilities, or batch processing helpers
    **This audit is mandatory.** List reusable components in `design.md` Section 3.3 and reference them in `tasks.md` task context.
 
 6. **Extract the `Architecture Decision Snapshot`** — this is mandatory whenever the repo has `AGENTS.md` or architecture-oriented docs:
@@ -119,6 +120,7 @@ Subagent rules:
    - All external dependencies must be routed **through interfaces or abstract classes** in the plan unless the existing repo explicitly establishes a different seam.
    - Reuse existing repo decisions when available; add new decisions only when the requirement creates a genuine gap.
    - **Apply the ponytail ladder** when evaluating patterns: prefer stdlib/native solutions over custom implementations. An interface with one implementation is a factory for one product — skip it. A config for a value that never changes is a constant — hardcode it.
+   - **Performance impact assessment:** For any architectural decision that touches data access, API boundaries, or hot paths, briefly note the expected performance characteristic (e.g., "O(n) queries acceptable for n<100" or "requires lazy loading to avoid N+1"). Do not write full performance specs — just flag the obvious wins and risks.
 
 7. **Audit coding standards and simplification boundaries** — determine which style and maintainability rules the eventual implementation must follow:
    - Infer language- and framework-specific standards from `AGENTS.md`, `CLAUDE.md`, and the live codebase. Only apply standards that are relevant to the current repo; do not copy unrelated JavaScript or React rules into Python work.
@@ -253,6 +255,8 @@ Write a **compact** design doc to `specs/<spec-dir>/design.md`. Only include sec
 - Database interactions **MUST** use the existing ORM layer; raw SQL queries **MUST NOT** be introduced because they bypass the query builder's injection protection.
 - API responses **SHOULD** maintain <200ms p99 latency; if exceeded, the task **MUST** include performance optimization before marking done.
 - If an unhandled edge case is encountered, the Builder **MUST** halt and file a DCR; it **MUST NOT** silently fabricate error handling.
+- Database queries **MUST NOT** introduce N+1 patterns; the Builder **SHOULD** use eager loading or batch queries where the data access pattern involves related entities.
+- API responses **SHOULD** avoid over-fetching; return only fields the consumer needs, or document why a wider payload is justified.
 
 ## Behavior Traceability Matrix
 
@@ -338,6 +342,12 @@ stateDiagram-v2
 ### Step 4b: Output `design.md` — Full Mode (≥ 50 words)
 
 Read `references/design_template.md` and fill every section fully. Write the result to `specs/<spec-dir>/design.md`.
+
+**Performance awareness for full mode:** When filling the Non-Functional Goals section, explicitly consider:
+- **Database access patterns:** Identify whether the feature introduces new queries and whether they risk N+1 or missing indexes.
+- **Caching opportunities:** Note if responses or computations are cacheable, and whether existing caching infrastructure can be reused.
+- **API payload size:** Flag if the feature returns large datasets and whether pagination or field selection is needed.
+- **Hot path identification:** If the feature touches code that runs frequently (request handlers, loops, parsers), note expected throughput requirements.
 
 ### Step 5a: Output `tasks.md` — Lightweight Mode (< 50 words)
 
@@ -513,6 +523,7 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 20. **Truthfulness over fluency.** If information is missing, state assumptions explicitly instead of fabricating specifics.
 21. **Deterministic output quality.** Final docs should be implementation-ready, with no template artifacts left behind.
 22. **No speculative architecture.** If a design component cannot be traced to a Feature scenario, remove it. Avoid building what isn't requested.
+23. **Performance-aware design.** When architecture decisions touch data access, API boundaries, or hot paths, note the expected performance characteristic. Flag N+1 risks, over-fetching, and missing indexes during the codebase audit. Do not write full performance specs — just identify the obvious wins and risks.
 
 ---
 
@@ -547,3 +558,4 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 - **High-variance logic with small example space:** Add property-test planning rather than relying only on hand-written examples.
 - **Parser/protocol/unsafe work:** Treat fuzz planning as required unless you can justify why crash-safety risk is absent.
 - **Performance-sensitive work:** Add benchmark planning only when the requirement or codebase indicates performance is part of the contract.
+- **Performance-aware planning:** When the feature touches data access, API boundaries, or hot paths, flag obvious N+1 risks, over-fetching, and missing indexes during the codebase audit. Include performance constraints in `design.md` §Architectural Constraints when they are part of the contract. Do not write full performance specs for every task — just identify the obvious wins and risks.

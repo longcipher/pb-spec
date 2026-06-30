@@ -26,6 +26,7 @@
 - **Behavior Preservation Rule:** State whether each task preserves existing behavior or intentionally changes it; validate that with scenario and regression coverage.
 - **Simplification Rule:** Apply the ponytail ladder (YAGNI → stdlib → native → existing dep → one-liner → minimum code) at every implementation decision. Mark deferrals with `ponytail:` comments naming the ceiling and upgrade path.
 - **Clarity Guardrail:** Avoid planning dense or clever rewrites; where relevant, avoid nested ternary operators in favor of clearer branching.
+- **Performance Guardrail:** For tasks touching data access or hot paths, the task context should note expected query patterns and any N+1 or over-fetching risks identified during planning.
 - **Phase 1: BDD Harness & Scaffolding** — Feature files, runner setup, task skeletons
 - **Phase 2: Scenario Implementation** — Primary behavior implemented via TDD
 - **Phase 3: Integration & Features** — Connecting pieces, end-to-end
@@ -186,3 +187,4 @@
 6. [ ] **Runtime-Evidenced (when applicable):** Runtime logs and health/probe results are captured, or `N/A` is explicitly justified.
 7. [ ] **Behavior-Preserved or Documented:** The task confirms behavior preservation or documents the intentional behavior change.
 8. [ ] **Simplified Responsibly:** Cleanup stayed within the planned scope and improved readability rather than introducing clever compaction.
+9. [ ] **Performance-Sound (when applicable):** No obvious N+1 queries, over-fetching, or missing eager loading for tasks touching data access or hot paths; or `N/A` is explicitly justified.
