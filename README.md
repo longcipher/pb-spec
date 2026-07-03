@@ -14,6 +14,8 @@ pb-spec is a set of [Agent Skills Specification](https://agentskills.io) complia
 
 pb-spec implements the **Plan-Build pattern**: a Planner Agent generates design specs, and a Builder Agent executes code with verification. The core innovation is making `.feature` files the **absolute source of truth** — all design and tasks derive FROM scenarios, not the other way around.
 
+Skill prompts follow principles from the [GPT-5.5 Prompting Guide](https://developers.openai.com/api/docs/guides/prompt-guidance?model=gpt-5.5): outcome-first goals, concise style controls, explicit stopping conditions, preamble for perceived responsiveness, and validation loops.
+
 ### Core Principles
 
 | Principle | Description |
@@ -54,6 +56,7 @@ pb-spec implements the **Plan-Build pattern**: a Planner Agent generates design 
 | [shadcn/improve](https://github.com/shadcn/improve) | Audit codebase, write self-contained plans for cheaper executors | `/pb-improve` surveys codebase, produces prioritized specs |
 | [Agent-SOP](https://github.com/strands-agents/agent-sop) | RFC 2119 constraints, DAG tasks, adaptive model routing | RFC 2119 in `design.md`, DAG metadata in `tasks.md`, Escalation protocol |
 | [Superpowers](https://github.com/obra/superpowers) | Composable skills, evidence-based claims, systematic debugging | `using-pb-spec` bootstrap; supporting skills ecosystem |
+| [GPT-5.5 Prompting Guide](https://developers.openai.com/api/docs/guides/prompt-guidance?model=gpt-5.5) | Outcome-first prompts, stopping conditions, preamble, validation loops | Role/Preamble/Goal/Success Criteria sections, Stopping Conditions, concise invariants |
 
 ## Installation
 
