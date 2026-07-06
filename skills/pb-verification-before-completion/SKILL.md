@@ -70,6 +70,10 @@ Skip any step = lying, not verifying
 | "I'm tired" | Exhaustion ≠ excuse |
 | "Partial check is enough" | Partial proves nothing |
 | "Different words so rule doesn't apply" | Spirit over letter |
+| "The test was passing before my change" | Run it NOW, after your change |
+| "It's a trivial change" | Trivial changes break things trivially |
+| "I can see it's correct by reading" | Reading ≠ running |
+| "The build pipeline will catch it" | Fix it before you push, not after CI fails |
 
 ## Key Patterns
 

@@ -51,7 +51,7 @@ The build operates in one of two modes, set by the user or inferred from context
 ### Auto Mode
 
 - Execute all actions autonomously without user confirmation
-- Document all decisions, assumptions, and reasoning in `specs/<spec-dir>/progress.md`
+- Document all decisions, assumptions, and reasoning in the progress ledger (`specs/<spec-dir>/progress.md`)
 - When multiple approaches exist, select the most appropriate and document why
 - Provide comprehensive summaries at completion
 - Only pause for: DCR filing, Escalation results, or hard stop conditions
@@ -128,6 +128,28 @@ If all tasks are already checked (`- [x]`), report:
 ```text
 ✅ All tasks in specs/<spec-dir>/tasks.md are already completed.
 ```
+
+### Step 2a: Durable Progress Ledger (Mandatory)
+
+Context does not survive compaction. In long-running builds, controllers that lose their place have re-dispatched entire completed task sequences — the single most expensive failure observed. Track progress in a ledger file, not only in memory.
+
+1. **At build start**, check for an existing ledger:
+   ```bash
+   cat "specs/<spec-dir>/progress.md" 2>/dev/null || echo "No ledger found"
+   ```
+2. **If a ledger exists**, tasks listed as complete are DONE — do not re-dispatch them. Resume at the first task not marked complete. Cross-check the ledger against `tasks.md` and `git log` — trust files over memory.
+3. **When a task passes evaluation**, append one line to the ledger:
+   ```
+   Task X.Y: complete (commits <base7>..<head7>, eval PASS)
+   ```
+4. **When a task fails or triggers DCR**, append:
+   ```
+   Task X.Y: FAILED (attempt N) — [one-line reason]
+   Task X.Y: DCR — [one-line reason]
+   ```
+5. **After compaction or session resume**, read the ledger first. The commits it names exist in git even when your context no longer remembers creating them.
+
+> **ponytail: global ledger file, per-task commit refs. Upgrade to structured JSON only if multi-user concurrent builds ever materialize.**
 
 ### Step 3: Execute Tasks Sequentially
 
@@ -379,7 +401,7 @@ After updating `tasks.md`, **verify the mark actually took effect** before proce
    - All `- [ ]` evidence checkboxes are now `- [x]`.
 3. **If verification fails** — apply the mark immediately and re-verify.
 
-> **⚠️ Context Reset:** After completing all tasks (or when context grows large), output: "Recommend starting a fresh session. Run `/pb-build <feature-name>` again to continue from where you left off."
+> **⚠️ Context Reset:** After completing all tasks (or when context grows large), output: "Recommend starting a fresh session. Run `/pb-build <feature-name>` again to continue from where you left off." The progress ledger ensures no completed work is lost.
 
 ### Step 4: Handle Failures (The Recovery Loop with Escalation)
 
@@ -571,6 +593,7 @@ These are absolute rules. Everything else is a guideline derived from the workfl
 3. Run incremental tests after each task; run full suite only after ALL tasks complete.
 4. Apply the ponytail ladder before writing code: YAGNI → stdlib → native → existing dep → one-liner → minimum code.
 5. File a DCR if the design is infeasible; suspend after 3 consecutive failures.
+6. Update the progress ledger after each task — it survives compaction; your memory does not.
 
 ## Stopping Conditions
 
@@ -578,7 +601,7 @@ After each task evaluation, ask: "Did the Evaluator independently confirm the te
 
 When the failure loop reaches 3 consecutive failures, stop the build — do not thrash. File a DCR with root-cause analysis and hand off to `/pb-refine`.
 
-If context grows large after many tasks, recommend starting a fresh session and re-running `/pb-build` to continue from where you left off.
+If context grows large after many tasks, recommend starting a fresh session and re-running `/pb-build` to continue from where you left off. The progress ledger (`specs/<spec-dir>/progress.md`) is your recovery map — trust it over memory.
 
 ---
 
@@ -654,4 +677,4 @@ The Evaluator should watch for these common agent mistakes:
 7. **Architecture decisions are binding.** Execute the approved design — do not improvise a different pattern.
 8. **ponytail ladder.** Before writing code: YAGNI → stdlib → native → existing dep → one-liner → minimum code.
 9. **Context hygiene.** Pass minimal, relevant context to subagents. Extract only the design sections that bind this task.
-10. **State lives on disk.** `tasks.md` checkboxes and committed code are the only persistent state.
+10. **State lives on disk.** `tasks.md` checkboxes, the progress ledger, and committed code are the only persistent state.

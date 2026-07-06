@@ -24,7 +24,8 @@ Write code before the test? Delete it. Start over.
 - Don't keep it as "reference"
 - Don't "adapt" it while writing tests
 - Don't look at it
-- Delete means delete
+- Don't skim it for ideas
+- Delete means delete — remove the files, revert the changes, start from a clean state
 
 ## When to Use
 
@@ -249,6 +250,10 @@ Tests-after are biased by your implementation. You test what you built, not what
 
 30 minutes of tests after ≠ TDD. You get coverage, lose proof tests work.
 
+**"I'm following the spirit of TDD"**
+
+Violating the letter of the rules is violating the spirit of the rules. There is no "spirit" that permits skipping RED. The entire point is watching the test fail — that's not a ritual, it's the mechanism that proves your test detects the missing behavior. Skip RED, and you have zero evidence your test works.
+
 ## Common Rationalizations
 
 | Excuse | Reality |
@@ -267,6 +272,8 @@ Tests-after are biased by your implementation. You test what you built, not what
 
 ## Red Flags - STOP and Start Over
 
+These are specific thoughts that mean you are about to violate the Iron Law. Recognize them as danger signals:
+
 - Code before test
 - Test after implementation
 - Test passes immediately
@@ -280,6 +287,9 @@ Tests-after are biased by your implementation. You test what you built, not what
 - "Already spent X hours, deleting is wasteful"
 - "TDD is dogmatic, I'm being pragmatic"
 - "This is different because..."
+- "I'll just check if it works first"
+- "The test would be trivial anyway"
+- "I know what the code does, I wrote it"
 
 **All of these mean: Delete code. Start over with TDD.**
 
