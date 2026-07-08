@@ -33,6 +33,20 @@
 | :--- | :--- | :--- | :--- |
 | `R1` | `[Requirement or constraint extracted from the source]` | `Functional / Constraint / Non-goal / Assumption trigger` | `[Any wording that must be preserved]` |
 
+### 2.4 Requirements Quality Audit
+
+> Audit each requirement against EARS quality attributes before proceeding to the design.
+
+| Requirement ID | Testable | Solution-Free | Unambiguous | Consistent | Complete | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `R1` | ✅ / ❌ / ⚠️ | ✅ / ❌ / ⚠️ | ✅ / ❌ / ⚠️ | ✅ / ❌ / ⚠️ | ✅ / ❌ / ⚠️ | `[Findings or N/A]` |
+
+**Clarifications Recorded:**
+
+- **Ambiguity Findings:** `[List ambiguous wording and resolved interpretations, or "None"]`
+- **Inconsistency Findings:** `[List contradictions between requirements and resolutions, or "None"]`
+- **Completeness Findings:** `[List missing acceptance criteria or coverage gaps, or "None"]`
+
 ---
 
 ## Requirements & Goals

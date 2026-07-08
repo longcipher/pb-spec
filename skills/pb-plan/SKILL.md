@@ -60,6 +60,8 @@ Create a **source requirement ledger** first:
 - Assign stable IDs such as `R1`, `R2`, `R3` to each extracted requirement, constraint, assumption trigger, and explicit non-goal.
 - Preserve important terminology from the original source material instead of rewriting everything into generic planner language.
 - Record ambiguous input as assumptions only after checking the live codebase and related docs.
+- Include a **quality status** field per requirement: `PASS` (meets all EARS properties), `REWRITTEN` (modified during enforcement), or `FLAGGED` (requires developer clarification).
+- Maintain a **clarification log** recording every requirement rewrite: original text, rewritten text, and reason for change.
 - Keep the ledger available for later reconciliation against `design.md`, `tasks.md`, and `features/*.feature`.
 
 Build a compact **requirements coverage checklist** from the input before writing files:
@@ -94,6 +96,75 @@ Count the words in the requirement description (excluding the `/pb-plan` trigger
 
 - **Lightweight mode** (< 50 words): Simple change — produce a compact spec (see Step 4a/5a).
 - **Full mode** (≥ 50 words): Complex feature — produce the complete spec (see Step 4b/5b).
+
+**EARS quality validation (inline):** As each requirement is extracted, immediately validate it against the EARS quality checklist (see Step 1.5). Flag any requirement that fails a quality property before adding it to the ledger. Do not batch this validation — it happens per-requirement during extraction.
+
+### Step 1.5: Requirements Quality Analysis
+
+After extracting the source requirement ledger, validate every requirement against the EARS quality checklist. This is a mandatory gate before proceeding to project context collection.
+
+**EARS quality properties:**
+
+| Property | Definition | Detection Method |
+| :--- | :--- | :--- |
+| **Testable** | Every requirement must have clear pass/fail criteria. If you cannot write a test for it, it is not a requirement. | Can you express the requirement as a Given-When-Then scenario? |
+| **Solution-free** | Requirements describe WHAT, not HOW. No implementation details, library names, or architecture choices. | Does the requirement name a specific technology, pattern, or implementation approach? |
+| **Unambiguous** | Each requirement admits exactly one interpretation. Vague terms like "fast", "user-friendly", or "efficient" are red flags. | Could two reasonable developers interpret this differently? |
+| **Consistent** | No requirement conflicts with another requirement in the ledger or with explicit constraints. | Does any requirement pair contradict each other or an explicit constraint? |
+| **Complete** | The requirement set covers the full scope without gaps. No implicit assumptions about behavior. | Can you identify any unaddressed edge cases or missing behavior? |
+
+**Ambiguity detection:**
+
+For each requirement, check if it admits multiple interpretations. Common ambiguity sources:
+
+- Quantifiers without bounds ("many", "large", "frequent")
+- Undefined terms ("properly", "as expected", "in a timely manner")
+- Missing preconditions (what happens when the trigger condition is false?)
+- Unclear scope ("all users" — which users?)
+
+**Inconsistency detection:**
+
+Cross-reference every requirement pair for conflicts:
+
+- Explicit contradictions (R1 says X, R2 says not-X)
+- Implicit conflicts (R1 requires A, R2 requires B, but A and B are mutually exclusive)
+- Conflicts with stated constraints or non-goals
+
+**Finding format:**
+
+For each quality issue found, produce a clarifying question with exactly two options:
+
+```text
+QUALITY ISSUE [R<n>]: [property violated]
+  Requirement: "[original requirement text]"
+  Question: [clarifying question]
+  Option A: [interpretation 1]
+  Option B: [interpretation 2]
+  Recommendation: [which option you recommend and why]
+```
+
+If no quality issues are found, state:
+
+```text
+All requirements pass EARS quality validation. No clarifying questions needed.
+```
+
+**Abductive refinement (inline):** After EARS validation, apply abductive reasoning to each requirement to identify missing error paths and incomplete specifications. For each requirement, ask:
+
+1. **What does success look like?** — Define the observable success state.
+2. **What prerequisites must hold?** — Identify conditions that must be true for the success path to work.
+3. **What could prevent each prerequisite?** — Enumerate failure modes for each prerequisite.
+4. **What error paths should exist?** — For each failure mode, define the required error behavior.
+5. **Is each error path already captured?** — Check whether existing requirements or scenarios cover the error path.
+
+When abductive refinement reveals missing error paths or prerequisites, add them to the ledger as new requirements (assign new IDs) and note the derivation source. When refinement identifies a prerequisite that contradicts an existing requirement, flag the conflict for resolution.
+
+**EARS quality enforcement (inline):** After abductive refinement, perform two targeted enforcement checks on every requirement in the ledger:
+
+- **Solution-free check:** Scan each requirement for implementation language — library names, class names, function names, framework references, or architecture choices. If found, rewrite the requirement to describe WHAT the system must do, not HOW it does it. Record the original and rewritten forms in the clarification log.
+- **Testable check:** For each requirement, attempt to express it as a Given-When-Then scenario. If the requirement cannot be expressed this way (missing inputs, outputs, or conditions), rewrite it to name the inputs, outputs, and conditions explicitly. Record the original and rewritten forms in the clarification log.
+
+Non-compliant requirements are rewritten inline in the ledger before proceeding to design. The clarification log records every rewrite with its reason.
 
 ### Step 2: Collect Project Context
 
@@ -520,18 +591,19 @@ Please review the design and tasks. When ready, run /pb-build <feature-name> to 
 
 ## Key Principles
 
-1. **Outcome-first.** Describe the target outcome, success criteria, and constraints — then let the solution emerge. Avoid prescribing process steps when the outcome is clear.
-2. **Ponytail-first.** YAGNI → stdlib → native → existing dep → one-liner → minimum code. Mark deferrals with `ponytail:` comments.
-3. **One-shot output.** Produce the complete design + tasks in a single pass. Do not ask for confirmation mid-way.
-4. **Right-sized output.** Match detail to complexity. Simple changes → compact spec; complex features → full spec.
-5. **Live codebase analysis.** Always search the actual codebase. `AGENTS.md` is complementary context, not a replacement for code inspection.
-6. **Scenario-first.** User-visible behavior becomes Gherkin artifacts. Features are the SOURCE OF TRUTH.
-7. **Verification per task.** Every task defines how to prove it is done. BDD+TDD tasks require RED and GREEN evidence.
-8. **Traceability.** Behavior Traceability Matrix, Requirements Coverage Matrix, scenarios, and tasks must agree. No scenario = remove from design.
-9. **Truthfulness over fluency.** Missing information → state assumptions explicitly. Never fabricate specifics.
-10. **Performance-aware.** When architecture decisions touch data access or hot paths, note expected performance characteristics and flag obvious risks.
-11. **Subagent leverage.** Use specialized subagents for extraction, analysis, and reconciliation when they improve quality. Planner retains final accountability.
-12. **Deterministic quality.** Final docs must be implementation-ready with no template artifacts left behind.
+1. **Requirements quality first.** Validate every requirement against EARS quality properties (testable, solution-free, unambiguous, consistent, complete) before proceeding to design. Ambiguous or inconsistent requirements produce ambiguous designs.
+2. **Outcome-first.** Describe the target outcome, success criteria, and constraints — then let the solution emerge. Avoid prescribing process steps when the outcome is clear.
+3. **Ponytail-first.** YAGNI → stdlib → native → existing dep → one-liner → minimum code. Mark deferrals with `ponytail:` comments.
+4. **One-shot output.** Produce the complete design + tasks in a single pass. Do not ask for confirmation mid-way.
+5. **Right-sized output.** Match detail to complexity. Simple changes → compact spec; complex features → full spec.
+6. **Live codebase analysis.** Always search the actual codebase. `AGENTS.md` is complementary context, not a replacement for code inspection.
+7. **Scenario-first.** User-visible behavior becomes Gherkin artifacts. Features are the SOURCE OF TRUTH.
+8. **Verification per task.** Every task defines how to prove it is done. BDD+TDD tasks require RED and GREEN evidence.
+9. **Traceability.** Behavior Traceability Matrix, Requirements Coverage Matrix, scenarios, and tasks must agree. No scenario = remove from design.
+10. **Truthfulness over fluency.** Missing information → state assumptions explicitly. Never fabricate specifics.
+11. **Performance-aware.** When architecture decisions touch data access or hot paths, note expected performance characteristics and flag obvious risks.
+12. **Subagent leverage.** Use specialized subagents for extraction, analysis, and reconciliation when they improve quality. Planner retains final accountability.
+13. **Deterministic quality.** Final docs must be implementation-ready with no template artifacts left behind.
 
 ---
 

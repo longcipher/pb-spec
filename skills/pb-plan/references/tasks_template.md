@@ -48,6 +48,7 @@
 - **Loop Type:** `BDD+TDD` / `TDD-only`
 - **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
 - **Simplification Focus:** `[Apply ponytail ladder: YAGNI → stdlib → native → existing dep → one-liner → minimum / N/A]`
+- **Wave:** `[N — explicit wave assignment (0-indexed); if absent, pb-build infers from DependsOn metadata]`
 - **Status:** 🔴 TODO
 - [ ] **Step 1:** ...
 - [ ] **Step 2:** ...

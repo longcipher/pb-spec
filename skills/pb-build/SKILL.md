@@ -151,17 +151,43 @@ Context does not survive compaction. In long-running builds, controllers that lo
 
 > **ponytail: global ledger file, per-task commit refs. Upgrade to structured JSON only if multi-user concurrent builds ever materialize.**
 
-### Step 3: Execute Tasks Sequentially
+### Step 3: Execute Tasks with Wave-Based Parallelism
 
-For each unfinished task, in order:
+#### 3a. Build Dependency Graph
+
+Before executing tasks, construct a dependency graph from `DependsOn` metadata in `tasks.md`:
+
+1. **Parse DependsOn metadata** from each unfinished task block. The `DependsOn` field lists task IDs (e.g., `DependsOn: Task 1.1, Task 1.2`). If absent, the task has no dependencies.
+2. **Build adjacency list** representing the dependency graph. Each node is a Task ID. An edge from A → B means B depends on A (B must wait for A).
+3. **Detect cycles.** If a cycle exists, STOP and report:
+
+   ```text
+   ❌ Dependency cycle detected in tasks.md: [Task A → Task B → ... → Task A]
+      Fix the DependsOn metadata and re-run /pb-build.
+   ```
+
+4. **Topological sort** to determine execution order. Tasks with no dependencies form Wave 0; tasks that depend only on Wave 0 tasks form Wave 1; and so on.
+
+#### 3b. Wave-Based Parallel Execution
+
+Group tasks into waves by topological level and execute each wave concurrently:
+
+1. **Wave assignment:** Tasks in the same wave have identical dependency depth and depend on tasks in strictly earlier waves.
+2. **File-write conflict detection:** Before dispatching a wave, check which files each task writes to (from task Steps and context). If two tasks in the same wave write to the same file, defer the later-ordered task to the next wave. This prevents concurrent file-write conflicts.
+3. **Parallel dispatch:** Spawn a fresh subagent for each task in the wave simultaneously. Each subagent gets isolated context — no state leaking between concurrent tasks.
+4. **Within-wave failure handling:** If a task in a wave fails, other tasks in the same wave continue. Failed tasks enter the standard 3-failure retry protocol (see Step 4).
+5. **Wave sequencing:** The next wave starts only after all tasks in the current wave have completed (PASS) or exhausted their retry budget (DCR/fail).
+6. **Sequential fallback:** If no `DependsOn` metadata exists for any task, fall back to sequential execution in `tasks.md` order (the original behavior).
+
+For each unfinished task in the current wave:
 
 - **When the builder starts a task,** treat legacy `TODO` as `🔴 TODO`, update the task Status to `🟡 IN PROGRESS`, and only then enter the BDD/TDD loop. `⏭️ SKIPPED` and `🔄 DCR` remain explicit exceptional states.
 
-#### 3a. Extract Task Content
+#### 3c. Extract Task Content
 
 Extract the full task block from `tasks.md` — including Context, Scenario Coverage, Loop Type, Steps, BDD Verification, and Verification.
 
-#### 3b. Gather Project Context
+#### 3d. Gather Project Context
 
 - Read `specs/<spec-dir>/design.md` for design context.
 - Read any referenced `.feature` files under `specs/<spec-dir>/features/` for scenario context.
@@ -170,7 +196,7 @@ Extract the full task block from `tasks.md` — including Context, Scenario Cove
 - Identify files most relevant to this task.
 - Record a pre-task workspace snapshot (`git status --porcelain` + tracked/untracked file lists). This baseline is used for safe recovery if the task fails.
 
-#### 3b-i. Pre-Spawn State Gate (Mandatory)
+#### 3d-i. Pre-Spawn State Gate (Mandatory)
 
 Before spawning a subagent for the current task, **verify that all previously processed tasks are properly marked in `tasks.md`**. This catches any state drift carried over from earlier iterations.
 
@@ -189,7 +215,7 @@ Before spawning a subagent for the current task, **verify that all previously pr
 
 4. Only proceed to spawn the subagent after all prior tasks are in consistent state.
 
-#### 3c. Spawn Subagent
+#### 3e. Spawn Subagent
 
 Create a **fresh subagent** for this task. Pass it the implementer prompt template from `references/implementer_prompt.md`, filled with:
 
@@ -215,7 +241,7 @@ When spawning the subagent, do NOT pass the entire chat history. Pass ONLY:
 
 > **Why extract instead of passing full design.md:** Passing the entire `design.md` to every subagent wastes tokens on irrelevant sections and dilutes the subagent's focus. Extract only the sections that bind this specific task's implementation decisions.
 
-#### 3d. Subagent Executes — Generator Persona (BDD + TDD + Build Cycle)
+#### 3f. Subagent Executes — Generator Persona (BDD + TDD + Build Cycle)
 
 The subagent operates as **Generator** — its sole objective is to make tests pass. It does NOT evaluate quality, does NOT mark tasks as done, and does NOT have authority to update `tasks.md` status. **Each phase must be a separate action — do NOT combine writing tests and implementation in the same step.**
 
@@ -279,7 +305,7 @@ READY_FOR_EVAL: Task X.Y
 
 **Design Infeasibility:** If during implementation the subagent discovers that the design is infeasible (API doesn't exist, data structure won't work, dependency conflict), it MUST stop and file a Design Change Request (see Step 4). It must NOT emit `READY_FOR_EVAL`.
 
-#### 3d-i. Adversarial Evaluation (Mandatory — Generator/Evaluator Isolation)
+#### 3f-i. Adversarial Evaluation (Mandatory — Generator/Evaluator Isolation)
 
 After the Generator signals `READY_FOR_EVAL`, the orchestrator must perform an **independent evaluation** with fresh context.
 
@@ -377,7 +403,7 @@ After the Generator signals `READY_FOR_EVAL`, the orchestrator must perform an *
 3. Check for architecture violations in the diff.
 4. If clean, emit PASS immediately.
 
-#### 3e. Mark Task Completed (After Evaluator PASS)
+#### 3g. Mark Task Completed (After Evaluator PASS)
 
 A task is marked done **only after the Evaluator outputs PASS**. The Generator's own assessment does not determine completion.
 
@@ -391,7 +417,7 @@ After Evaluator PASS, update `tasks.md`:
 - **Exact Match Required:** When updating the Status line, use the exact text and emoji `Status: 🟢 DONE`. Do not alter spacing, change the emoji, or reformat surrounding lines.
 - Ensure you only update the `- [ ]` to `- [x]` for the checkboxes strictly within the current `### Task X.Y` block.
 
-#### 3e-i. Post-Mark Verification (Mandatory)
+#### 3g-i. Post-Mark Verification (Mandatory)
 
 After updating `tasks.md`, **verify the mark actually took effect** before proceeding to the next task.
 
@@ -541,7 +567,7 @@ Next steps:
 
 1. **One subagent per task.** Never combine multiple tasks.
 2. **Fresh context per subagent.** Only: task description, project context, architecture decisions, summary of completed tasks, files on disk.
-3. **Sequential execution.** Tasks executed strictly in `tasks.md` order. No parallelism.
+3. **Wave-based parallel execution.** Tasks are grouped into dependency waves via topological sort of `DependsOn` metadata. Tasks in the same wave run concurrently via subagents. Tasks in different waves run sequentially. When no `DependsOn` exists, sequential fallback applies.
 4. **Independence.** Cross-task state lives in files, not memory.
 5. **Grounding first.** Every subagent verifies workspace state before writing code.
 6. **Generator ↔ Evaluator isolation.** The Evaluator must never receive the Generator's conversation history.
@@ -578,13 +604,15 @@ These are absolute rules. Everything else is a guideline derived from the workfl
 
 **Never:**
 
-1. Implement tasks out of order or combine multiple tasks in one subagent.
+1. Implement tasks out of wave order or combine multiple tasks in one subagent.
 2. Skip TDD steps (Red → Green → Refactor) for any task.
 3. Mark a task `🟢 DONE` without Evaluator's PASS verdict.
 4. Modify `design.md` — file a Design Change Request instead.
 5. Pass Generator conversation context to the Evaluator.
 6. Exceed the retry budget (initial + 2 retries) for a single task.
 7. Claim tests passed without running them.
+8. Start a wave before all tasks in the previous wave are complete or DCR'd.
+9. Place tasks that write to the same file in the same wave.
 
 **Always:**
 
@@ -594,6 +622,7 @@ These are absolute rules. Everything else is a guideline derived from the workfl
 4. Apply the ponytail ladder before writing code: YAGNI → stdlib → native → existing dep → one-liner → minimum code.
 5. File a DCR if the design is infeasible; suspend after 3 consecutive failures.
 6. Update the progress ledger after each task — it survives compaction; your memory does not.
+7. Detect cycles in the dependency graph before executing any tasks.
 
 ## Stopping Conditions
 

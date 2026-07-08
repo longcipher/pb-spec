@@ -24,11 +24,15 @@ Every project goes through this process. A todo list, a single-function utility,
 You MUST complete these items in order:
 
 1. **Explore project context** — check files, docs, recent commits
-2. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
-3. **Propose 2-3 approaches** — with trade-offs and your recommendation
-4. **Present design** — in sections scaled to their complexity, get user approval after each section
-5. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope
-6. **Transition to implementation** — invoke `pb-plan` to create implementation plan
+2. **Assess scope complexity** — classify as well-understood (quick plan) or complex (standard flow):
+   - **Well-understood:** clear scope, known constraints, few edge cases, single subsystem, straightforward domain → quick plan path
+   - **Complex:** ambiguous requirements, multi-system interactions, complex domain logic, unclear boundaries → standard flow
+   - **Heuristic:** if the request describes changes to ≤3 files with clear intent and no cross-cutting concerns, it qualifies as well-understood
+3. **Ask clarifying questions** — one at a time (standard) or 2-4 targeted questions (quick plan), understand purpose/constraints/success criteria
+4. **Propose 2-3 approaches** — with trade-offs and your recommendation (skipped in quick plan for well-understood scope)
+5. **Present design** — in sections scaled to their complexity, get user approval after each section (one-pass in quick plan)
+6. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope
+7. **Transition to implementation** — invoke `pb-plan` to create implementation plan
 
 ## The Process
 
@@ -44,9 +48,14 @@ You MUST complete these items in order:
 
 **Exploring approaches:**
 
-- Propose 2-3 different approaches with trade-offs
+- Propose 2-3 different approaches with trade-offs (standard flow only — skipped in quick plan)
 - Present options conversationally with your recommendation and reasoning
 - Lead with your recommended option and explain why
+
+**Quick plan path (well-understood scope):**
+
+- Skip multi-approach exploration — move directly to targeted questions
+- See "Quick Plan Flow" section below for the fast-track process
 
 **Presenting the design:**
 
@@ -67,6 +76,37 @@ You MUST complete these items in order:
 - Explore the current structure before proposing changes. Follow existing patterns.
 - Where existing code has problems that affect the work, include targeted improvements as part of the design.
 - Don't propose unrelated refactoring. Stay focused on what serves the current goal.
+
+## Quick Plan Flow
+
+When scope assessment classifies a feature as well-understood, use this fast-track path instead of the standard multi-step flow. Quick plan generates all artifacts in one pass with minimal questions.
+
+### Targeted Questions (2-4 max)
+
+Ask all questions in a single message (unlike standard flow's one-at-a-time). Cover:
+
+1. **Scope & constraints** — Confirm boundaries: what's in, what's explicitly out, any hard constraints?
+2. **Ambiguity resolution** — Surface the 1-2 things most likely to cause rework if assumed wrong
+3. **Implementation forks** — Where there's a genuine choice (e.g., sync vs async, file vs in-memory), present the fork with your recommendation
+4. **Directional decisions** — Any taste/preference calls the user should make (naming, API shape, UI approach)
+
+### One-Pass Generation
+
+After receiving answers, generate ALL artifacts in a single pass:
+
+- **Requirements** — structured with EARS notation and `[REQ-XX]` IDs
+- **Design** — architecture, components, data flow (scaled to complexity)
+- **Tasks** — implementation breakdown in `tasks.md` format
+
+No intermediate approval gates between sections. Present the complete design for review.
+
+### Refinement
+
+Allow the user to refine selectively without full rerun:
+
+- **Change tasks only** → regenerate tasks from unchanged design
+- **Change design** → regenerate design + tasks (keep requirements)
+- **Change scope** → full rerun through quick plan flow
 
 ## Spec Self-Review
 
@@ -133,11 +173,12 @@ Please review each section. I'll proceed to the next after your approval.
 
 ## Key Principles
 
-- **One question at a time** - Don't overwhelm with multiple questions
+- **One question at a time** - Don't overwhelm with multiple questions (standard flow)
 - **Multiple choice preferred** - Easier to answer than open-ended when possible
 - **YAGNI ruthlessly** - Remove unnecessary features from all designs
-- **Explore alternatives** - Always propose 2-3 approaches before settling
+- **Explore alternatives** - Always propose 2-3 approaches before settling (standard flow)
 - **Incremental validation** - Present design, get approval before moving on
+- **Speed where it helps, depth where it matters** - Quick plan for well-understood scope, full process for complex features
 - **Be flexible** - Go back and clarify when something doesn't make sense
 
 ## Integration with pb-spec
