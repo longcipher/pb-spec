@@ -166,6 +166,31 @@ When abductive refinement reveals missing error paths or prerequisites, add them
 
 Non-compliant requirements are rewritten inline in the ledger before proceeding to design. The clarification log records every rewrite with its reason.
 
+### Step 1.6: Domain Modeling Pre-Step
+
+Before collecting project context, check and update the project's domain model. This grounds all subsequent planning in precise vocabulary.
+
+1. **Read `CONTEXT.md`** (if it exists at project root) — capture the project's canonical domain terms and their definitions. Use this vocabulary throughout the spec.
+2. **Read ADRs in `docs/adr/`** (if they exist) — capture existing architectural decisions. Do not re-litigate decided items.
+3. **Challenge against the glossary.** As requirements are parsed, check whether the user's terms conflict with `CONTEXT.md`. If "cancellation" means something different in the requirement vs the glossary, flag it.
+4. **Sharpen fuzzy language.** When requirements use vague or overloaded terms, propose precise canonical terms. "You're saying 'account' — do you mean the Customer or the User?"
+5. **Update `CONTEXT.md` inline.** When a new term is resolved during planning, add it to `CONTEXT.md` right there. Don't batch. Create `CONTEXT.md` lazily if it doesn't exist.
+6. **Offer ADRs for hard decisions.** When a planning decision is (a) hard to reverse, (b) surprising without context, and (c) the result of a real trade-off, create an ADR in `docs/adr/` with sequential numbering. Otherwise skip.
+
+**CONTEXT.md format:**
+
+```md
+# {Context Name}
+
+{One or two sentence description.}
+
+## Language
+
+**Term**:
+{Definition — one or two sentences. What it IS, not what it does.}
+_Avoid_: synonym1, synonym2
+```
+
 ### Step 2: Collect Project Context
 
 Gather context to inform the design. **Always perform live codebase analysis** — do not rely on any static file.
@@ -211,6 +236,16 @@ Subagent rules:
    - Reuse existing repo decisions when available; add new decisions only when the requirement creates a genuine gap.
    - **Apply the ponytail ladder** when evaluating patterns: prefer stdlib/native solutions over custom implementations. An interface with one implementation is a factory for one product — skip it. A config for a value that never changes is a constant — hardcode it.
    - **Performance impact assessment:** For any architectural decision that touches data access, API boundaries, or hot paths, briefly note the expected performance characteristic (e.g., "O(n) queries acceptable for n<100" or "requires lazy loading to avoid N+1"). Do not write full performance specs — just flag the obvious wins and risks.
+   - **Deep-module vocabulary** (use these terms in architecture sections):
+     - **Module** — anything with an interface and an implementation (function, class, package). Avoid: component, service.
+     - **Interface** — everything a caller must know: type signature, invariants, ordering, error modes, config, perf characteristics. Avoid: API (too narrow).
+     - **Depth** — leverage at the interface: lots of behavior behind a small interface = deep; interface nearly as complex as implementation = shallow.
+     - **Seam** — where you can alter behavior without editing in that place. Avoid: boundary (overloaded).
+     - **Adapter** — a concrete thing that satisfies an interface at a seam.
+     - **Leverage** — what callers get from depth: more capability per unit of interface learned.
+     - **Locality** — what maintainers get from depth: change, bugs, and verification concentrate in one place.
+   - **The deletion test:** When evaluating whether a module earns its place, imagine deleting it. If complexity vanishes, it was a pass-through. If complexity reappears across N callers, it was earning its keep.
+   - **One adapter = hypothetical seam. Two = real.** Don't introduce a seam unless something actually varies across it.
 
 7. **Audit coding standards and simplification boundaries** — determine which style and maintainability rules the eventual implementation must follow:
    - Infer language- and framework-specific standards from `AGENTS.md`, `CLAUDE.md`, and the live codebase. Only apply standards that are relevant to the current repo; do not copy unrelated JavaScript or React rules into Python work.

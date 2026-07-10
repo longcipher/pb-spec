@@ -1,6 +1,6 @@
 ---
 name: pb-brainstorming
-description: You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation.
+description: You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation. Contains the reusable grilling loop and domain-modeling discipline.
 ---
 
 # Brainstorming Ideas Into Designs
@@ -23,7 +23,7 @@ Every project goes through this process. A todo list, a single-function utility,
 
 You MUST complete these items in order:
 
-1. **Explore project context** — check files, docs, recent commits
+1. **Explore project context** — check files, docs, recent commits, and `CONTEXT.md` (if it exists)
 2. **Assess scope complexity** — classify as well-understood (quick plan) or complex (standard flow):
    - **Well-understood:** clear scope, known constraints, few edge cases, single subsystem, straightforward domain → quick plan path
    - **Complex:** ambiguous requirements, multi-system interactions, complex domain logic, unclear boundaries → standard flow
@@ -34,11 +34,39 @@ You MUST complete these items in order:
 6. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope
 7. **Transition to implementation** — invoke `pb-plan` to create implementation plan
 
+## The Grilling Loop (Core Engine)
+
+The grilling loop is the reusable engine behind brainstorming. Interview the user relentlessly about every aspect of the plan until shared understanding is reached. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one.
+
+### Grilling Rules
+
+1. **One question at a time.** Asking multiple questions at once is bewildering. Wait for feedback on each question before continuing.
+2. **Recommended answers.** For each question, provide your recommended answer with reasoning. Don't just ask — guide.
+3. **Look up facts, ask about decisions.** If a *fact* can be found by exploring the codebase, look it up rather than asking. The *decisions*, though, belong to the user — put each one to them and wait.
+4. **Don't enact until confirmed.** Do not proceed to implementation until the user confirms shared understanding.
+5. **Stress-test with scenarios.** When domain relationships are being discussed, invent concrete scenarios that probe edge cases and force precision about boundaries between concepts.
+
+### Grilling Flow
+
+```
+User message received
+  → Understand the idea (explore codebase, check CONTEXT.md)
+  → Assess scope complexity
+  → Grilling loop:
+      → Ask one question (with recommended answer)
+      → Wait for response
+      → Update understanding
+      → Repeat until all branches resolved
+  → Present design
+  → Get approval
+  → Transition to pb-plan
+```
+
 ## The Process
 
 **Understanding the idea:**
 
-- Check out the current project state first (files, docs, recent commits)
+- Check out the current project state first (files, docs, recent commits, `CONTEXT.md`)
 - Before asking detailed questions, assess scope: if the request describes multiple independent subsystems, flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
 - If the project is too large for a single spec, help the user decompose into sub-projects. Each sub-project gets its own spec → plan → implementation cycle.
 - For appropriately-scoped projects, ask questions one at a time to refine the idea
@@ -76,6 +104,71 @@ You MUST complete these items in order:
 - Explore the current structure before proposing changes. Follow existing patterns.
 - Where existing code has problems that affect the work, include targeted improvements as part of the design.
 - Don't propose unrelated refactoring. Stay focused on what serves the current goal.
+
+## Domain Modeling (Inline Discipline)
+
+During brainstorming, actively build and sharpen the project's domain model. This is not a separate phase — it happens inline as decisions crystallize.
+
+### Challenge against the glossary
+
+When the user uses a term that conflicts with the existing language in `CONTEXT.md`, call it out immediately. "Your glossary defines 'cancellation' as X, but you seem to mean Y — which is it?"
+
+### Sharpen fuzzy language
+
+When the user uses vague or overloaded terms, propose a precise canonical term. "You're saying 'account' — do you mean the Customer or the User? Those are different things."
+
+### Cross-reference with code
+
+When the user states how something works, check whether the code agrees. If you find a contradiction, surface it: "Your code cancels entire Orders, but you just said partial cancellation is possible — which is right?"
+
+### Update CONTEXT.md inline
+
+When a term is resolved, update `CONTEXT.md` right there. Don't batch these up — capture them as they happen.
+
+`CONTEXT.md` format:
+
+```md
+# {Context Name}
+
+{One or two sentence description of what this context is and why it exists.}
+
+## Language
+
+**Order**:
+{A one or two sentence description of the term}
+_Avoid_: Purchase, transaction
+
+**Invoice**:
+A request for payment sent to a customer after delivery.
+_Avoid_: Bill, payment request
+```
+
+Rules:
+
+- **Be opinionated.** When multiple words exist for the same concept, pick the best one and list the others under `_Avoid_`.
+- **Keep definitions tight.** One or two sentences max. Define what it IS, not what it does.
+- **Only include terms specific to this project's context.** General programming concepts don't belong.
+- Create `CONTEXT.md` lazily — only when the first term is resolved.
+
+### Offer ADRs sparingly
+
+Only offer to create an ADR when all three are true:
+
+1. **Hard to reverse** — the cost of changing your mind later is meaningful
+2. **Surprising without context** — a future reader will wonder "why did they do it this way?"
+3. **The result of a real trade-off** — there were genuine alternatives and you picked one for specific reasons
+
+If any of the three is missing, skip the ADR.
+
+ADR format — lives in `docs/adr/`, sequential numbering (`0001-slug.md`):
+
+```md
+# {Short title of the decision}
+
+{1-3 sentences: what's the context, what did we decide, and why.}
+```
+
+That's it. An ADR can be a single paragraph. Create the `docs/adr/` directory lazily — only when the first ADR is needed.
 
 ## Quick Plan Flow
 
@@ -180,9 +273,11 @@ Please review each section. I'll proceed to the next after your approval.
 - **Incremental validation** - Present design, get approval before moving on
 - **Speed where it helps, depth where it matters** - Quick plan for well-understood scope, full process for complex features
 - **Be flexible** - Go back and clarify when something doesn't make sense
+- **Domain model stays current** — Update CONTEXT.md and ADRs inline as decisions land
 
 ## Integration with pb-spec
 
 - **Pre-pb-plan:** Use this skill before `/pb-plan` to ensure requirements are clear
 - **Pre-pb-build:** Use when requirements are ambiguous and need clarification
 - **Standalone:** Use for any design brainstorming need
+- **Model-invoked:** Other skills can invoke the grilling loop when they need to walk a decision tree with the user

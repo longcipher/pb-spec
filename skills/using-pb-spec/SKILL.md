@@ -130,14 +130,14 @@ Instructions say WHAT, not HOW. "Add X" or "Fix Y" doesn't mean skip workflows.
 
 | Skill | When to Use |
 |-------|-------------|
-| `pb-systematic-debugging` | Any bug, test failure, unexpected behavior |
+| `pb-systematic-debugging` | Any bug, test failure, unexpected behavior — includes feedback-loop construction and minimization |
 | `pb-verification-before-completion` | Before claiming work is done |
-| `pb-requesting-code-review` | Before merge, after major feature |
+| `pb-requesting-code-review` | Before merge, after major feature — two-axis (Standards + Spec) parallel review |
 | `pb-receiving-code-review` | When processing review feedback |
-| `pb-brainstorming` | Before any creative/design work |
+| `pb-brainstorming` | Before any creative/design work — contains the grilling loop and domain-modeling discipline |
 | `pb-test-driven-development` | Before writing implementation code |
-| `pb-writing-plans` | Creating implementation plans |
-| `pb-executing-plans` | Following a written plan |
+| `pb-prototype` | Build throwaway code to answer design questions (logic or UI) |
+| `pb-merge-conflicts` | Resolving git merge/rebase conflicts |
 | `pb-dispatching-parallel-agents` | Multiple independent tasks |
 | `pb-subagent-driven-development` | Executing plans with subagents |
 | `pb-finishing-a-development-branch` | Completing work, merging |

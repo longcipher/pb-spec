@@ -428,6 +428,38 @@ After updating `tasks.md`, **verify the mark actually took effect** before proce
 3. **If verification fails** — apply the mark immediately and re-verify.
 
 > **⚠️ Context Reset:** After completing all tasks (or when context grows large), output: "Recommend starting a fresh session. Run `/pb-build <feature-name>` again to continue from where you left off." The progress ledger ensures no completed work is lost.
+>
+> **Handoff Document:** When recommending a fresh session, generate a handoff document summarizing the current state so the next agent can continue without re-reading the entire conversation. Save to the OS temp directory (`$TMPDIR` or `/tmp`):
+>
+> ```markdown
+> # Handoff: <feature-name>
+>
+> ## What's done
+>
+> - Task X.Y: [name] — DONE (commits abc1234..def5678)
+> - Task X.Z: [name] — DONE (commits ...)
+>
+> ## What's next
+>
+> - Task A.B: [name] — TODO (next in queue)
+> - Dependencies: [what it depends on]
+>
+> ## Key context
+>
+> - Spec dir: specs/<spec-dir>/
+> - Design decisions: [1-2 bullets of non-obvious choices]
+> - Watch out for: [any gotchas discovered during build]
+>
+> ## Suggested skills
+>
+> - `/pb-build <feature-name>` — to continue from where we left off
+> - `/pb-systematic-debugging` — if tasks fail repeatedly
+>
+> ## Progress ledger
+> See specs/<spec-dir>/progress.md for full task-by-task record.
+> ```
+>
+> Redact any secrets or API keys from the handoff document.
 
 ### Step 4: Handle Failures (The Recovery Loop with Escalation)
 
