@@ -18,6 +18,5 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - uses: extractions/setup-just@v2
-      - run: uv tool install rumdl
       - run: uv sync
       - run: just ci

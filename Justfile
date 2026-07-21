@@ -11,12 +11,12 @@ install-dev:
 # Format code with ruff
 format:
     uv run ruff format .
-    rumdl fmt .
+    uvx rumdl fmt .
 
 # Lint code with ruff
 lint:
     uv run ruff check .
-    rumdl check .
+    uvx rumdl check .
 
 # Lint and auto-fix issues
 lint-fix:
@@ -49,7 +49,7 @@ all: format lint type-check test
 ci:
     uv run ruff format --check .
     uv run ruff check .
-    rumdl check .
+    uvx rumdl check .
     uv run ty check src tests
     uv run pytest
 
