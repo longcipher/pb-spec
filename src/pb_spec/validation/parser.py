@@ -13,9 +13,7 @@ CONTRACT_BLOCK_HEADER_RE = re.compile(
     re.MULTILINE,
 )
 FIELD_RE = re.compile(r"^\s*(\w+(?:\s+\w+)*):\s*(.*)")
-_NA_TRAILING_RE = re.compile(r"\s*[-—:;,.()\[\]]+\s*$")
 
-ALLOWED_LOOP_TYPES = frozenset({"BDD+TDD", "TDD-only"})
 ALLOWED_TASK_STATUSES = frozenset(
     {
         "🔴 TODO",
@@ -27,48 +25,21 @@ ALLOWED_TASK_STATUSES = frozenset(
         "TODO",
     }
 )
-BUILD_BLOCKED_REQUIRED_SECTIONS = (
-    "Reason",
-    "Loop Type",
-    "Scenario Coverage",
-    "What We Tried",
-    "Failure Evidence",
-    "Failing Step",
-    "Suggested Design Change",
-    "Impact",
-    "Next Action",
-)
-DCR_REQUIRED_SECTIONS = (
-    "Scenario Coverage",
-    "Problem",
-    "What We Tried",
-    "Failure Evidence",
-    "Failing Step",
-    "Suggested Change",
-    "Impact",
-)
-CONTRACT_SECTION_NAMES = frozenset(BUILD_BLOCKED_REQUIRED_SECTIONS + DCR_REQUIRED_SECTIONS)
+BUILD_BLOCKED_REQUIRED_SECTIONS = frozenset({"Reason", "Requested Change", "Impact"})
+DCR_REQUIRED_SECTIONS = frozenset({"Reason", "Requested Change", "Impact"})
+CONTRACT_SECTION_NAMES = BUILD_BLOCKED_REQUIRED_SECTIONS | DCR_REQUIRED_SECTIONS
 
-_CONTRACT_REQUIRED_SECTIONS: dict[str, tuple[str, ...]] = {
+_CONTRACT_REQUIRED_SECTIONS: dict[str, frozenset[str]] = {
     "🛑 Build Blocked": BUILD_BLOCKED_REQUIRED_SECTIONS,
+    "🔄 Design Change Request": DCR_REQUIRED_SECTIONS,
 }
 
 KNOWN_TASK_FIELDS = frozenset(
     {
         "Context:",
         "Verification:",
-        "Scenario Coverage:",
-        "Loop Type:",
-        "Behavioral Contract:",
-        "Simplification Focus:",
         "Status:",
-        "BDD Verification:",
-        "Advanced Test Verification:",
-        "Runtime Verification:",
-        "Advanced Test Coverage:",
-        "Priority:",
-        "Scope:",
-        "Requirement Coverage:",
+        "Scenario Coverage:",
     }
 )
 
@@ -178,15 +149,6 @@ def task_display_name(task_block: TaskBlock) -> str:
     return f"{task_block.id}: {task_block.name}" if task_block.name else task_block.id
 
 
-def is_bare_na(value: str) -> bool:
-    """Return True when a field says N/A without a meaningful reason."""
-    stripped = value.strip()
-    if not stripped.lower().startswith("n/a"):
-        return False
-    remainder = _NA_TRAILING_RE.sub("", stripped[3:])
-    return not remainder.strip()
-
-
 def parse_contract_sections(block_body: str) -> dict[str, str]:
     """Parse colon-delimited sections from a DCR or build-blocked body."""
     sections: dict[str, list[str]] = {}
@@ -241,8 +203,12 @@ def parse_contract_blocks(content: str) -> list[ContractBlock]:
 
 
 def validate_contract_blocks(content: str) -> list[str]:
-    """Validate required sections for markdown workflow contract blocks."""
-    errors = []
+    """Validate required sections for markdown workflow contract blocks.
+
+    Both Build Blocked and DCR packets require the same three sections:
+    Reason, Requested Change, Impact.
+    """
+    errors: list[str] = []
 
     for block in parse_contract_blocks(content):
         required = _CONTRACT_REQUIRED_SECTIONS.get(block.kind, DCR_REQUIRED_SECTIONS)

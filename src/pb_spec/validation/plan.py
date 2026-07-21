@@ -9,10 +9,8 @@ from pathlib import Path
 from pb_spec.exceptions import FileReadError
 from pb_spec.validation.io import read_file_content
 from pb_spec.validation.parser import (
-    ALLOWED_LOOP_TYPES,
     ALLOWED_TASK_STATUSES,
     TASK_CHECKBOX_RE,
-    is_bare_na,
     parse_task_blocks,
     task_display_name,
     validate_contract_blocks,
@@ -27,27 +25,31 @@ _DEFAULT_CONTRACT_CONFIG_PATH = Path(__file__).parent / "contract_sections.toml"
 
 _HEADING_RE = re.compile(r"^##\s+(.+)$", re.MULTILINE)
 
+_DESIGN_REQUIRED_SECTIONS: list[str] = []
+_DESIGN_OPTIONAL_SECTIONS: list[str] = []
+_TASK_REQUIRED_FIELDS: list[str] = []
+_BUILD_BLOCKED_REQUIRED_FIELDS: frozenset[str] = frozenset()
+_DCR_REQUIRED_FIELDS: frozenset[str] = frozenset()
+
 
 def _load_config(config_path: Path | None = None) -> None:
     """Load contract configuration from TOML file into module globals."""
-    global _FULL_MODE_REQUIRED, _LIGHTWEIGHT_MODE_REQUIRED
-    global _TASK_REQUIRED_FIELDS, _NA_REASON_FIELDS
+    global _DESIGN_REQUIRED_SECTIONS, _DESIGN_OPTIONAL_SECTIONS
+    global _TASK_REQUIRED_FIELDS
+    global _BUILD_BLOCKED_REQUIRED_FIELDS, _DCR_REQUIRED_FIELDS
 
     path = config_path or _DEFAULT_CONTRACT_CONFIG_PATH
     with path.open("rb") as f:
         config = tomllib.load(f)
 
-    _FULL_MODE_REQUIRED = list(config["full_mode"]["required_sections"])
-    _LIGHTWEIGHT_MODE_REQUIRED = list(config["lightweight_mode"]["required_sections"])
+    _DESIGN_REQUIRED_SECTIONS = list(config["design"]["required_sections"])
+    _DESIGN_OPTIONAL_SECTIONS = list(config["design"]["optional_sections"])
     _TASK_REQUIRED_FIELDS = list(config["tasks"]["required_fields"])
-    _NA_REASON_FIELDS = frozenset(config["tasks"]["na_reason_fields"])
+    _BUILD_BLOCKED_REQUIRED_FIELDS = frozenset(config["build_blocked"]["required_fields"])
+    _DCR_REQUIRED_FIELDS = frozenset(config["dcr"]["required_fields"])
 
 
-# ponytail: eager load at import time; module path is static
-_FULL_MODE_REQUIRED: list[str] = []
-_LIGHTWEIGHT_MODE_REQUIRED: list[str] = []
-_TASK_REQUIRED_FIELDS: list[str] = []
-_NA_REASON_FIELDS: frozenset[str] = frozenset()
+# Eager load at import time; module path is static.
 _load_config()
 
 
@@ -57,7 +59,7 @@ def load_contract_config(config_path: Path | None = None) -> None:
 
 
 def validate_design_structure(spec_dir: Path) -> ValidationResult:
-    """Validate design.md required sections."""
+    """Validate design.md contains all required sections."""
     errors: list[ValidationError] = []
     warnings: list[str] = []
     design_file = spec_dir / "design.md"
@@ -88,10 +90,8 @@ def validate_design_structure(spec_dir: Path) -> ValidationResult:
         )
 
     headings = {m.group(1).strip() for m in _HEADING_RE.finditer(content)}
-    is_full_mode = "Executive Summary" in headings or "Requirements & Goals" in headings
-    required_sections = list(_FULL_MODE_REQUIRED if is_full_mode else _LIGHTWEIGHT_MODE_REQUIRED)
 
-    for sec in required_sections:
+    for sec in _DESIGN_REQUIRED_SECTIONS:
         if sec not in headings:
             errors.append(
                 ValidationError(
@@ -102,8 +102,7 @@ def validate_design_structure(spec_dir: Path) -> ValidationResult:
             )
 
     if not errors:
-        mode_name = "full" if is_full_mode else "lightweight"
-        warnings.append(f"design.md ({mode_name} mode) structural checks passed.")
+        warnings.append("design.md structural checks passed.")
 
     return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings)
 
@@ -192,32 +191,6 @@ def validate_tasks_structure(spec_dir: Path) -> ValidationResult:
                         field_name=required_field,
                     )
                 )
-            elif required_field in _NA_REASON_FIELDS and is_bare_na(
-                task_block.fields[required_field]
-            ):
-                errors.append(
-                    ValidationError(
-                        message=(
-                            f"Task '{display_name}' field '{required_field}' "
-                            "must be N/A with a brief reason."
-                        ),
-                        file_path="tasks.md",
-                        field_name=required_field,
-                    )
-                )
-
-        loop_type = task_block.fields.get("Loop Type:", "").strip()
-        if loop_type and loop_type not in ALLOWED_LOOP_TYPES:
-            errors.append(
-                ValidationError(
-                    message=(
-                        f"Task '{display_name}' has invalid Loop Type: '{loop_type}'. "
-                        f"Allowed values: {', '.join(sorted(ALLOWED_LOOP_TYPES))}"
-                    ),
-                    file_path="tasks.md",
-                    field_name="Loop Type:",
-                )
-            )
 
         status = task_block.fields.get("Status:", "").strip()
         if status and status not in ALLOWED_TASK_STATUSES:
@@ -249,24 +222,21 @@ def validate_tasks_structure(spec_dir: Path) -> ValidationResult:
     return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings)
 
 
-def validate_features_directory(spec_dir: Path, *, is_full_mode: bool = False) -> ValidationResult:
-    """Validate features directory has feature files."""
+def validate_features_directory(spec_dir: Path) -> ValidationResult:
+    """Validate features directory contains at least one .feature file."""
     errors: list[ValidationError] = []
     warnings: list[str] = []
     features_dir = spec_dir / "features"
     has_features = features_dir.exists() and list(features_dir.glob("*.feature"))
 
     if not has_features:
-        if is_full_mode:
-            errors.append(
-                ValidationError(
-                    message="No .feature files found in features/. Full-mode specs require at least one Scenario.",
-                    file_path=str(features_dir),
-                    severity=ErrorSeverity.HIGH,
-                )
+        errors.append(
+            ValidationError(
+                message="No .feature files found in features/. Specs require at least one Scenario.",
+                file_path=str(features_dir),
+                severity=ErrorSeverity.HIGH,
             )
-        else:
-            warnings.append("No .feature files found. (OK if this is a TDD-only lightweight spec)")
+        )
     else:
         warnings.append("Found Gherkin .feature files.")
 
@@ -298,13 +268,12 @@ def validate_plan(spec_dir: Path) -> ValidationResult:
     design_result = validate_design_structure(spec_dir)
     errors.extend(design_result.errors)
     warnings.extend(design_result.warnings)
-    is_full_mode = bool(design_result.warnings and "full mode" in design_result.warnings[0])
 
     tasks_result = validate_tasks_structure(spec_dir)
     errors.extend(tasks_result.errors)
     warnings.extend(tasks_result.warnings)
 
-    features_result = validate_features_directory(spec_dir, is_full_mode=is_full_mode)
+    features_result = validate_features_directory(spec_dir)
     errors.extend(features_result.errors)
     warnings.extend(features_result.warnings)
 

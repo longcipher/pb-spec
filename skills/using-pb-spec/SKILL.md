@@ -98,11 +98,11 @@ These thoughts mean STOP—you're rationalizing:
 
 When multiple skills could apply, use this order:
 
-1. **Process skills first** (brainstorming, debugging) - these determine HOW to approach the task
-2. **Implementation skills second** (pb-plan, pb-build) - these guide execution
+1. **Process skills first** (`pb-brainstorming`, `pb-systematic-debugging`) — these determine HOW to approach the task
+2. **Implementation skills second** (`pb-plan`, `pb-build`) — these guide execution
 
-"Let's build X" → brainstorming first, then implementation skills.
-"Fix this bug" → systematic-debugging first, then domain-specific skills.
+"Let's build X" → `pb-brainstorming` first, then implementation skills.
+"Fix this bug" → `pb-systematic-debugging` first, then domain-specific skills.
 
 ## Skill Types
 
@@ -120,25 +120,32 @@ Instructions say WHAT, not HOW. "Add X" or "Fix Y" doesn't mean skip workflows.
 
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
-| `pb-init` | `/pb-init` | Audit repo, update AGENTS.md |
-| `pb-plan` | `/pb-plan <requirement>` | Design + task planning |
+| `pb-init` | `/pb-init` | Audit repo, update `AGENTS.md` snapshot |
+| `pb-plan` | `/pb-plan <requirement>` | Design + task planning (4-field schema, scalable template) |
+| `pb-build` | `/pb-build <feature>` | Generator/Evaluator + Wave-Based parallel execution |
 | `pb-refine` | `/pb-refine <feature>` | Apply feedback, iterate design |
-| `pb-build` | `/pb-build <feature>` | Subagent-driven implementation |
 | `pb-improve` | `/pb-improve` | Codebase audit + plans |
+| `pb-brainstorming` | Before creative work | Explore intent and design before implementation |
 
-## Supporting Skills
+## Review/Finalization Skills
 
 | Skill | When to Use |
 |-------|-------------|
-| `pb-systematic-debugging` | Any bug, test failure, unexpected behavior — includes feedback-loop construction and minimization |
-| `pb-verification-before-completion` | Before claiming work is done |
-| `pb-requesting-code-review` | Before merge, after major feature — two-axis (Standards + Spec) parallel review |
-| `pb-receiving-code-review` | When processing review feedback |
-| `pb-brainstorming` | Before any creative/design work — contains the grilling loop and domain-modeling discipline |
-| `pb-test-driven-development` | Before writing implementation code |
-| `pb-prototype` | Build throwaway code to answer design questions (logic or UI) |
-| `pb-merge-conflicts` | Resolving git merge/rebase conflicts |
-| `pb-dispatching-parallel-agents` | Multiple independent tasks |
-| `pb-subagent-driven-development` | Executing plans with subagents |
-| `pb-finishing-a-development-branch` | Completing work, merging |
+| `pb-code-review` | Before merge — two-axis (Standards + Spec) review + receiving decision tree |
+| `pb-branch-finalization` | Work complete — conflict resolution + integration options |
+
+## Meta/Utility Skills
+
+| Skill | When to Use |
+|-------|-------------|
+| `pb-systematic-debugging` | Any bug, test failure, unexpected behavior — root cause before fixes |
+| `pb-prototype` | Build throwaway code to answer design questions (terminal or UI) |
 | `pb-writing-skills` | Creating or editing skills |
+| `using-pb-spec` | Session start — bootstrap skill discipline |
+
+## Artifact Contract Quick Reference
+
+- **`design.md`** — scalable template: 5 required sections (`Summary`, `Approach`, `Architecture Decisions`, `BDD/TDD Strategy`, `Verification`) + 5 optional sections (`Requirements & Goals`, `Architecture Overview`, `Data Models`, `Interface Contracts`, `Implementation Plan`)
+- **`tasks.md`** — 4-field task schema: `Context:`, `Verification:`, `Status:`, `Scenario Coverage:` (literal `N/A` for non-BDD tasks)
+- **`features/*.feature`** — Gherkin scenarios, the source of truth
+- **`🛑 Build Blocked` / `🔄 DCR` packets** — 3 fields each: `Reason`, `Requested Change`, `Impact`

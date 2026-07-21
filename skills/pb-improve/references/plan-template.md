@@ -1,12 +1,10 @@
 # Spec Template for pb-improve Findings
 
-Every spec is written for a `/pb-build` executor that has **zero context**: it has not seen the advisor session, the audit, the other specs, or any prior conversation. It may be a smaller/cheaper model. Assume it is competent at following explicit instructions and weak at filling gaps, recovering from ambiguity, or knowing when to stop.
+Every spec is written for a `/pb-build` executor that has **zero context**: it has not seen the advisor session, the audit, the other specs, or any prior conversation. Assume it is competent at following explicit instructions and weak at filling gaps, recovering from ambiguity, or knowing when to stop. Three properties make a spec executable by a weaker model:
 
-Three properties make a spec executable by a weaker model:
-
-1. **Self-contained context** — everything needed is in the files: paths, code excerpts, conventions, commands.
-2. **Verification gates** — every step ends with a command and its expected result. The builder never has to *judge* whether it succeeded.
-3. **Hard boundaries and escape hatches** — explicit out-of-scope list, and "STOP and report" conditions instead of letting the model improvise when reality doesn't match the spec.
+1. **Self-contained context** — paths, code excerpts, conventions, commands all inlined.
+2. **Verification gates** — every step ends with a command and its expected result.
+3. **Hard boundaries and escape hatches** — explicit out-of-scope list and "STOP and report" conditions instead of improvisation.
 
 ---
 
@@ -19,7 +17,6 @@ Three properties make a spec executable by a weaker model:
 | :--- | :--- |
 | **Status** | Draft |
 | **Created** | YYYY-MM-DD |
-| **Mode** | Lightweight |
 | **Priority** | P1 |
 | **Planned at** | commit `<short SHA>`, <YYYY-MM-DD> |
 
@@ -27,238 +24,114 @@ Three properties make a spec executable by a weaker model:
 
 > 2-3 sentences: overall problem + overall solution covering all findings.
 
-## Why this matters
-
-2–5 sentences. The combined problem, concrete cost, and what improves when all findings land. Written so the builder (and a human reviewer) understands the intent.
-
 ## Approach
 
 > Overall implementation approach across all findings. Reference existing code/patterns to reuse.
 
-## Findings
+**Ponytail Ladder (apply at every decision point):** (1) YAGNI — does it need to exist? (2) stdlib? (3) native platform feature? (4) already-installed dep? (5) one line? one line. (6) only then: minimum code that works. Mark deferrals with `ponytail:` comments. Never simplify away: input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, anything explicitly requested.
 
-> One section per finding. Each finding is self-contained with its own requirements, context, and approach.
+## Findings — one sub-section per finding; each is self-contained (requirements, context, approach)
 
 ### Finding 1: <Title>
 
-- **Category:** bug / security / performance / test-coverage / tech-debt / ...
-- **Impact:** HIGH / MEDIUM / LOW
-- **Effort:** S / M / L
-- **Confidence:** HIGH / MEDIUM / LOW
+- **Category:** bug / security / performance / test-coverage / tech-debt
+- **Impact / Effort / Confidence:** HIGH / MEDIUM / LOW • S / M / L • HIGH / MEDIUM / LOW
 
 #### Requirements (EARS Notation)
 
-> Each requirement uses one of the 5 EARS patterns (Ubiquitous, State-driven, Event-driven, Unwanted, Exception).
+> EARS patterns: Ubiquitous, State-driven, Event-driven, Unwanted, Exception.
 
 - **[REQ-01-F1]:** The system *shall* [action] when [trigger].
 
 #### Current state
 
-The facts the builder needs, inlined — never "as discussed" or "see audit":
-
-- The relevant files, each with one line on its role:
-  - `src/orders/api.py` — order-list endpoint; contains the N+1 (lines 130–160)
-- Excerpts of the code as it exists today (short, with `file:line` markers).
+> Inlined facts — never "as discussed" or "see audit": `file:line` markers + short code excerpts. Example: `src/orders/api.py` — order-list endpoint; contains the N+1 (lines 130–160).
 
 #### Approach
 
 > How to implement this finding. Reference existing code/patterns to reuse.
 
-#### Scope for this finding
+#### Scope
 
-**In scope:** ...
-**Out of scope:** ...
+**In scope:** ... **Out of scope:** ...
 
-### Finding 2: <Title>
+### Finding 2: <Title> — (repeat the structure above per finding.)
 
-- **Category:** ...
-- **Impact:** ...
-- **Effort:** ...
-
-#### Requirements (EARS Notation)
-
-- **[REQ-01-F2]:** ...
-
-#### Current state
-
-...
-
-#### Approach
-
-...
-
-(Repeat for each finding)
-
-## Architecture Decisions
-
-> Consolidated MADR decisions across all findings. Reference finding sections above.
->
-> Each decision must use MADR format: `[Context]`, `[Decision]`, `[Consequences]`.
+## Architecture Decisions — consolidated MADR across all findings. Each: `[Context]`, `[Decision]`, `[Consequences]`
 
 ### AD-01: [Decision Title]
 
-- **Status:** `Proposed` / `Accepted`
-- **Date:** YYYY-MM-DD
+- **Status:** `Proposed` / `Accepted` — **Date:** YYYY-MM-DD
 
-**Context:** ...
-**Decision:** ...
-**Consequences:** ...
-
-- **Inherited Decisions:** Which items from the `Architecture Decision Snapshot` this change must preserve.
-- **SRP / DIP Check:** Explain how responsibilities stay focused and where dependency inversion is required.
-- **Dependency Injection Plan:** All external dependencies must be routed through interfaces or abstract classes unless the repo already defines a different stable seam.
-- **Code Simplifier Alignment:** Explain why the chosen pattern reduces complexity, clarifies control flow, or limits coupling rather than adding ceremony.
+**Context:** ... **Decision:** ... **Consequences:** ...
 
 ## BDD/TDD Strategy
 
-- **Primary Language:** ...
-- **BDD Runner:** `@cucumber/cucumber` / `behave` / `cucumber`
-- **BDD Command:** ...
+- **BDD Runner / Command:** `@cucumber/cucumber` / `behave` / `cucumber` — `<exact command>`
 - **Unit Test Command:** ...
-- **Property Test Tool:** `fast-check` / `Hypothesis` / `proptest` / `N/A` with reason
-- **Fuzz Test Tool:** `jazzer.js` / `Atheris` / `cargo-fuzz` / `N/A` with reason
-- **Benchmark Tool:** `Vitest Bench` / `pytest-benchmark` / `criterion` / `N/A` with reason
+- **Property / Fuzz / Benchmark Tool:** `fast-check` / `Hypothesis` / `proptest` / `N/A`; `jazzer.js` / `Atheris` / `cargo-fuzz` / `N/A`; `Vitest Bench` / `pytest-benchmark` / `criterion` / `N/A`
 - **Feature Files:** `specs/<spec-dir>/features/*.feature`
-- **Outside-in Loop:** Which Gherkin scenarios fail first and then pass
 
-## Code Simplification Constraints
-
-**Ponytail Ladder (mandatory at every decision point):**
-
-1. Does this need to exist at all? Speculative need = skip it. (YAGNI)
-2. Stdlib does it? Use it.
-3. Native platform feature covers it? Use it.
-4. Already-installed dependency? Use it.
-5. One line? One line.
-6. Only then: minimum code that works.
-
-**Mark deferrals:** Use `ponytail:` comments for deliberate simplifications with known ceilings and upgrade paths.
-
-**Never simplify away:** input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, anything explicitly requested.
-
-**Additional constraints:**
-
-- **Behavioral Contract:** Preserve existing behavior unless a listed scenario or requirement explicitly changes it.
-- **Repo Standards:** Use only the coding standards established by `AGENTS.md`, `CLAUDE.md`, and the existing codebase.
-- **Readability Priorities:** Prefer explicit control flow, clear names, reduced nesting. Avoid dense or clever rewrites.
-- **Refactor Scope:** Limit cleanup to touched modules unless the design explicitly justifies broader refactor.
-
-## BDD Scenario Inventory
-
-> Complete list of ALL scenarios across ALL findings with task coverage.
-
-- `features/correctness.feature` — [Scenario Name]: [Business outcome] → Task X.Y
-- `features/security.feature` — [Scenario Name]: [Business outcome] → Task X.Y
-...
-
-## Existing Components to Reuse
-
-> List components found during codebase audit, or "None identified".
-
-## Verification
-
-> How to verify the change works. Include exact commands and expected results.
+## Verification — exact commands and expected results, verified during recon (not guessed)
 
 | Purpose   | Command                          | Expected on success |
 |-----------|----------------------------------|---------------------|
-| Install   | `uv sync --all-groups`           | exit 0              |
 | Lint      | `uv run ruff check`              | exit 0, no errors   |
 | Typecheck | `uv run ty check`                | exit 0, no errors   |
 | Tests     | `uv run pytest`                  | all pass            |
 | BDD       | `uv run behave`                  | all pass            |
 
-(Exact commands from this repo — verified during recon, not guessed.)
+## Revision History — append a row per substantive revision (date, author, change)
 
-## Maintenance notes
-
-For the human/agent who owns this code after the change lands:
-
-- What future changes will interact with this (e.g. "if pagination is added
-  to this endpoint, the batching in step 2 must be revisited").
-- What a reviewer should scrutinize in the PR.
-- Any follow-up explicitly deferred out of this spec (and why).
+| Date | Author | Change |
+|------|--------|--------|
+| YYYY-MM-DD | ... | Initial draft. |
 ```
+
+**Optional sections** (only when non-trivial): `## Requirements & Goals` (EARS), `## Architecture Overview` (C4 + Mermaid), `## Data Models` (DBML / Prisma), `## Interface Contracts`, `## Implementation Plan`.
 
 ---
 
 ## tasks.md Template
 
-> **⚠️ CRITICAL — pb-build REJECTS tasks.md if ANY of these 10 fields is missing:**
->
-> | # | Field | Common Mistake |
-> |---|-------|----------------|
-> | 1 | `Context:` | — |
-> | 2 | `Verification:` | — |
-> | 3 | `Scenario Coverage:` | — |
-> | 4 | `Loop Type:` | — |
-> | 5 | `Behavioral Contract:` | — |
-> | 6 | **`Simplification Focus:`** | **#1 forgotten field** — always add it |
-> | 7 | `Status:` | — |
-> | 8 | **`BDD Verification:`** | **#2 forgotten field** — always add it |
-> | 9 | `Advanced Test Verification:` | — |
-> | 10 | `Runtime Verification:` | — |
->
-> **Before writing tasks.md, verify each task block has ALL 10 fields.**
+> **⚠️ pb-build REJECTS tasks.md if ANY of these 4 fields is missing:** `Context:` · `Verification:` · `Status:` · `Scenario Coverage:`
 
 ```markdown
 # <Feature Name> — Tasks
 
-| Metadata | Details |
-| :--- | :--- |
-| **Design Doc** | specs/<spec-dir>/design.md |
-| **Status** | Planning |
+> Design Doc: `specs/<spec-dir>/design.md` • Status: Planning
 
 ## Tasks
 
-> Tasks are numbered across ALL findings: Phase X = Finding X.
-> Order by dependency: infrastructure/scaffolding first, then findings in priority order.
-> Cross-finding dependencies: if Finding B depends on Finding A, place A's tasks first.
+> Tasks are numbered across ALL findings: Phase X = Finding X (Task X.Y). Order by dependency: infrastructure/scaffolding first, then findings in priority order.
 
-### Task 1.1: [Task Name — Finding 1 infrastructure or first task]
+### Task 1.1: [Task Name]
 
 > **Context:** ...
 > **Verification:** ...
-> **Scenario Coverage:** [Feature/scenario names, or `N/A` with reason]
+> **Scenario Coverage:** `@scenario-id-1`, `@scenario-id-2` — or `N/A` for non-BDD tasks
 
-- **Loop Type:** `BDD+TDD` / `TDD-only`
-- **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
-- **Simplification Focus:** `[Reduce nesting / remove redundancy / improve naming / consolidate related logic / N/A]`
 - **Status:** 🔴 TODO
 - [ ] Step 1: ...
 - [ ] Step 2: ...
-- [ ] BDD Verification: [Concrete scenario check — e.g., "run `behave features/auth.feature` and confirm Scenario X fails first, then passes"]
-- [ ] Advanced Test Verification: [Command or `N/A` with reason]
-- [ ] Runtime Verification: [Logs + probe result, or `N/A` with reason]
 
-### Task 1.2: [Task Name — Finding 1 next task]
+### Task 2.1: [Task Name — depends on Finding 1] — same 4 fields; numbered X.Y where X = Finding index
+```
 
-> **Context:** ...
-> **Verification:** ...
-> **Scenario Coverage:** ...
+**Status values:** `🔴 TODO` / `🟡 IN PROGRESS` / `🟢 DONE` / `🔄 DCR` / `⛔ OBSOLETE`. **Scenario Coverage:** BDD+TDD tasks list `@scenario-id` tags from `.feature` files; non-BDD tasks use literal `N/A`.
 
-- **Loop Type:** ...
-- **Behavioral Contract:** ...
-- **Simplification Focus:** ...
-- **Status:** 🔴 TODO
-- [ ] Step 1: ...
-- [ ] BDD Verification: ...
-- [ ] Advanced Test Verification: ...
-- [ ] Runtime Verification: ...
+---
 
-### Task 2.1: [Task Name — Finding 2 first task]
+## Build Blocked / DCR Packet
 
-> **Context:** ... (note dependency on Finding 1 if applicable)
-> **Verification:** ...
-> **Scenario Coverage:** ...
+When a task cannot proceed, emit a packet with exactly these 3 fields (`Reason`, `Requested Change`, `Impact`):
 
-- **Loop Type:** ...
-- **Behavioral Contract:** ...
-- **Simplification Focus:** ...
-- **Status:** 🔴 TODO
-- [ ] Step 1: ...
-- [ ] BDD Verification: ...
-- [ ] Advanced Test Verification: ...
-- [ ] Runtime Verification: ...
+```markdown
+> 🛑 BUILD BLOCKED — Task <X.Y>
+>
+> **Reason:** <why the task cannot proceed — e.g., upstream design ambiguity, missing dependency, spec contradicts code>
+> **Requested Change:** <concrete change to design.md / tasks.md / .feature that would unblock>
+> **Impact:** <what is blocked downstream — list affected task IDs and any verification gate that won't run>
 ```
 
 ---
@@ -279,10 +152,7 @@ Feature: <Feature Name>
     When [action]
     Then [expected outcome]
 
-  Scenario: [Edge case scenario name]
-    Given [precondition with edge case]
-    When [action]
-    Then [expected outcome]
+  Scenario: [Edge case — preconditions, actions, expected outcome]
 ```
 
 ---
@@ -290,15 +160,13 @@ Feature: <Feature Name>
 ## specs/README.md Template
 
 ```markdown
-# Implementation Specs
-
-Generated by pb-improve on <date>. Execute via `/pb-build <feature-name>`.
+# Implementation Specs — generated by pb-improve on <date>. Execute via `/pb-build <feature-name>`
 
 ## Execution order & status
 
-| Spec                 | Findings                        | Priority | Effort                         | Status                             |
-| -------------------- | ------------------------------- | -------- | ------------------------------ | ---------------------------------- |
-| 2026-MM-DD-01-<slug> | Finding 1, Finding 2, Finding 3 | P1       | M                              | TODO                               |
+| Spec                 | Findings                        | Priority | Effort | Status                             |
+| -------------------- | ------------------------------- | -------- | ------ | ---------------------------------- |
+| 2026-MM-DD-01-<slug> | Finding 1, Finding 2, Finding 3 | P1       | M      | TODO                               |
 | Status values: TODO  | IN PROGRESS                     | DONE     | BLOCKED (with one-line reason) | REJECTED (with one-line rationale) |
 
 ## Finding details
@@ -306,8 +174,7 @@ Generated by pb-improve on <date>. Execute via `/pb-build <feature-name>`.
 | # | Finding | Category | Effort | Tasks |
 |---|---------|----------|--------|-------|
 | 1 | <title> | bug | S | Task 1.1, 1.2 |
-| 2 | <title> | security | M | Task 2.1, 2.2, 2.3 |
-| 3 | <title> | performance | S | Task 3.1 |
+| 2 | <title> | security | M | Task 2.1, 2.2 |
 
 ## Dependency notes
 
@@ -322,13 +189,11 @@ Generated by pb-improve on <date>. Execute via `/pb-build <feature-name>`.
 
 ## Quality bar — check before finishing each spec
 
-- Could a model that has never seen this repo execute this with only the spec files and the repo? If any step requires knowledge from the advisor session, inline that knowledge.
+- Could a model that has never seen this repo execute this with only the spec files and the repo? Inline any knowledge from the advisor session.
 - Is every verification a command with an expected result, not a judgment ("make sure it works")?
 - Does every step name exact files and symbols, not "the relevant module"?
 - Are the STOP conditions specific to this spec's actual risks, not boilerplate?
-- Would a reviewer reading only "Why this matters" + the Done criteria understand what they're approving?
-- No secret values anywhere in the files — locations and credential types only.
-- "Planned at" SHA is filled in and the in-scope paths in the drift check match the Scope section.
-- Every requirement from the finding maps to at least one task.
-- Every task has a verification command.
-- Every BDD+TDD task references a specific scenario in a feature file.
+- Would a reviewer reading only `## Summary` + the Done criteria understand what they're approving?
+- No secret values anywhere in the files — locations and credential types only. "Planned at" SHA is filled in; in-scope paths in the drift check match the Scope section.
+- Every requirement maps to at least one task; every task has a verification command; every BDD+TDD task references a specific `.feature` scenario.
+- Every task has exactly 4 required fields: Context, Verification, Status, Scenario Coverage.

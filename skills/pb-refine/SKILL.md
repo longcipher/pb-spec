@@ -37,7 +37,7 @@ Execute the following steps in order.
 3. `specs/<spec-dir>/features/` — existing `.feature` files and scenario inventory.
 4. `AGENTS.md` (if it exists) — read-only source of constraints and gotchas.
 
-### Step 2: Parse User Feedback
+### Step 2: Parse User Feedback & Validate Packets
 
 The user's feedback may include:
 
@@ -55,44 +55,26 @@ Categorize the feedback into:
 3. **Feature changes** — modifications to `specs/<spec-dir>/features/`.
 4. **Both / All** — changes that affect feature files, design, and cascade to tasks.
 
-If feedback includes a standardized `🛑 Build Blocked` packet, treat it as high-priority execution evidence (not a speculative opinion). Extract and preserve:
+If feedback includes a standardized `🛑 Build Blocked` or `🔄 Design Change Request` packet, treat it as structured feedback. Validate the packet before modifying any spec file.
 
-- Failed attempts summary
-- Exact failing commands / error excerpts
-- Suggested design change and affected tasks
-
-If feedback includes a standardized `🛑 Build Blocked` or `🔄 Design Change Request` packet, treat it as structured feedback.
-Validate the packet before modifying any spec file.
-
-Required `🛑 Build Blocked` sections:
+Required `🛑 Build Blocked` fields:
 
 - `Reason`
-- `Loop Type`
-- `Scenario Coverage`
-- `What We Tried`
-- `Failure Evidence`
-- `Failing Step`
-- `Suggested Design Change`
-- `Impact`
-- `Next Action`
-
-Required `🔄 Design Change Request` sections:
-
-- `Scenario Coverage`
-- `Problem`
-- `What We Tried`
-- `Failure Evidence`
-- `Failing Step`
-- `Suggested Change`
+- `Requested Change`
 - `Impact`
 
-If any required section is missing, stop and report:
+Required `🔄 Design Change Request` fields:
 
-- `❌ Incomplete 🛑 Build Blocked packet. Missing required section(s): [section names]`
-- `❌ Incomplete 🔄 Design Change Request packet. Missing required section(s): [section names]`
+- `Reason`
+- `Requested Change`
+- `Impact`
 
-Do not guess or reconstruct missing failure evidence, impact, or suggested changes.
-Only after packet validation passes may you update the affected `.feature`, `design.md`, and `tasks.md` files.
+If any required field is missing, stop and report:
+
+- `❌ Incomplete 🛑 Build Blocked packet. Missing required field(s): [field names]`
+- `❌ Incomplete 🔄 Design Change Request packet. Missing required field(s): [field names]`
+
+Do not guess or reconstruct missing reason, requested change, or impact. Only after packet validation passes may you update the affected `.feature`, `design.md`, and `tasks.md` files.
 
 ### Step 3: Update `.feature` Files and design.md
 
@@ -105,6 +87,7 @@ If feedback changes user-visible behavior, update the relevant files under `spec
 
 Apply design changes to `specs/<spec-dir>/design.md`:
 
+- The design.md is a single scalable template (5 required + 5 optional sections). Preserve this structure; do not split it into modes.
 - **Preserve Design Standards:** All design artifacts must conform to: EARS Notation (requirements with `[REQ-XX]` IDs), C4 Model + Mermaid (architecture), DBML / Prisma Schema (data models), MADR (architecture decisions with `[Context]`/`[Decision]`/`[Consequences]`), RFC 2119 Constraints (MUST/SHOULD/MAY), and Behavior Traceability Matrix (component → scenario mapping).
 - **Use precise edits.** Modify only the affected sections. Do not rewrite the entire file.
 - **Update the metadata table:** Change `Status` to `Revised` and update the date.
@@ -124,15 +107,15 @@ Apply design changes to `specs/<spec-dir>/design.md`:
 
 ### Step 4: Cascade to tasks.md
 
-If design changes affect the task breakdown, update `specs/<spec-dir>/tasks.md`:
+If design changes affect the task breakdown, update `specs/<spec-dir>/tasks.md`. Tasks use only four fields: `Context`, `Verification`, `Status`, `Scenario Coverage`.
 
 - **Reset Blocked Tasks:** If the refinement resolves a `🔄 DCR` packet, you MUST reset the Status of the blocked task from `🔄 DCR` back to `🔴 TODO` so that `pb-build` will re-attempt it on the next run. Also, clear its evidence checkboxes back to `- [ ]`.
 - **Add new tasks** where needed. Assign them the next available Task ID in sequence.
 - **Remove or mark tasks as obsolete** if they're no longer needed: change Status to `⛔ OBSOLETE`.
 - **Reorder tasks** if dependencies changed.
-- **Update task Context** to reflect new design decisions.
-- **Update `Scenario Coverage` and `BDD Verification`** when scenarios were added, removed, renamed, or split.
-- **Strengthen Verification** when needed: add runtime observability checks (logs/probe) for runtime-facing tasks, or explicit `N/A` rationale when not applicable.
+- **Update task `Context`** to reflect new design decisions.
+- **Update `Verification`** when needed: add concrete commands and expected results.
+- **Update `Scenario Coverage`** when scenarios were added, removed, renamed, or split. Use literal `N/A` (no reason required) for non-BDD tasks where scenario coverage genuinely does not apply.
 - **Do NOT modify completed tasks** (`- [x]` or `🟢 DONE`) unless explicitly requested.
 - **Use precise edits** — do not rewrite the entire file.
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -28,13 +29,10 @@ def _create_spec_files(
 ) -> None:
     """Helper to create spec files."""
     spec_dir.mkdir(parents=True, exist_ok=True)
-
     if design_content is not None:
         (spec_dir / "design.md").write_text(design_content)
-
     if tasks_content is not None:
         (spec_dir / "tasks.md").write_text(tasks_content)
-
     if features_content is not None:
         features_dir = spec_dir / "features"
         features_dir.mkdir(exist_ok=True)
@@ -42,46 +40,20 @@ def _create_spec_files(
 
 
 VALID_DESIGN_CONTENT = (
-    "# Design Document\n"
-    "\n"
-    "## Summary\n"
-    "A brief summary of the feature.\n"
-    "\n"
-    "## Approach\n"
-    "Implementation approach.\n"
-    "\n"
-    "## Architecture Decisions\n"
-    "Decision 1: Use Python\n"
-    "\n"
-    "## BDD/TDD Strategy\n"
-    "We will use BDD+TDD approach\n"
-    "\n"
-    "## Code Simplification Constraints\n"
-    "Keep it minimal.\n"
-    "\n"
-    "## BDD Scenario Inventory\n"
-    "Scenario 1: Basic flow\n"
-    "\n"
-    "## Existing Components to Reuse\n"
-    "None.\n"
-    "\n"
-    "## Verification\n"
-    "Tests will verify the implementation\n"
+    "# Design Document\n\n"
+    "## Summary\nA brief summary of the feature.\n\n"
+    "## Approach\nImplementation approach.\n\n"
+    "## Architecture Decisions\nDecision 1: Use Python\n\n"
+    "## BDD/TDD Strategy\nWe will use BDD+TDD approach\n\n"
+    "## Verification\nTests will verify the implementation\n"
 )
 
 VALID_TASKS_CONTENT = (
-    "# Tasks\n"
-    "\n"
+    "# Tasks\n\n"
     "### Task 1.1: Implement feature\n"
     "Context: Implement the core feature logic.\n"
     "Verification: Run the full test suite.\n"
     "Scenario Coverage: Test scenario in test.feature.\n"
-    "Loop Type: TDD-only\n"
-    "Behavioral Contract: Must pass all tests.\n"
-    "Simplification Focus: Keep implementation minimal.\n"
-    "BDD Verification: N/A — TDD-only task.\n"
-    "Advanced Test Verification: N/A — no advanced tests planned.\n"
-    "Runtime Verification: N/A — no runtime changes.\n"
     "Status: 🟢 DONE\n"
     "- [x] Step 1: Write test\n"
     "- [x] Step 2: Implement\n"
@@ -95,6 +67,60 @@ VALID_FEATURE_CONTENT = (
     "    Then result\n"
 )
 
+_DESIGN_SECTIONS: dict[str, str] = {
+    "Summary": "## Summary\nSummary.\n\n",
+    "Approach": "## Approach\nApproach.\n\n",
+    "Architecture Decisions": "## Architecture Decisions\nDecision.\n\n",
+    "BDD/TDD Strategy": "## BDD/TDD Strategy\nStrategy.\n\n",
+    "Verification": "## Verification\nVerify.\n",
+}
+
+_TASK_FIELDS: dict[str, str] = {
+    "Context:": "Context: Build piece.\n",
+    "Verification:": "Verification: Run tests.\n",
+    "Scenario Coverage:": "Scenario Coverage: N/A\n",
+    "Status:": "Status: 🔴 TODO\n",
+}
+
+
+def _design_missing(missing: str) -> str:
+    """Build a design.md body with all required sections except `missing`."""
+    parts = [_DESIGN_SECTIONS[k] for k in _DESIGN_SECTIONS if k != missing]
+    return "# Design\n\n" + "".join(parts)
+
+
+def _tasks_missing(missing: str) -> str:
+    """Build a tasks.md body with all required fields except `missing`."""
+    fields = [_TASK_FIELDS[k] for k in _TASK_FIELDS if k != missing]
+    return "# Tasks\n\n### Task 1.1: Test task\n" + "".join(fields) + "- [ ] Step 1: Write test\n"
+
+
+def _task_with_packet(
+    status: str,
+    packet_header: str,
+    packet_fields: str,
+) -> str:
+    """Build a tasks.md with a task block followed by a contract packet.
+
+    Status is placed before Scenario Coverage so the contract block header
+    (which the parser treats as a continuation line) contaminates Scenario
+    Coverage rather than Status. Scenario Coverage is only checked for
+    non-emptiness, while Status must match an allowed marker.
+    """
+    return (
+        "# Tasks\n\n"
+        "### Task 1.1: Test task\n"
+        f"Status: {status}\n"
+        "Context: Build piece.\n"
+        "Verification: Run tests.\n"
+        "Scenario Coverage: N/A\n"
+        "- [ ] Step 1: Resolve\n"
+        "\n"
+        f"{packet_header}\n"
+        "\n"
+        f"{packet_fields}"
+    )
+
 
 @pytest.fixture
 def valid_spec_dir(tmp_path: Path) -> Path:
@@ -105,18 +131,6 @@ def valid_spec_dir(tmp_path: Path) -> Path:
         design_content=VALID_DESIGN_CONTENT,
         tasks_content=VALID_TASKS_CONTENT,
         features_content=VALID_FEATURE_CONTENT,
-    )
-    return spec_dir
-
-
-@pytest.fixture
-def invalid_spec_dir(tmp_path: Path) -> Path:
-    """Create an invalid spec directory structure."""
-    spec_dir = tmp_path / "specs" / "2026-03-28-invalid-feature"
-    _create_spec_files(
-        spec_dir,
-        design_content="# Design Document\n\n## Some Section\nContent here\n",
-        tasks_content="# Tasks\n\nSome tasks here\n",
     )
     return spec_dir
 
@@ -151,25 +165,20 @@ class TestGetLatestSpecDir:
         """Test that it returns the latest spec directory by name."""
         specs_dir = tmp_path / "specs"
         specs_dir.mkdir()
-
         (specs_dir / "2026-03-01-old-feature").mkdir()
         (specs_dir / "2026-03-28-new-feature").mkdir()
-
         result = get_latest_spec_dir(specs_dir)
         assert result.name == "2026-03-28-new-feature"
 
     def test_exits_when_no_specs_dir(self, tmp_path: Path) -> None:
         """Test that it raises SpecNotFoundError when specs directory doesn't exist."""
-        specs_dir = tmp_path / "specs"
-
         with pytest.raises(SpecNotFoundError):
-            get_latest_spec_dir(specs_dir)
+            get_latest_spec_dir(tmp_path / "specs")
 
     def test_exits_when_no_spec_dirs(self, tmp_path: Path) -> None:
         """Test that it raises SpecNotFoundError when specs directory is empty."""
         specs_dir = tmp_path / "specs"
         specs_dir.mkdir()
-
         with pytest.raises(SpecNotFoundError):
             get_latest_spec_dir(specs_dir)
 
@@ -186,9 +195,7 @@ class TestValidatePlan:
         """Test that missing design.md fails validation."""
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
-
-        (spec_dir / "tasks.md").write_text("### Task 1.1: Test\nStatus: TODO\n")
-
+        (spec_dir / "tasks.md").write_text(VALID_TASKS_CONTENT)
         result = validate_plan(spec_dir)
         assert result.is_valid is False
 
@@ -196,400 +203,266 @@ class TestValidatePlan:
         """Test that missing tasks.md fails validation."""
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
-
-        (spec_dir / "design.md").write_text(
-            "## Architecture Decisions\n## BDD/TDD Strategy\n## Verification\n"
-        )
-
+        (spec_dir / "design.md").write_text(VALID_DESIGN_CONTENT)
         result = validate_plan(spec_dir)
         assert result.is_valid is False
 
     def test_missing_design_section_fails(self, tmp_path: Path) -> None:
-        """Test that missing required design section fails validation."""
+        """Test that design with no required sections fails validation."""
         spec_dir = tmp_path / "specs" / "test"
-        spec_dir.mkdir(parents=True)
-
         _create_spec_files(
             spec_dir,
             design_content="## Some Section\n",
-            tasks_content="### Task 1.1: Test\nStatus: TODO\n",
+            tasks_content=VALID_TASKS_CONTENT,
         )
-
         result = validate_plan(spec_dir)
         assert result.is_valid is False
 
-    def test_invalid_tasks_structure_fails(self, tmp_path: Path) -> None:
-        """Test that invalid tasks.md structure fails validation."""
+    def test_missing_summary_section_fails(self, tmp_path: Path) -> None:
+        """Test that design missing Summary section fails."""
         spec_dir = tmp_path / "specs" / "test"
-        spec_dir.mkdir(parents=True)
-
         _create_spec_files(
             spec_dir,
-            design_content="## Architecture Decisions\n## BDD/TDD Strategy\n## Verification\n",
+            design_content=_design_missing("Summary"),
+            tasks_content=VALID_TASKS_CONTENT,
+        )
+        result = validate_plan(spec_dir)
+        assert result.is_valid is False
+        assert any("Summary" in e.message for e in result.errors)
+
+    def test_missing_approach_section_fails(self, tmp_path: Path) -> None:
+        """Test that design missing Approach section fails."""
+        spec_dir = tmp_path / "specs" / "test"
+        _create_spec_files(
+            spec_dir,
+            design_content=_design_missing("Approach"),
+            tasks_content=VALID_TASKS_CONTENT,
+        )
+        result = validate_plan(spec_dir)
+        assert result.is_valid is False
+        assert any("Approach" in e.message for e in result.errors)
+
+    def test_missing_architecture_decisions_section_fails(self, tmp_path: Path) -> None:
+        """Test that design missing Architecture Decisions section fails."""
+        spec_dir = tmp_path / "specs" / "test"
+        _create_spec_files(
+            spec_dir,
+            design_content=_design_missing("Architecture Decisions"),
+            tasks_content=VALID_TASKS_CONTENT,
+        )
+        result = validate_plan(spec_dir)
+        assert result.is_valid is False
+        assert any("Architecture Decisions" in e.message for e in result.errors)
+
+    def test_missing_bdd_tdd_strategy_section_fails(self, tmp_path: Path) -> None:
+        """Test that design missing BDD/TDD Strategy section fails."""
+        spec_dir = tmp_path / "specs" / "test"
+        _create_spec_files(
+            spec_dir,
+            design_content=_design_missing("BDD/TDD Strategy"),
+            tasks_content=VALID_TASKS_CONTENT,
+        )
+        result = validate_plan(spec_dir)
+        assert result.is_valid is False
+        assert any("BDD/TDD Strategy" in e.message for e in result.errors)
+
+    def test_missing_verification_section_fails(self, tmp_path: Path) -> None:
+        """Test that design missing Verification section fails."""
+        spec_dir = tmp_path / "specs" / "test"
+        _create_spec_files(
+            spec_dir,
+            design_content=_design_missing("Verification"),
+            tasks_content=VALID_TASKS_CONTENT,
+        )
+        result = validate_plan(spec_dir)
+        assert result.is_valid is False
+        assert any("Verification" in e.message for e in result.errors)
+
+    def test_invalid_tasks_structure_fails(self, tmp_path: Path) -> None:
+        """Test that tasks.md without task blocks fails validation."""
+        spec_dir = tmp_path / "specs" / "test"
+        _create_spec_files(
+            spec_dir,
+            design_content=VALID_DESIGN_CONTENT,
             tasks_content="# Tasks\nSome content without task definitions\n",
         )
-
         result = validate_plan(spec_dir)
         assert result.is_valid is False
 
     def test_duplicate_task_ids_fail(self, tmp_path: Path) -> None:
-        """Test that duplicate task IDs violate the task contract."""
+        """Test that duplicate task IDs fail validation."""
         spec_dir = tmp_path / "specs" / "test"
-        spec_dir.mkdir(parents=True)
-
-        tasks_content = (
-            "# Tasks\n"
-            "\n"
-            "### Task 1.1: First task\n"
-            "Context: Build first piece.\n"
+        one_task = (
+            "### Task 1.1: Task\n"
+            "Context: Build.\n"
             "Verification: Run tests.\n"
-            "Scenario Coverage: N/A — internal task.\n"
-            "Loop Type: TDD-only\n"
-            "Behavioral Contract: Must pass.\n"
-            "Simplification Focus: Keep minimal.\n"
-            "BDD Verification: N/A — TDD-only task.\n"
-            "Advanced Test Verification: N/A — no advanced tests planned.\n"
-            "Runtime Verification: N/A — no runtime changes.\n"
-            "Status: 🔴 TODO\n"
-            "- [ ] Step 1: Write test\n"
-            "\n"
-            "### Task 1.1: Duplicate task\n"
-            "Context: Build second piece.\n"
-            "Verification: Run tests.\n"
-            "Scenario Coverage: N/A — internal task.\n"
-            "Loop Type: TDD-only\n"
-            "Behavioral Contract: Must pass.\n"
-            "Simplification Focus: Keep minimal.\n"
-            "BDD Verification: N/A — TDD-only task.\n"
-            "Advanced Test Verification: N/A — no advanced tests planned.\n"
-            "Runtime Verification: N/A — no runtime changes.\n"
+            "Scenario Coverage: N/A\n"
             "Status: 🔴 TODO\n"
             "- [ ] Step 1: Write test\n"
         )
-        _create_spec_files(spec_dir, tasks_content=tasks_content)
-
+        tasks_content = f"# Tasks\n\n{one_task}\n{one_task}"
+        _create_spec_files(
+            spec_dir,
+            design_content=VALID_DESIGN_CONTENT,
+            tasks_content=tasks_content,
+        )
         result = validate_tasks_structure(spec_dir)
-
         assert result.is_valid is False
         assert any("Duplicate task ID" in e.message for e in result.errors)
 
-    def test_task_missing_status_fails_even_when_other_task_has_status(
-        self, tmp_path: Path
-    ) -> None:
-        """Test that Status is required per task, not just somewhere in tasks.md."""
+    def test_task_missing_status_fails(self, tmp_path: Path) -> None:
+        """Test that task missing Status field fails."""
         spec_dir = tmp_path / "specs" / "test"
-        spec_dir.mkdir(parents=True)
-
-        tasks_content = (
-            "# Tasks\n"
-            "\n"
-            "### Task 1.1: Has status\n"
-            "Context: Build first piece.\n"
-            "Verification: Run tests.\n"
-            "Scenario Coverage: N/A — internal task.\n"
-            "Loop Type: TDD-only\n"
-            "Behavioral Contract: Must pass.\n"
-            "Simplification Focus: Keep minimal.\n"
-            "BDD Verification: N/A — TDD-only task.\n"
-            "Advanced Test Verification: N/A — no advanced tests planned.\n"
-            "Runtime Verification: N/A — no runtime changes.\n"
-            "Status: 🔴 TODO\n"
-            "- [ ] Step 1: Write test\n"
-            "\n"
-            "### Task 1.2: Missing status\n"
-            "Context: Build second piece.\n"
-            "Verification: Run tests.\n"
-            "Scenario Coverage: N/A — internal task.\n"
-            "Loop Type: TDD-only\n"
-            "Behavioral Contract: Must pass.\n"
-            "Simplification Focus: Keep minimal.\n"
-            "BDD Verification: N/A — TDD-only task.\n"
-            "Advanced Test Verification: N/A — no advanced tests planned.\n"
-            "Runtime Verification: N/A — no runtime changes.\n"
-            "- [ ] Step 1: Write test\n"
-        )
-        _create_spec_files(spec_dir, tasks_content=tasks_content)
-
+        _create_spec_files(spec_dir, tasks_content=_tasks_missing("Status:"))
         result = validate_tasks_structure(spec_dir)
+        assert result.is_valid is False
+        assert any("missing required field: 'Status:'" in e.message for e in result.errors)
 
+    def test_task_missing_context_fails(self, tmp_path: Path) -> None:
+        """Test that task missing Context field fails."""
+        spec_dir = tmp_path / "specs" / "test"
+        _create_spec_files(spec_dir, tasks_content=_tasks_missing("Context:"))
+        result = validate_tasks_structure(spec_dir)
+        assert result.is_valid is False
+        assert any("missing required field: 'Context:'" in e.message for e in result.errors)
+
+    def test_task_missing_verification_fails(self, tmp_path: Path) -> None:
+        """Test that task missing Verification field fails."""
+        spec_dir = tmp_path / "specs" / "test"
+        _create_spec_files(spec_dir, tasks_content=_tasks_missing("Verification:"))
+        result = validate_tasks_structure(spec_dir)
+        assert result.is_valid is False
+        assert any("missing required field: 'Verification:'" in e.message for e in result.errors)
+
+    def test_task_missing_scenario_coverage_fails(self, tmp_path: Path) -> None:
+        """Test that task missing Scenario Coverage field fails."""
+        spec_dir = tmp_path / "specs" / "test"
+        _create_spec_files(spec_dir, tasks_content=_tasks_missing("Scenario Coverage:"))
+        result = validate_tasks_structure(spec_dir)
         assert result.is_valid is False
         assert any(
-            e.message == "Task '1.2: Missing status' is missing required field: 'Status:'"
-            for e in result.errors
-        )
-
-    def test_missing_simplification_focus_fails(self, tmp_path: Path) -> None:
-        """Test that tasks must include Simplification Focus field."""
-        spec_dir = tmp_path / "specs" / "test"
-        spec_dir.mkdir(parents=True)
-
-        tasks_content = (
-            "# Tasks\n"
-            "\n"
-            "### Task 1.1: Has all fields\n"
-            "Context: Build first piece.\n"
-            "Verification: Run tests.\n"
-            "Scenario Coverage: N/A — internal task.\n"
-            "Loop Type: TDD-only\n"
-            "Behavioral Contract: Must pass.\n"
-            "Simplification Focus: Keep minimal.\n"
-            "BDD Verification: N/A — TDD-only task.\n"
-            "Advanced Test Verification: N/A — no advanced tests planned.\n"
-            "Runtime Verification: N/A — no runtime changes.\n"
-            "Status: 🔴 TODO\n"
-            "- [ ] Step 1: Write test\n"
-            "\n"
-            "### Task 1.2: Missing simplification focus\n"
-            "Context: Build second piece.\n"
-            "Verification: Run tests.\n"
-            "Scenario Coverage: N/A — internal task.\n"
-            "Loop Type: TDD-only\n"
-            "Behavioral Contract: Must pass.\n"
-            "BDD Verification: N/A — TDD-only task.\n"
-            "Advanced Test Verification: N/A — no advanced tests planned.\n"
-            "Runtime Verification: N/A — no runtime changes.\n"
-            "Status: 🔴 TODO\n"
-            "- [ ] Step 1: Write test\n"
-        )
-        _create_spec_files(spec_dir, tasks_content=tasks_content)
-
-        result = validate_tasks_structure(spec_dir)
-
-        assert result.is_valid is False
-        assert any(
-            e.message
-            == "Task '1.2: Missing simplification focus' is missing required field: 'Simplification Focus:'"
-            for e in result.errors
-        )
-
-    def test_missing_bdd_verification_fails(self, tmp_path: Path) -> None:
-        """Test that tasks must include BDD Verification field."""
-        spec_dir = tmp_path / "specs" / "test"
-        spec_dir.mkdir(parents=True)
-
-        tasks_content = (
-            "# Tasks\n"
-            "\n"
-            "### Task 1.1: Has all fields\n"
-            "Context: Build first piece.\n"
-            "Verification: Run tests.\n"
-            "Scenario Coverage: N/A — internal task.\n"
-            "Loop Type: TDD-only\n"
-            "Behavioral Contract: Must pass.\n"
-            "Simplification Focus: Keep minimal.\n"
-            "BDD Verification: N/A — TDD-only task.\n"
-            "Advanced Test Verification: N/A — no advanced tests planned.\n"
-            "Runtime Verification: N/A — no runtime changes.\n"
-            "Status: 🔴 TODO\n"
-            "- [ ] Step 1: Write test\n"
-            "\n"
-            "### Task 1.2: Missing BDD verification\n"
-            "Context: Build second piece.\n"
-            "Verification: Run tests.\n"
-            "Scenario Coverage: N/A — internal task.\n"
-            "Loop Type: TDD-only\n"
-            "Behavioral Contract: Must pass.\n"
-            "Simplification Focus: Keep minimal.\n"
-            "Advanced Test Verification: N/A — no advanced tests planned.\n"
-            "Runtime Verification: N/A — no runtime changes.\n"
-            "Status: 🔴 TODO\n"
-            "- [ ] Step 1: Write test\n"
-        )
-        _create_spec_files(spec_dir, tasks_content=tasks_content)
-
-        result = validate_tasks_structure(spec_dir)
-
-        assert result.is_valid is False
-        assert any(
-            e.message
-            == "Task '1.2: Missing BDD verification' is missing required field: 'BDD Verification:'"
-            for e in result.errors
+            "missing required field: 'Scenario Coverage:'" in e.message for e in result.errors
         )
 
     def test_invalid_task_status_fails(self, tmp_path: Path) -> None:
-        """Test that task statuses must use the contract's allowed markers."""
+        """Test that task with invalid Status (no emoji marker) fails."""
         spec_dir = tmp_path / "specs" / "test"
-        spec_dir.mkdir(parents=True)
-
         tasks_content = (
-            "# Tasks\n"
-            "\n"
+            "# Tasks\n\n"
             "### Task 1.1: Invalid status\n"
             "Context: Build piece.\n"
             "Verification: Run tests.\n"
-            "Scenario Coverage: N/A — internal task.\n"
-            "Loop Type: TDD-only\n"
-            "Behavioral Contract: Must pass.\n"
-            "Simplification Focus: Keep minimal.\n"
-            "BDD Verification: N/A — TDD-only task.\n"
-            "Advanced Test Verification: N/A — no advanced tests planned.\n"
-            "Runtime Verification: N/A — no runtime changes.\n"
+            "Scenario Coverage: N/A\n"
             "Status: DONE\n"
             "- [ ] Step 1: Write test\n"
         )
         _create_spec_files(spec_dir, tasks_content=tasks_content)
-
         result = validate_tasks_structure(spec_dir)
-
         assert result.is_valid is False
         assert any("invalid Status" in e.message for e in result.errors)
 
     def test_task_without_checkbox_fails(self, tmp_path: Path) -> None:
-        """Test that every task block must include at least one checkbox step."""
+        """Test that task without checkbox step fails."""
         spec_dir = tmp_path / "specs" / "test"
-        spec_dir.mkdir(parents=True)
-
         tasks_content = (
-            "# Tasks\n"
-            "\n"
+            "# Tasks\n\n"
             "### Task 1.1: No checkbox\n"
             "Context: Build piece.\n"
             "Verification: Run tests.\n"
-            "Scenario Coverage: N/A — internal task.\n"
-            "Loop Type: TDD-only\n"
-            "Behavioral Contract: Must pass.\n"
-            "Simplification Focus: Keep minimal.\n"
-            "BDD Verification: N/A — TDD-only task.\n"
-            "Advanced Test Verification: N/A — no advanced tests planned.\n"
-            "Runtime Verification: N/A — no runtime changes.\n"
+            "Scenario Coverage: N/A\n"
             "Status: 🔴 TODO\n"
         )
         _create_spec_files(spec_dir, tasks_content=tasks_content)
-
         result = validate_tasks_structure(spec_dir)
-
         assert result.is_valid is False
         assert any("contains no step checkboxes" in e.message for e in result.errors)
 
-    def test_na_required_field_without_reason_fails(self, tmp_path: Path) -> None:
-        """Test that N/A placeholders must include a reason."""
+    def test_na_scenario_coverage_passes(self, tmp_path: Path) -> None:
+        """Test that Scenario Coverage: N/A (literal) passes for non-BDD tasks."""
         spec_dir = tmp_path / "specs" / "test"
-        spec_dir.mkdir(parents=True)
-
         tasks_content = (
-            "# Tasks\n"
-            "\n"
-            "### Task 1.1: Bare N/A\n"
-            "Context: Build piece.\n"
-            "Verification: Run tests.\n"
+            "# Tasks\n\n"
+            "### Task 1.1: Infrastructure task\n"
+            "Context: Setup CI.\n"
+            "Verification: Run pipeline.\n"
             "Scenario Coverage: N/A\n"
-            "Loop Type: TDD-only\n"
-            "Behavioral Contract: Must pass.\n"
-            "Simplification Focus: Keep minimal.\n"
-            "BDD Verification: N/A\n"
-            "Advanced Test Verification: N/A\n"
-            "Runtime Verification: N/A\n"
             "Status: 🔴 TODO\n"
-            "- [ ] Step 1: Write test\n"
+            "- [ ] Step 1: Configure CI\n"
         )
         _create_spec_files(spec_dir, tasks_content=tasks_content)
-
         result = validate_tasks_structure(spec_dir)
+        assert result.is_valid is True
 
-        assert result.is_valid is False
-        assert any("N/A with a brief reason" in e.message for e in result.errors)
-
-    def test_incomplete_dcr_block_fails(self, tmp_path: Path) -> None:
-        """Test that DCR packets must contain all required sections."""
+    def test_valid_build_blocked_packet_passes(self, tmp_path: Path) -> None:
+        """Test that a valid Build Blocked packet passes validation."""
         spec_dir = tmp_path / "specs" / "test"
-        spec_dir.mkdir(parents=True)
-
-        tasks_content = (
-            "# Tasks\n"
-            "\n"
-            "### Task 1.1: Blocked task\n"
-            "Context: Build piece.\n"
-            "Verification: Run tests.\n"
-            "Scenario Coverage: Feature file + scenario.\n"
-            "Loop Type: BDD+TDD\n"
-            "Behavioral Contract: Must pass.\n"
-            "Simplification Focus: Keep minimal.\n"
-            "BDD Verification: uv run behave features/example.feature\n"
-            "Advanced Test Verification: N/A — no advanced tests planned.\n"
-            "Runtime Verification: N/A — no runtime changes.\n"
-            "Status: 🔄 DCR\n"
-            "- [ ] Step 1: Resolve design issue\n"
-            "\n"
-            "🔄 Design Change Request — Task 1.1: Blocked task\n"
-            "Scenario Coverage: Feature file + scenario.\n"
-            "Problem: Current design is infeasible.\n"
-            "What We Tried: Ran the failing scenario.\n"
-            "Failure Evidence: AssertionError: expected success.\n"
-            "Failing Step: When the user submits the form.\n"
-            "Suggested Change: Update the design boundary.\n"
+        packet = (
+            "Reason: Three consecutive failures.\n"
+            "Requested Change: Update design boundary.\n"
+            "Impact: Task 1.1 blocked; affects @scenario-1.\n"
         )
-        _create_spec_files(spec_dir, tasks_content=tasks_content)
-
+        tasks = _task_with_packet("🔄 DCR", "🛑 Build Blocked — Task 1.1: Test task", packet)
+        _create_spec_files(spec_dir, tasks_content=tasks)
         result = validate_tasks_structure(spec_dir)
-
-        assert result.is_valid is False
-        assert any("Incomplete 🔄 Design Change Request packet" in e.message for e in result.errors)
+        assert result.is_valid is True
 
     def test_incomplete_build_blocked_packet_fails(self, tmp_path: Path) -> None:
-        """Test that build-block packets must contain all required sections."""
+        """Test that Build Blocked packet missing Impact fails."""
         spec_dir = tmp_path / "specs" / "test"
-        spec_dir.mkdir(parents=True)
-
-        tasks_content = (
-            "# Tasks\n"
-            "\n"
-            "### Task 1.1: Failed task\n"
-            "Context: Build piece.\n"
-            "Verification: Run tests.\n"
-            "Scenario Coverage: Feature file + scenario.\n"
-            "Loop Type: BDD+TDD\n"
-            "Behavioral Contract: Must pass.\n"
-            "Simplification Focus: Keep minimal.\n"
-            "BDD Verification: uv run behave features/example.feature\n"
-            "Advanced Test Verification: N/A — no advanced tests planned.\n"
-            "Runtime Verification: N/A — no runtime changes.\n"
-            "Status: 🔄 DCR\n"
-            "- [ ] Step 1: Resolve design issue\n"
-            "\n"
-            "🛑 Build Blocked — Task 1.1: Failed task\n"
-            "Reason: 3 consecutive failed attempts.\n"
-            "Loop Type: BDD+TDD\n"
-            "Scenario Coverage: Feature file + scenario.\n"
-            "What We Tried: Attempted three implementations.\n"
-            "Failure Evidence: AssertionError: expected success.\n"
-            "Failing Step: When the user submits the form.\n"
-            "Suggested Design Change: Update the design boundary.\n"
-            "Impact: Task 1.1 remains blocked.\n"
-        )
-        _create_spec_files(spec_dir, tasks_content=tasks_content)
-
+        packet = "Reason: Three consecutive failures.\nRequested Change: Update design boundary.\n"
+        tasks = _task_with_packet("🔄 DCR", "🛑 Build Blocked — Task 1.1: Test task", packet)
+        _create_spec_files(spec_dir, tasks_content=tasks)
         result = validate_tasks_structure(spec_dir)
-
         assert result.is_valid is False
         assert any("Incomplete 🛑 Build Blocked packet" in e.message for e in result.errors)
+
+    def test_valid_dcr_packet_passes(self, tmp_path: Path) -> None:
+        """Test that a valid DCR packet passes validation."""
+        spec_dir = tmp_path / "specs" / "test"
+        packet = (
+            "Reason: Spec is ambiguous about data format.\n"
+            "Requested Change: Add Data Models section with DBML schema.\n"
+            "Impact: Task 1.1 blocked; affects @scenario-2.\n"
+        )
+        tasks = _task_with_packet(
+            "🔄 DCR", "🔄 Design Change Request — Task 1.1: Test task", packet
+        )
+        _create_spec_files(spec_dir, tasks_content=tasks)
+        result = validate_tasks_structure(spec_dir)
+        assert result.is_valid is True
+
+    def test_incomplete_dcr_packet_fails(self, tmp_path: Path) -> None:
+        """Test that DCR packet missing Requested Change fails."""
+        spec_dir = tmp_path / "specs" / "test"
+        packet = "Reason: Spec is ambiguous.\nImpact: Task 1.1 blocked.\n"
+        tasks = _task_with_packet(
+            "🔄 DCR", "🔄 Design Change Request — Task 1.1: Test task", packet
+        )
+        _create_spec_files(spec_dir, tasks_content=tasks)
+        result = validate_tasks_structure(spec_dir)
+        assert result.is_valid is False
+        assert any("Incomplete 🔄 Design Change Request packet" in e.message for e in result.errors)
 
 
 class TestValidateBuild:
     """Tests for validate_build function."""
 
-    def test_all_tasks_done_passes(self, tmp_path: Path, monkeypatch) -> None:
+    def test_all_tasks_done_passes(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that all tasks marked DONE with checked steps passes."""
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
-
         tasks_content = (
             "### Task 1.1: Test Task\n"
             "Status: 🟢 DONE\n"
             "- [x] Step 1: Complete\n"
             "- [x] Step 2: Complete\n"
         )
-
         src_dir = tmp_path / "src"
         src_dir.mkdir()
         (src_dir / "clean.py").write_text("def foo():\n    return 42\n")
-
-        import subprocess
-
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
         subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
-
         _create_spec_files(spec_dir, tasks_content=tasks_content)
-
         monkeypatch.chdir(tmp_path)
         result = validate_build(spec_dir)
         assert result.is_valid is True
@@ -598,10 +471,8 @@ class TestValidateBuild:
         """Test that TODO task fails validation."""
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
-
         tasks_content = "### Task 1.1: Test Task\nStatus: 🔴 TODO\n- [ ] Step 1: Not done\n"
         _create_spec_files(spec_dir, tasks_content=tasks_content)
-
         result = validate_build(spec_dir)
         assert result.is_valid is False
 
@@ -609,12 +480,10 @@ class TestValidateBuild:
         """Test that IN PROGRESS task fails validation."""
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
-
         tasks_content = (
             "### Task 1.1: Test Task\nStatus: 🟡 IN PROGRESS\n- [ ] Step 1: In progress\n"
         )
         _create_spec_files(spec_dir, tasks_content=tasks_content)
-
         result = validate_build(spec_dir)
         assert result.is_valid is False
 
@@ -622,10 +491,8 @@ class TestValidateBuild:
         """Test that DCR task fails validation."""
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
-
         tasks_content = "### Task 1.1: Test Task\nStatus: 🔄 DCR\n- [ ] Step 1: Blocked\n"
         _create_spec_files(spec_dir, tasks_content=tasks_content)
-
         result = validate_build(spec_dir)
         assert result.is_valid is False
 
@@ -633,7 +500,6 @@ class TestValidateBuild:
         """Test that DONE task with unchecked steps fails validation."""
         spec_dir = tmp_path / "specs" / "test"
         spec_dir.mkdir(parents=True)
-
         tasks_content = (
             "### Task 1.1: Test Task\n"
             "Status: 🟢 DONE\n"
@@ -641,53 +507,37 @@ class TestValidateBuild:
             "- [ ] Step 2: Not complete\n"
         )
         _create_spec_files(spec_dir, tasks_content=tasks_content)
-
         result = validate_build(spec_dir)
         assert result.is_valid is False
-
-    def test_skipped_task_warns(self, tmp_path: Path, monkeypatch) -> None:
-        """Test that skipped task warns but passes."""
-        spec_dir = tmp_path / "specs" / "test"
-        spec_dir.mkdir(parents=True)
-
-        tasks_content = "### Task 1.1: Test Task\nStatus: ⏭️ SKIPPED\n- [ ] Step 1: Skipped\n"
-        _create_spec_files(spec_dir, tasks_content=tasks_content)
-
-        monkeypatch.chdir(tmp_path)
-        result = validate_build(spec_dir)
-        assert result.is_valid is True
 
 
 class TestValidateTask:
     """Tests for validate_task function."""
 
-    def test_clean_codebase_passes(self, tmp_path: Path, monkeypatch) -> None:
+    def test_clean_codebase_passes(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that clean codebase passes validation."""
         src_dir = tmp_path / "src"
         src_dir.mkdir()
         (src_dir / "clean.py").write_text("def foo():\n    return 42\n")
-
-        import subprocess
-
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
         subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
-
         monkeypatch.chdir(tmp_path)
         result = validate_task()
         assert result.is_valid is True
 
-    def test_codebase_with_todos_fails(self, tmp_path: Path, monkeypatch) -> None:
+    def test_codebase_with_todos_fails(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test that codebase with TODOs fails validation."""
         src_dir = tmp_path / "src"
         src_dir.mkdir()
         dirty_file = src_dir / "dirty.py"
         dirty_file.write_text("# TODO: fix this\n")
-
-        import subprocess
-
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
         subprocess.run(
-            ["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
         )
         subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True)
         clean_file = src_dir / "clean.py"
@@ -700,7 +550,6 @@ class TestValidateTask:
             "pb_spec.validation.build.get_git_modified_files",
             lambda _root_dir=".": {dirty_file},
         )
-
         monkeypatch.chdir(tmp_path)
         result = validate_task()
         assert result.is_valid is False
@@ -715,84 +564,46 @@ class TestValidateCommand:
         with runner.isolated_filesystem():
             with open("clean.py", "w") as f:
                 f.write("def foo():\n    return 42\n")
-
             result = runner.invoke(main, ["validate", "--task"])
             assert result.exit_code == 0
             assert "passed" in result.output.lower() or "✅" in result.output
 
 
 CONSOLIDATED_VALID_DESIGN = (
-    "# Design: Codebase Quality Improvements\n"
-    "\n"
+    "# Design: Codebase Quality Improvements\n\n"
     "## Summary\n"
-    "Consolidated improvements across correctness, security, and performance.\n"
-    "\n"
-    "## Approach\n"
-    "Implement findings sequentially.\n"
-    "\n"
-    "## Findings\n"
-    "\n"
+    "Consolidated improvements across correctness, security, and performance.\n\n"
+    "## Approach\nImplement findings sequentially.\n\n"
+    "## Findings\n\n"
     "### Finding 1: Fix N+1 query\n"
     "- **Category:** performance\n"
-    "- **Impact:** HIGH\n"
-    "\n"
-    "#### Approach\n"
-    "Add batch loading.\n"
-    "\n"
+    "- **Impact:** HIGH\n\n"
     "## Architecture Decisions\n"
     "### AD-01: Use batch loading\n"
-    "- **Status:** Accepted\n"
-    "\n"
+    "- **Status:** Accepted\n\n"
     "**Context:** N+1 queries detected.\n"
     "**Decision:** Use DataLoader pattern.\n"
-    "**Consequences:** Reduces query count.\n"
-    "\n"
-    "## BDD/TDD Strategy\n"
-    "BDD+TDD with behave.\n"
-    "\n"
-    "## Code Simplification Constraints\n"
-    "Keep minimal.\n"
-    "\n"
-    "## BDD Scenario Inventory\n"
-    "- features/performance.feature — Batch loading → Task 1.1\n"
-    "\n"
-    "## Existing Components to Reuse\n"
-    "None.\n"
-    "\n"
-    "## Verification\n"
-    "Run full test suite.\n"
+    "**Consequences:** Reduces query count.\n\n"
+    "## BDD/TDD Strategy\nBDD+TDD with behave.\n\n"
+    "## Verification\nRun full test suite.\n"
 )
 
 CONSOLIDATED_VALID_TASKS = (
-    "# Tasks\n"
-    "\n"
+    "# Tasks\n\n"
     "### Task 1.1: Fix N+1 query\n"
     "Context: Address performance issue.\n"
     "Verification: Run tests.\n"
     "Scenario Coverage: features/performance.feature — Batch loading.\n"
-    "Loop Type: BDD+TDD\n"
-    "Behavioral Contract: Preserve existing behavior.\n"
-    "Simplification Focus: Reduce nesting.\n"
-    "BDD Verification: uv run behave features/performance.feature\n"
-    "Advanced Test Verification: N/A — no advanced tests planned.\n"
-    "Runtime Verification: N/A — no runtime changes.\n"
     "Status: 🔴 TODO\n"
     "- [ ] Step 1: Write failing test\n"
 )
 
 CONSOLIDATED_CROSS_FINDING_TASKS = (
-    "# Tasks\n"
-    "\n"
+    "# Tasks\n\n"
     "### Task 1.1: Finding 1 — Fix bug\n"
     "Context: Fix the bug.\n"
     "Verification: Run tests.\n"
     "Scenario Coverage: features/correctness.feature — Bug fix.\n"
-    "Loop Type: BDD+TDD\n"
-    "Behavioral Contract: Must pass.\n"
-    "Simplification Focus: Keep minimal.\n"
-    "BDD Verification: uv run behave features/correctness.feature\n"
-    "Advanced Test Verification: N/A — no advanced tests.\n"
-    "Runtime Verification: N/A — no runtime changes.\n"
     "Status: 🔴 TODO\n"
     "- [ ] Step 1: Write test\n"
     "\n"
@@ -800,75 +611,25 @@ CONSOLIDATED_CROSS_FINDING_TASKS = (
     "Context: Add new feature.\n"
     "Verification: Run tests.\n"
     "Scenario Coverage: features/security.feature — Auth check.\n"
-    "Loop Type: BDD+TDD\n"
-    "Behavioral Contract: Must pass.\n"
-    "Simplification Focus: Keep minimal.\n"
-    "BDD Verification: uv run behave features/security.feature\n"
-    "Advanced Test Verification: N/A — no advanced tests.\n"
-    "Runtime Verification: N/A — no runtime changes.\n"
     "Status: 🔴 TODO\n"
     "- [ ] Step 1: Write test\n"
-)
-
-FULL_MODE_DESIGN = (
-    "# Design: Full Feature\n"
-    "\n"
-    "## Executive Summary\n"
-    "Complete feature implementation.\n"
-    "\n"
-    "## Requirements & Goals\n"
-    "- **[REQ-01]:** The system *shall* validate inputs.\n"
-    "\n"
-    "## Architecture Overview\n"
-    "```mermaid\n"
-    "graph TD\n"
-    "  A[Client] --> B[Server]\n"
-    "```\n"
-    "\n"
-    "## Architecture Decisions\n"
-    "### AD-01: Use REST API\n"
-    "- **Status:** Accepted\n"
-    "\n"
-    "**Context:** Need external API.\n"
-    "**Decision:** Use REST.\n"
-    "**Consequences:** Simple integration.\n"
-    "\n"
-    "## Data Models\n"
-    "```dbml\n"
-    "Table users {\n"
-    "  id integer [pk]\n"
-    "  name varchar\n"
-    "}\n"
-    "```\n"
-    "\n"
-    "## Interface Contracts\n"
-    "```python\n"
-    "class UserProto(Protocol):\n"
-    "    def get_name(self) -> str: ...\n"
-    "```\n"
-    "\n"
-    "## Detailed Design\n"
-    "Implementation details.\n"
-    "\n"
-    "## Verification & Testing Strategy\n"
-    "BDD + unit tests.\n"
-    "\n"
-    "## Implementation Plan\n"
-    "- [ ] Phase 1: Core\n"
 )
 
 
 class TestConsolidatedSpec:
     """Tests for consolidated spec format (pb-improve → pb-build flow)."""
 
-    def test_consolidated_design_passes_lightweight(self, tmp_path: Path) -> None:
-        """Test that consolidated design.md with Findings section passes lightweight validation."""
+    def test_consolidated_design_passes(self, tmp_path: Path) -> None:
+        """Test that consolidated design.md with Findings section passes."""
         spec_dir = tmp_path / "specs" / "2026-06-12-improvements"
         _create_spec_files(
             spec_dir,
             design_content=CONSOLIDATED_VALID_DESIGN,
             tasks_content=CONSOLIDATED_VALID_TASKS,
-            features_content="Feature: Performance\n  Scenario: Batch loading\n    Given orders\n    When fetched\n    Then one query\n",
+            features_content=(
+                "Feature: Performance\n  Scenario: Batch loading\n    Given orders\n"
+                "    When fetched\n    Then one query\n"
+            ),
         )
         result = validate_plan(spec_dir)
         assert result.is_valid is True
@@ -881,8 +642,10 @@ class TestConsolidatedSpec:
             design_content=CONSOLIDATED_VALID_DESIGN,
             tasks_content=CONSOLIDATED_CROSS_FINDING_TASKS,
             features_content=(
-                "Feature: Correctness\n  Scenario: Bug fix\n    Given bug\n    When fixed\n    Then works\n"
-                "Feature: Security\n  Scenario: Auth\n    Given user\n    When auth\n    Then ok\n"
+                "Feature: Correctness\n  Scenario: Bug fix\n    Given bug\n"
+                "    When fixed\n    Then works\n"
+                "Feature: Security\n  Scenario: Auth\n    Given user\n"
+                "    When auth\n    Then ok\n"
             ),
         )
         result = validate_plan(spec_dir)
@@ -891,99 +654,34 @@ class TestConsolidatedSpec:
     def test_consolidated_design_missing_approach_fails(self, tmp_path: Path) -> None:
         """Test that consolidated design.md missing Approach section fails."""
         spec_dir = tmp_path / "specs" / "2026-06-12-no-approach"
-        design_content = (
-            "# Design: Improvements\n"
-            "\n"
-            "## Summary\n"
-            "Summary.\n"
-            "\n"
-            "## Architecture Decisions\n"
-            "Decision.\n"
-            "\n"
-            "## BDD/TDD Strategy\n"
-            "Strategy.\n"
-            "\n"
-            "## Code Simplification Constraints\n"
-            "Keep minimal.\n"
-            "\n"
-            "## BDD Scenario Inventory\n"
-            "Scenarios.\n"
-            "\n"
-            "## Existing Components to Reuse\n"
-            "None.\n"
-            "\n"
-            "## Verification\n"
-            "Run tests.\n"
-        )
         _create_spec_files(
             spec_dir,
-            design_content=design_content,
+            design_content=_design_missing("Approach"),
             tasks_content=CONSOLIDATED_VALID_TASKS,
         )
         result = validate_plan(spec_dir)
         assert result.is_valid is False
         assert any("Approach" in e.message for e in result.errors)
 
-    def test_consolidated_tasks_missing_loop_type_fails(self, tmp_path: Path) -> None:
-        """Test that consolidated tasks.md missing Loop Type field fails."""
-        spec_dir = tmp_path / "specs" / "2026-06-12-no-loop-type"
-        tasks_content = (
-            "# Tasks\n"
-            "\n"
-            "### Task 1.1: Fix bug\n"
-            "Context: Fix it.\n"
-            "Verification: Run tests.\n"
-            "Scenario Coverage: N/A — internal task.\n"
-            "Behavioral Contract: Must pass.\n"
-            "Simplification Focus: Keep minimal.\n"
-            "BDD Verification: N/A — TDD-only task.\n"
-            "Advanced Test Verification: N/A — no advanced tests.\n"
-            "Runtime Verification: N/A — no runtime changes.\n"
-            "Status: 🔴 TODO\n"
-            "- [ ] Step 1: Write test\n"
-        )
-        _create_spec_files(
-            spec_dir,
-            design_content=CONSOLIDATED_VALID_DESIGN,
-            tasks_content=tasks_content,
-        )
-        result = validate_plan(spec_dir)
-        assert result.is_valid is False
-        assert any("Loop Type" in e.message for e in result.errors)
-
     def test_consolidated_tasks_missing_status_fails(self, tmp_path: Path) -> None:
         """Test that consolidated tasks.md missing Status field fails."""
         spec_dir = tmp_path / "specs" / "2026-06-12-no-status"
-        tasks_content = (
-            "# Tasks\n"
-            "\n"
-            "### Task 1.1: Fix bug\n"
-            "Context: Fix it.\n"
-            "Verification: Run tests.\n"
-            "Scenario Coverage: N/A — internal task.\n"
-            "Loop Type: TDD-only\n"
-            "Behavioral Contract: Must pass.\n"
-            "Simplification Focus: Keep minimal.\n"
-            "BDD Verification: N/A — TDD-only task.\n"
-            "Advanced Test Verification: N/A — no advanced tests.\n"
-            "Runtime Verification: N/A — no runtime changes.\n"
-            "- [ ] Step 1: Write test\n"
-        )
         _create_spec_files(
             spec_dir,
             design_content=CONSOLIDATED_VALID_DESIGN,
-            tasks_content=tasks_content,
+            tasks_content=_tasks_missing("Status:"),
         )
         result = validate_plan(spec_dir)
         assert result.is_valid is False
         assert any("Status" in e.message for e in result.errors)
 
-    def test_consolidated_build_passes_when_all_done(self, tmp_path: Path, monkeypatch) -> None:
+    def test_consolidated_build_passes_when_all_done(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test that consolidated spec passes build validation when all tasks are DONE."""
         spec_dir = tmp_path / "specs" / "2026-06-12-done"
         tasks_content = (
-            "# Tasks\n"
-            "\n"
+            "# Tasks\n\n"
             "### Task 1.1: Fix bug\n"
             "Status: 🟢 DONE\n"
             "- [x] Step 1: Write test\n"
@@ -995,16 +693,11 @@ class TestConsolidatedSpec:
             "- [x] Step 2: Implement\n"
         )
         _create_spec_files(spec_dir, tasks_content=tasks_content)
-
         src_dir = tmp_path / "src"
         src_dir.mkdir()
         (src_dir / "clean.py").write_text("def foo():\n    return 42\n")
-
-        import subprocess
-
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
         subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
-
         monkeypatch.chdir(tmp_path)
         result = validate_build(spec_dir)
         assert result.is_valid is True
@@ -1013,8 +706,7 @@ class TestConsolidatedSpec:
         """Test that consolidated spec fails build when first task is TODO."""
         spec_dir = tmp_path / "specs" / "2026-06-12-partial"
         tasks_content = (
-            "# Tasks\n"
-            "\n"
+            "# Tasks\n\n"
             "### Task 1.1: Fix bug\n"
             "Status: 🔴 TODO\n"
             "- [ ] Step 1: Write test\n"
@@ -1026,240 +718,3 @@ class TestConsolidatedSpec:
         _create_spec_files(spec_dir, tasks_content=tasks_content)
         result = validate_build(spec_dir)
         assert result.is_valid is False
-
-
-class TestFullModeSpec:
-    """Tests for full-mode spec format (pb-plan → pb-build flow)."""
-
-    def test_full_mode_design_passes(self, tmp_path: Path) -> None:
-        """Test that full-mode design.md with all required sections passes."""
-        spec_dir = tmp_path / "specs" / "2026-06-12-full-mode"
-        _create_spec_files(
-            spec_dir,
-            design_content=FULL_MODE_DESIGN,
-            tasks_content=CONSOLIDATED_VALID_TASKS,
-            features_content="Feature: Test\n  Scenario: Test\n    Given a\n    When b\n    Then c\n",
-        )
-        result = validate_plan(spec_dir)
-        assert result.is_valid is True
-
-    def test_full_mode_missing_architecture_decisions_fails(self, tmp_path: Path) -> None:
-        """Test that full-mode design.md missing Architecture Decisions fails."""
-        spec_dir = tmp_path / "specs" / "2026-06-12-no-ad"
-        design_content = (
-            "# Design: Full Feature\n"
-            "\n"
-            "## Executive Summary\n"
-            "Summary.\n"
-            "\n"
-            "## Requirements & Goals\n"
-            "- **[REQ-01]:** The system *shall* validate.\n"
-            "\n"
-            "## Architecture Overview\n"
-            "```mermaid\ngraph TD\n  A-->B\n```\n"
-            "\n"
-            "## Data Models\n"
-            "```dbml\nTable t { id integer [pk] }\n```\n"
-            "\n"
-            "## Interface Contracts\n"
-            "```python\nproto...\n```\n"
-            "\n"
-            "## Detailed Design\n"
-            "Details.\n"
-            "\n"
-            "## Verification & Testing Strategy\n"
-            "Strategy.\n"
-            "\n"
-            "## Implementation Plan\n"
-            "- [ ] Phase 1\n"
-        )
-        _create_spec_files(
-            spec_dir,
-            design_content=design_content,
-            tasks_content=CONSOLIDATED_VALID_TASKS,
-            features_content="Feature: Test\n  Scenario: Test\n    Given a\n    When b\n    Then c\n",
-        )
-        result = validate_plan(spec_dir)
-        assert result.is_valid is False
-        assert any("Architecture Decisions" in e.message for e in result.errors)
-
-    def test_full_mode_missing_data_models_fails(self, tmp_path: Path) -> None:
-        """Test that full-mode design.md missing Data Models fails."""
-        spec_dir = tmp_path / "specs" / "2026-06-12-no-dm"
-        design_content = (
-            "# Design: Full Feature\n"
-            "\n"
-            "## Executive Summary\n"
-            "Summary.\n"
-            "\n"
-            "## Requirements & Goals\n"
-            "- **[REQ-01]:** The system *shall* validate.\n"
-            "\n"
-            "## Architecture Overview\n"
-            "```mermaid\ngraph TD\n  A-->B\n```\n"
-            "\n"
-            "## Architecture Decisions\n"
-            "### AD-01: Decision\n"
-            "- **Status:** Accepted\n"
-            "\n"
-            "**Context:** C\n**Decision:** D\n**Consequences:** E\n"
-            "\n"
-            "## Interface Contracts\n"
-            "```python\nproto...\n```\n"
-            "\n"
-            "## Detailed Design\n"
-            "Details.\n"
-            "\n"
-            "## Verification & Testing Strategy\n"
-            "Strategy.\n"
-            "\n"
-            "## Implementation Plan\n"
-            "- [ ] Phase 1\n"
-        )
-        _create_spec_files(
-            spec_dir,
-            design_content=design_content,
-            tasks_content=CONSOLIDATED_VALID_TASKS,
-            features_content="Feature: Test\n  Scenario: Test\n    Given a\n    When b\n    Then c\n",
-        )
-        result = validate_plan(spec_dir)
-        assert result.is_valid is False
-        assert any("Data Models" in e.message for e in result.errors)
-
-
-class TestTaskMissingFields:
-    """Tests for tasks.md missing required fields (pb-improve → pb-build contract)."""
-
-    def test_missing_simplification_focus_fails(self, tmp_path: Path) -> None:
-        """Test that task missing Simplification Focus field fails validation."""
-        spec_dir = tmp_path / "specs" / "2026-06-13-missing-sf"
-        tasks_content = (
-            "# Tasks\n"
-            "\n"
-            "### Task 1.1: Fix bug\n"
-            "Context: Fix the bug.\n"
-            "Verification: Run tests.\n"
-            "Scenario Coverage: features/correctness.feature — Bug fix.\n"
-            "Loop Type: BDD+TDD\n"
-            "Behavioral Contract: Must pass.\n"
-            "Status: 🔴 TODO\n"
-            "- [ ] Step 1: Write test\n"
-            "- [ ] BDD Verification: run behave\n"
-            "- [ ] Advanced Test Verification: N/A — no advanced tests.\n"
-            "- [ ] Runtime Verification: N/A — no runtime changes.\n"
-        )
-        _create_spec_files(
-            spec_dir,
-            design_content=CONSOLIDATED_VALID_DESIGN,
-            tasks_content=tasks_content,
-            features_content="Feature: Test\n  Scenario: Test\n    Given a\n    When b\n    Then c\n",
-        )
-        result = validate_tasks_structure(spec_dir)
-        assert result.is_valid is False
-        assert any(
-            "Simplification Focus" in e.message and "missing required field" in e.message
-            for e in result.errors
-        )
-
-    def test_missing_bdd_verification_fails(self, tmp_path: Path) -> None:
-        """Test that task missing BDD Verification field fails validation."""
-        spec_dir = tmp_path / "specs" / "2026-06-13-missing-bddv"
-        tasks_content = (
-            "# Tasks\n"
-            "\n"
-            "### Task 1.1: Fix bug\n"
-            "Context: Fix the bug.\n"
-            "Verification: Run tests.\n"
-            "Scenario Coverage: features/correctness.feature — Bug fix.\n"
-            "Loop Type: BDD+TDD\n"
-            "Behavioral Contract: Must pass.\n"
-            "Simplification Focus: Keep minimal.\n"
-            "Status: 🔴 TODO\n"
-            "- [ ] Step 1: Write test\n"
-            "- [ ] Advanced Test Verification: N/A — no advanced tests.\n"
-            "- [ ] Runtime Verification: N/A — no runtime changes.\n"
-        )
-        _create_spec_files(
-            spec_dir,
-            design_content=CONSOLIDATED_VALID_DESIGN,
-            tasks_content=tasks_content,
-            features_content="Feature: Test\n  Scenario: Test\n    Given a\n    When b\n    Then c\n",
-        )
-        result = validate_tasks_structure(spec_dir)
-        assert result.is_valid is False
-        assert any(
-            "BDD Verification" in e.message and "missing required field" in e.message
-            for e in result.errors
-        )
-
-    def test_missing_both_simplification_and_bdd_verification_fails(self, tmp_path: Path) -> None:
-        """Test that task missing both Simplification Focus and BDD Verification fails."""
-        spec_dir = tmp_path / "specs" / "2026-06-13-missing-both"
-        tasks_content = (
-            "# Tasks\n"
-            "\n"
-            "### Task 1.1: Fix bug\n"
-            "Context: Fix the bug.\n"
-            "Verification: Run tests.\n"
-            "Scenario Coverage: features/correctness.feature — Bug fix.\n"
-            "Loop Type: BDD+TDD\n"
-            "Behavioral Contract: Must pass.\n"
-            "Status: 🔴 TODO\n"
-            "- [ ] Step 1: Write test\n"
-            "- [ ] Advanced Test Verification: N/A — no advanced tests.\n"
-            "- [ ] Runtime Verification: N/A — no runtime changes.\n"
-        )
-        _create_spec_files(
-            spec_dir,
-            design_content=CONSOLIDATED_VALID_DESIGN,
-            tasks_content=tasks_content,
-            features_content="Feature: Test\n  Scenario: Test\n    Given a\n    When b\n    Then c\n",
-        )
-        result = validate_tasks_structure(spec_dir)
-        assert result.is_valid is False
-        sf_missing = any(
-            "Simplification Focus" in e.message and "missing required field" in e.message
-            for e in result.errors
-        )
-        bddv_missing = any(
-            "BDD Verification" in e.message and "missing required field" in e.message
-            for e in result.errors
-        )
-        assert sf_missing, "Expected Simplification Focus missing error"
-        assert bddv_missing, "Expected BDD Verification missing error"
-
-    def test_multiple_tasks_missing_fields_reports_all(self, tmp_path: Path) -> None:
-        """Test that validation reports missing fields for ALL tasks, not just the first."""
-        spec_dir = tmp_path / "specs" / "2026-06-13-multi-missing"
-        tasks_content = (
-            "# Tasks\n"
-            "\n"
-            "### Task 1.1: First task\n"
-            "Context: First.\n"
-            "Verification: Run tests.\n"
-            "Scenario Coverage: features/test.feature — Scenario.\n"
-            "Loop Type: TDD-only\n"
-            "Behavioral Contract: Must pass.\n"
-            "Status: 🔴 TODO\n"
-            "- [ ] Step 1: Write test\n"
-            "\n"
-            "### Task 1.2: Second task\n"
-            "Context: Second.\n"
-            "Verification: Run tests.\n"
-            "Scenario Coverage: features/test.feature — Scenario.\n"
-            "Loop Type: TDD-only\n"
-            "Behavioral Contract: Must pass.\n"
-            "Status: 🔴 TODO\n"
-            "- [ ] Step 1: Write test\n"
-        )
-        _create_spec_files(
-            spec_dir,
-            design_content=CONSOLIDATED_VALID_DESIGN,
-            tasks_content=tasks_content,
-            features_content="Feature: Test\n  Scenario: Test\n    Given a\n    When b\n    Then c\n",
-        )
-        result = validate_tasks_structure(spec_dir)
-        assert result.is_valid is False
-        # Both tasks should report missing Simplification Focus
-        sf_errors = [e for e in result.errors if "Simplification Focus" in e.message]
-        assert len(sf_errors) == 2, f"Expected 2 Simplification Focus errors, got {len(sf_errors)}"

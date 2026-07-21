@@ -1,51 +1,16 @@
 # Contract Sections Configuration
 # Single source of truth for validation rules.
 # Loaded by plan.py at import time.
-#
-# Source of authority: docs/contract.md §6.2 and §7.2
 
-[full_mode]
-required_sections = [
-    "Executive Summary",
-    "Requirements & Goals",
-    "Architecture Overview",
-    "Architecture Decisions",
-    "Data Models",
-    "Interface Contracts",
-    "Detailed Design",
-    "Verification & Testing Strategy",
-    "Implementation Plan",
-]
-
-[lightweight_mode]
-required_sections = [
-    "Summary",
-    "Approach",
-    "Architecture Decisions",
-    "BDD/TDD Strategy",
-    "Code Simplification Constraints",
-    "BDD Scenario Inventory",
-    "Existing Components to Reuse",
-    "Verification",
-]
+[design]
+required_sections = ["Summary", "Approach", "Architecture Decisions", "BDD/TDD Strategy", "Verification"]
+optional_sections = ["Requirements & Goals", "Architecture Overview", "Data Models", "Interface Contracts", "Implementation Plan"]
 
 [tasks]
-required_fields = [
-    "Context:",
-    "Verification:",
-    "Scenario Coverage:",
-    "Loop Type:",
-    "Behavioral Contract:",
-    "Simplification Focus:",
-    "Status:",
-    "BDD Verification:",
-    "Advanced Test Verification:",
-    "Runtime Verification:",
-]
+required_fields = ["Context:", "Verification:", "Status:", "Scenario Coverage:"]
 
-na_reason_fields = [
-    "Scenario Coverage:",
-    "BDD Verification:",
-    "Advanced Test Verification:",
-    "Runtime Verification:",
-]
+[build_blocked]
+required_fields = ["Reason", "Requested Change", "Impact"]
+
+[dcr]
+required_fields = ["Reason", "Requested Change", "Impact"]

@@ -6,130 +6,85 @@ Feature: Validate pb-spec workflow artifacts
   Background:
     Given I have a pb-spec project set up
 
-  Scenario: Validate plan mode checks design.md sections
-    Given I have a spec directory with a valid design.md
-    And design.md contains "Architecture Decisions" section
-    And design.md contains "BDD/TDD Strategy" section
-    And design.md contains "Verification" section
+  Scenario: design.md with all 5 required sections is valid
+    Given I have a spec directory with a valid plan
     When I run "pb-spec validate --plan"
     Then the command should succeed
-    And I should see "design.md (lightweight mode) structural checks passed"
+    And I should see "design.md structural checks passed"
 
-  Scenario: Validate plan mode fails on missing design section
-    Given I have a spec directory with an incomplete design.md
-    And design.md is missing "Architecture Decisions" section
+  Scenario Outline: design.md missing a required section is invalid
+    Given I have a spec directory with design.md missing "<section>"
     When I run "pb-spec validate --plan"
     Then the command should fail
     And I should see "is missing required section"
+    Examples:
+      | section                  |
+      | Summary                  |
+      | Approach                 |
+      | Architecture Decisions   |
+      | BDD/TDD Strategy         |
+      | Verification             |
 
-  Scenario: Validate plan mode checks tasks.md structure
-    Given I have a spec directory with a valid tasks.md
-    And tasks.md contains "### Task 1.1:" definition
-    And tasks.md contains "Status:" field
+  Scenario: tasks.md with all 4 required fields is valid
+    Given I have a spec directory with a valid plan
     When I run "pb-spec validate --plan"
     Then the command should succeed
     And I should see "tasks.md structural checks passed"
 
-  Scenario: Validate build mode passes for completed tasks
-    Given I have a spec directory with tasks.md
-    And all tasks have status "🟢 DONE"
-    And all task steps are checked "- [x]"
-    When I run "pb-spec validate --build"
-    Then the command should succeed
-    And I should see "All validations passed successfully!"
-
-  Scenario: Validate build mode fails for TODO tasks
-    Given I have a spec directory with tasks.md
-    And a task has status "🔴 TODO"
-    When I run "pb-spec validate --build"
-    Then the command should fail
-    And I should see "Task Unfinished"
-
-  Scenario: Validate build mode fails for unchecked steps
-    Given I have a spec directory with tasks.md
-    And a task has status "🟢 DONE"
-    And a task has an unchecked step "- [ ]"
-    When I run "pb-spec validate --build"
-    Then the command should fail
-    And I should see "incomplete steps"
-
-  Scenario: Validate task mode passes on clean codebase
-    Given I have a clean codebase without issues
-    When I run "pb-spec validate --task"
-    Then the command should succeed
-    And I should see "Codebase scan passed"
-
-  Scenario: Validate task mode detects TODO comments
-    Given I have a codebase with "TODO:" comment
-    When I run "pb-spec validate --task"
-    Then the command should fail
-    And I should see "TODO/FIXME found"
-
-  Scenario: Validate task mode detects skipped tests
-    Given I have a codebase with "@pytest.mark.skip" decorator
-    When I run "pb-spec validate --task"
-    Then the command should fail
-    And I should see "Skipped test found"
-
-  Scenario: Validate task mode detects debug artifacts
-    Given I have a codebase with "console.log" statement
-    When I run "pb-spec validate --task"
-    Then the command should fail
-    And I should see "Debug artifact found"
-
-  Scenario: Validate task mode detects NotImplementedError
-    Given I have a codebase with "raise NotImplementedError"
-    When I run "pb-spec validate --task"
-    Then the command should fail
-    And I should see "NotImplemented/Mock found"
-
-  Scenario: Validate consolidated spec (pb-improve flow) passes
-    Given I have a pb-spec project set up
-    And I have a consolidated spec directory with valid design.md and tasks.md
-    When I run "pb-spec validate --plan"
-    Then the command should succeed
-    And I should see "design.md (lightweight mode) structural checks passed"
-    And I should see "tasks.md structural checks passed"
-
-  Scenario: Validate consolidated spec fails on missing design section
-    Given I have a pb-spec project set up
-    And I have a consolidated spec directory with design.md missing "BDD/TDD Strategy" section
-    When I run "pb-spec validate --plan"
-    Then the command should fail
-    And I should see "is missing required section"
-
-  Scenario: Validate consolidated spec fails on missing task field
-    Given I have a pb-spec project set up
-    And I have a consolidated spec directory with tasks.md missing "Loop Type:" field
+  Scenario Outline: tasks.md missing a required field is invalid
+    Given I have a spec directory with tasks.md missing "<field>"
     When I run "pb-spec validate --plan"
     Then the command should fail
     And I should see "is missing required field"
+    Examples:
+      | field              |
+      | Context:           |
+      | Verification:      |
+      | Status:            |
+      | Scenario Coverage: |
 
-  Scenario: Validate full-mode spec (pb-plan flow) passes
-    Given I have a pb-spec project set up
-    And I have a full-mode spec directory with all required sections
-    When I run "pb-spec validate --plan"
-    Then the command should succeed
-    And I should see "design.md (full mode) structural checks passed"
-
-  Scenario: Validate full-mode spec fails on missing Architecture Decisions
-    Given I have a pb-spec project set up
-    And I have a full-mode spec directory missing "Architecture Decisions" section
-    When I run "pb-spec validate --plan"
-    Then the command should fail
-    And I should see "is missing required section"
-
-  Scenario: Validate consolidated tasks with cross-finding numbering
-    Given I have a pb-spec project set up
-    And I have a consolidated tasks.md with tasks across multiple findings
+  Scenario: Build Blocked packet with all 3 fields is valid
+    Given I have a spec directory with a valid Build Blocked packet
     When I run "pb-spec validate --plan"
     Then the command should succeed
     And I should see "tasks.md structural checks passed"
 
-  Scenario: Validate help shows all options
-    When I run "pb-spec validate --help"
-    Then I should see "--plan"
-    And I should see "--build"
-    And I should see "--task"
-    And I should see "--specs-dir"
-    And I should see "--config"
+  Scenario Outline: Build Blocked packet missing a field is invalid
+    Given I have a spec directory with a Build Blocked packet missing "<field>"
+    When I run "pb-spec validate --plan"
+    Then the command should fail
+    And I should see "Incomplete"
+    Examples:
+      | field            |
+      | Reason           |
+      | Requested Change |
+      | Impact           |
+
+  Scenario: DCR packet with all 3 fields is valid
+    Given I have a spec directory with a valid DCR packet
+    When I run "pb-spec validate --plan"
+    Then the command should succeed
+    And I should see "tasks.md structural checks passed"
+
+  Scenario Outline: DCR packet missing a field is invalid
+    Given I have a spec directory with a DCR packet missing "<field>"
+    When I run "pb-spec validate --plan"
+    Then the command should fail
+    And I should see "Incomplete"
+    Examples:
+      | field            |
+      | Reason           |
+      | Requested Change |
+      | Impact           |
+
+  Scenario: features directory with at least one .feature file is valid
+    Given I have a spec directory with a valid plan
+    When I run "pb-spec validate --plan"
+    Then the command should succeed
+    And I should see "Found Gherkin .feature files"
+
+  Scenario: features directory missing is invalid
+    Given I have a spec directory without a features directory
+    When I run "pb-spec validate --plan"
+    Then the command should fail
+    And I should see "No .feature files found"

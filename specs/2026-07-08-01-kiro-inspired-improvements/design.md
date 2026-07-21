@@ -4,16 +4,11 @@
 | :--- | :--- |
 | **Status** | Draft |
 | **Created** | 2026-07-08 |
-| **Scope** | Full |
 | **Planned at** | commit `HEAD`, 2026-07-08 |
 
 ## Summary
 
-Kiro's spec-driven workflow uses neuro-symbolic requirements analysis, parallel task execution, and fast-track planning to catch requirement bugs before code and speed up implementation. This design ports three high-impact concepts to pb-spec: (1) a requirements analysis step in pb-plan that catches ambiguities, inconsistencies, and completeness gaps using EARS quality enforcement and abductive reasoning; (2) parallel task execution in pb-build using the existing DependsOn metadata; and (3) a quick-plan mode in pb-brainstorming for well-understood features.
-
-## Why this matters
-
-Requirement bugs propagate through design, tasks, and code — they are expensive to fix late. pb-spec currently relies entirely on the planner's judgment to produce high-quality requirements. The Kiro articles demonstrate that structured analysis (refinement, semantic entropy, logical consistency checks) catches bugs that human review misses. Meanwhile, pb-build runs all tasks sequentially even when independent tasks could execute concurrently, leaving significant speed on the table. Research shows Pass@1 drops 20-40% when prompts are ambiguous (Larbi et al., 2025), and underspecified prompts are about twice as likely to regress across model changes (Yang et al., 2025). Catches earlier = cheaper fixes.
+Kiro's spec-driven workflow uses neuro-symbolic requirements analysis, parallel task execution, and fast-track planning to catch requirement bugs before code and speed up implementation. This design ports three high-impact concepts to pb-spec: (1) a requirements analysis step in pb-plan that catches ambiguities, inconsistencies, and completeness gaps using EARS quality enforcement and abductive reasoning; (2) parallel task execution in pb-build using the existing DependsOn metadata; and (3) a quick-plan mode in pb-brainstorming for well-understood features. Requirement bugs propagate through design, tasks, and code — they are expensive to fix late, and research shows Pass@1 drops 20-40% when prompts are ambiguous (Larci et al., 2025); underspecified prompts are about twice as likely to regress across model changes (Yang et al., 2025). Catches earlier = cheaper fixes.
 
 ## Approach
 
@@ -82,6 +77,27 @@ Requirement bugs propagate through design, tasks, and code — they are expensiv
 1. **design_template.md** — Add "Requirements Quality Audit" subsection under Source Inputs & Normalization
 2. **tasks_template.md** — Add optional `Wave:` field to task blocks
 
+### Ponytail Ladder (mandatory at every decision point)
+
+1. Does this need to exist at all? Speculative need = skip it. (YAGNI)
+2. Stdlib does it? Use it.
+3. Native platform feature covers it? Use it.
+4. Already-installed dependency? Use it.
+5. One line? One line.
+6. Only then: minimum code that works.
+
+Mark deferrals: Use `ponytail:` comments for deliberate simplifications with known ceilings. Never simplify away: input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, anything explicitly requested.
+
+### Existing Components to Reuse
+
+| Component | Location | How to Reuse |
+| :--- | :--- | :--- |
+| Source Requirement Ledger | pb-plan:58-63 | Add quality properties and clarification records |
+| DependsOn metadata | tasks_template.md:445-456 | Use for dependency graph construction |
+| Subagent dispatch | pb-build:194-216 | Extend for parallel wave execution |
+| pb-brainstorming checklist | pb-brainstorming:24-31 | Add quick plan mode detection |
+| EARS notation | design_template.md:40-69 | Add quality validation checklist |
+
 ### What NOT to change
 
 - Don't rename skills or add new skills
@@ -90,33 +106,6 @@ Requirement bugs propagate through design, tasks, and code — they are expensiv
 - Don't add dependencies
 - Don't change the BDD/TDD cycle structure
 - Don't change the Generator/Evaluator isolation model
-
-## Requirements (EARS Notation)
-
-**Ubiquitous:**
-
-- **[REQ-01]:** pb-plan *shall* validate each extracted requirement against EARS quality properties (testable, solution-free, unambiguous, consistent, complete) before generating design.
-- **[REQ-02]:** pb-plan *shall* perform abductive refinement for each requirement, working backwards from success state to identify missing error paths.
-- **[REQ-03]:** pb-plan *shall* surface ambiguity, inconsistency, and completeness findings as clarifying questions with two options each.
-
-**State-driven:**
-
-- **[REQ-04]:** While tasks.md contains tasks with DependsOn metadata, pb-build *shall* build a dependency graph and execute independent tasks concurrently.
-- **[REQ-05]:** While running tasks in parallel, pb-build *shall* isolate each task's context to prevent state leaking between concurrent tasks.
-
-**Event-driven:**
-
-- **[REQ-06]:** When pb-brainstorming detects a well-understood feature scope, it *shall* offer quick plan mode with targeted clarification questions.
-- **[REQ-07]:** When the user answers quick plan questions, pb-brainstorming *shall* generate requirements, design, and tasks in one pass without intermediate approval gates.
-
-**Unwanted:**
-
-- **[REQ-08]:** pb-build *shall not* parallelize tasks that write to the same files.
-- **[REQ-09]:** The requirements analysis step *shall not* block planning when findings are ambiguous — it *shall* label them as assumptions and proceed.
-
-**Exception:**
-
-- **[REQ-10]:** Where a task fails during parallel execution, pb-build *shall* continue other independent tasks and apply the standard 3-failure retry protocol to the failed task.
 
 ## Architecture Decisions
 
@@ -180,28 +169,41 @@ Requirement bugs propagate through design, tasks, and code — they are expensiv
 - Negative: Less rigorous than formal verification; some edge cases may slip through
 - Neutral: Catches the most common requirement bugs (the 80/20)
 
-## Code Simplification Constraints
+## Requirements & Goals
 
-**Ponytail Ladder (mandatory at every decision point):**
+**Ubiquitous:**
 
-1. Does this need to exist at all? Speculative need = skip it. (YAGNI)
-2. Stdlib does it? Use it.
-3. Native platform feature covers it? Use it.
-4. Already-installed dependency? Use it.
-5. One line? One line.
-6. Only then: minimum code that works.
+- **[REQ-01]:** pb-plan *shall* validate each extracted requirement against EARS quality properties (testable, solution-free, unambiguous, consistent, complete) before generating design.
+- **[REQ-02]:** pb-plan *shall* perform abductive refinement for each requirement, working backwards from success state to identify missing error paths.
+- **[REQ-03]:** pb-plan *shall* surface ambiguity, inconsistency, and completeness findings as clarifying questions with two options each.
 
-**Mark deferrals:** Use `ponytail:` comments for deliberate simplifications with known ceilings.
+**State-driven:**
 
-**Never simplify away:** input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, anything explicitly requested.
+- **[REQ-04]:** While tasks.md contains tasks with DependsOn metadata, pb-build *shall* build a dependency graph and execute independent tasks concurrently.
+- **[REQ-05]:** While running tasks in parallel, pb-build *shall* isolate each task's context to prevent state leaking between concurrent tasks.
+
+**Event-driven:**
+
+- **[REQ-06]:** When pb-brainstorming detects a well-understood feature scope, it *shall* offer quick plan mode with targeted clarification questions.
+- **[REQ-07]:** When the user answers quick plan questions, pb-brainstorming *shall* generate requirements, design, and tasks in one pass without intermediate approval gates.
+
+**Unwanted:**
+
+- **[REQ-08]:** pb-build *shall not* parallelize tasks that write to the same files.
+- **[REQ-09]:** The requirements analysis step *shall not* block planning when findings are ambiguous — it *shall* label them as assumptions and proceed.
+
+**Exception:**
+
+- **[REQ-10]:** Where a task fails during parallel execution, pb-build *shall* continue other independent tasks and apply the standard 3-failure retry protocol to the failed task.
 
 ## BDD/TDD Strategy
 
 - **Primary Language:** Markdown (skill files)
 - **Verification:** grep for key patterns, manual review for behavior preservation, test execution for functional correctness
 - **Feature Files:** `specs/2026-07-08-01-kiro-inspired-improvements/features/kiro-improvements.feature`
+- **TDD inner-loop:** Red → Green → Refactor; grep-based checks act as the regression gate for skill-file edits.
 
-## BDD Scenario Inventory
+### BDD Scenario Inventory
 
 | Feature File | Scenario Name | Business Outcome | Task Coverage |
 | :--- | :--- | :--- | :--- |
@@ -213,16 +215,6 @@ Requirement bugs propagate through design, tasks, and code — they are expensiv
 | `features/kiro-improvements.feature` | pb-build respects dependency ordering | Dependent tasks wait for prerequisites | Task 2.1 |
 | `features/kiro-improvements.feature` | pb-brainstorming fast-tracks features | Quick plan with targeted questions | Task 3.1 |
 | `features/kiro-improvements.feature` | pb-brainstorming selects clarification targets | Questions cover 4 dimensions | Task 3.1 |
-
-## Existing Components to Reuse
-
-| Component | Location | How to Reuse |
-| :--- | :--- | :--- |
-| Source Requirement Ledger | pb-plan:58-63 | Add quality properties and clarification records |
-| DependsOn metadata | tasks_template.md:445-456 | Use for dependency graph construction |
-| Subagent dispatch | pb-build:194-216 | Extend for parallel wave execution |
-| pb-brainstorming checklist | pb-brainstorming:24-31 | Add quick plan mode detection |
-| EARS notation | design_template.md:40-69 | Add quality validation checklist |
 
 ## Verification
 
@@ -236,3 +228,9 @@ Requirement bugs propagate through design, tasks, and code — they are expensiv
 | VP-06 | `grep -c "quick plan" skills/pb-brainstorming/SKILL.md` | ≥ 2 |
 | VP-07 | `grep -c "Wave:" skills/pb-plan/references/tasks_template.md` | ≥ 1 |
 | VP-08 | Manual review: all existing behavior preserved | No behavior loss |
+
+## Revision History
+
+| Date | Change | Reason |
+| :--- | :--- | :--- |
+| 2026-07-21 | Schema migration to 4-field tasks / scalable design template | pb-spec refactor |

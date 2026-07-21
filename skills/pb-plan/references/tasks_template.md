@@ -1,191 +1,40 @@
-# [Feature Name] — Implementation Tasks
+# tasks.md — Implementation Tasks
 
-| Metadata | Details |
-| :--- | :--- |
-| **Design Doc** | [Link to specs/YYYY-MM-DD-NO-feature-name/design.md] |
-| **Owner** | [Name] |
-| **Start Date** | YYYY-MM-DD |
-| **Target Date** | YYYY-MM-DD |
-| **Status** | Planning / In Progress / Completed |
+Scenario-driven task list produced by `/pb-plan`. Each task is the smallest unit
+that carries its own test cycle and earns an independent reviewer's gate. Tasks
+are ordered as a DAG — respect dependencies, no forward references.
 
-## Summary & Phasing
+## Task Block Template
 
-> Brief implementation strategy.
->
-> Note any subagent-produced requirement extraction or reconciliation findings that shape task ordering or coverage expectations.
+### Task X.Y — <task name>
 
-- **Planner Contract Rule:** Emit a contract-complete, build-eligible spec in the existing markdown artifacts. Do not introduce a sidecar schema or a new command.
-- **Packet Contract Rule:** Carry blocked-build and DCR expectations as markdown-carried packet sections in the existing task/design workflow.
-- **State Contract Rule:** Use allowed status markers and transitions: `🔴 TODO` -> `🟡 IN PROGRESS` -> `🟢 DONE`, with `⏭️ SKIPPED`, `🔄 DCR`, and `⛔ OBSOLETE` for explicit exceptional states. Preserve compatibility with legacy `TODO`-only specs: if a task still uses legacy `TODO`, treat it as `🔴 TODO` before it can move to `🟡 IN PROGRESS`.
-- **Property Testing Rule:** Add property-test coverage with `Hypothesis`, `fast-check`, or `proptest` for broad input-domain logic unless the task explicitly justifies why example-based tests are sufficient.
-- **Fuzzing Rule:** Add `Atheris`, `jazzer.js`, or `cargo-fuzz` only for parsers, protocols, unsafe/native boundaries, binary formats, or other untrusted-input crash-safety work.
-- **Benchmark Rule:** Add `pytest-benchmark`, `Vitest Bench`, or `criterion` only when the requirement or codebase defines performance-sensitive behavior.
-- **Identity Alignment Rule:** If the repo still contains generic crate/package/module names from a template, front-load rename work before dependent implementation tasks.
-- **Architecture Decisions Rule:** Follow the approved `Architecture Decisions` from `design.md`. For work likely to exceed 200 lines or introduce new boundaries, state the relevant **SRP**, **DIP**, **Factory**, **Strategy**, **Observer**, **Adapter**, or **Decorator** decision in task context and do not improvise a new pattern mid-build.
-- **Dependency Injection Rule:** External dependencies should be introduced or refactored through interfaces or abstract classes unless the design explicitly documents a different repo-native seam.
-- **Behavior Preservation Rule:** State whether each task preserves existing behavior or intentionally changes it; validate that with scenario and regression coverage.
-- **Simplification Rule:** Apply the ponytail ladder (YAGNI → stdlib → native → existing dep → one-liner → minimum code) at every implementation decision. Mark deferrals with `ponytail:` comments naming the ceiling and upgrade path.
-- **Clarity Guardrail:** Avoid planning dense or clever rewrites; where relevant, avoid nested ternary operators in favor of clearer branching.
-- **Performance Guardrail:** For tasks touching data access or hot paths, the task context should note expected query patterns and any N+1 or over-fetching risks identified during planning.
-- **Phase 1: BDD Harness & Scaffolding** — Feature files, runner setup, task skeletons
-- **Phase 2: Scenario Implementation** — Primary behavior implemented via TDD
-- **Phase 3: Integration & Features** — Connecting pieces, end-to-end
-- **Phase 4: Polish, QA & Docs** — Tests, cleanup, documentation
+- Context: <why this task exists, what to do, key files, dependencies on prior tasks>
+- Verification: <exact command(s) + expected output that proves this task is done>
+- Status: 🔴 TODO
+- Scenario Coverage: <@scenario-id list from .feature files, or `N/A` for non-BDD tasks>
 
----
+Status transitions: `🔴 TODO` → `🟡 IN PROGRESS` → `🟢 DONE`. Exceptional states:
+`⏭️ SKIPPED`, `🔄 DCR`, `⛔ OBSOLETE`.
 
-## Phase 1: BDD Harness & Scaffolding
+## Example
 
-### Task 1.1: [Task Name]
+### Task 1.1 — Configure BDD runner
 
-> **Context:** Why this task exists and what it enables. Reference existing components to reuse if applicable.
-> **Verification:** How to prove this task is done.
+- Context: Project has no `features/` discovery yet. Add behave config so `uv run behave features/ --dry-run` exits 0. No dependencies.
+- Verification: `uv run behave specs/<spec-dir>/features/ --dry-run` exits 0 with no undefined steps.
+- Status: 🔴 TODO
+- Scenario Coverage: N/A
 
-- **Priority:** P0 / P1 / P2
-- **Scope:** [Logical Unit of Work — e.g., "Model layer", "API endpoint", "Service integration"]
-- **Requirement Coverage:** `[Requirement IDs from Source Inputs & Normalization, or N/A with reason]`
-- **Scenario Coverage:** `[Feature/scenario names, or N/A for infrastructure-only work]`
-- **Loop Type:** `BDD+TDD` / `TDD-only`
-- **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
-- **Simplification Focus:** `[Apply ponytail ladder: YAGNI → stdlib → native → existing dep → one-liner → minimum / N/A]`
-- **Wave:** `[N — explicit wave assignment (0-indexed); if absent, pb-build infers from DependsOn metadata]`
-- **Status:** 🔴 TODO
-- [ ] **Step 1:** ...
-- [ ] **Step 2:** ...
-- [ ] **BDD Verification:** [Concrete scenario check — e.g., "run `behave features/auth.feature` and confirm Scenario X fails first, then passes"]
-- [ ] **Advanced Test Verification:** [Concrete command for `Hypothesis`, `fast-check`, `proptest`, `Atheris`, `jazzer.js`, `cargo-fuzz`, `pytest-benchmark`, `Vitest Bench`, or `criterion`; if not needed, write `N/A` with reason]
-- [ ] **Runtime Verification:** [Capture runtime signals — e.g., `tail -n 50 app.log` and `curl http://localhost:8080/health`; if not applicable, write `N/A` with reason]
+### Task 2.1 — Successful login with valid credentials
 
-### Task 1.2: [Task Name]
+- Context: Implement the happy path for `@login-success`. Depends on Task 1.1. Add step definitions under `features/steps/login_steps.py` and minimal auth logic in `src/auth/login.py`.
+- Verification: `uv run behave specs/<spec-dir>/features/login.feature --tags=@login-success` exits 0; `uv run pytest tests/auth/test_login.py -q` passes.
+- Status: 🔴 TODO
+- Scenario Coverage: @login-success
 
-> **Context:** ...
-> **Verification:** ...
+### Task 2.2 — Reject login with unknown user
 
-- **Priority:** P0
-- **Scope:** [Logical Unit of Work]
-- **Requirement Coverage:** `[Requirement IDs from Source Inputs & Normalization, or N/A with reason]`
-- **Scenario Coverage:** `[Feature/scenario names, or N/A]`
-- **Loop Type:** `BDD+TDD` / `TDD-only`
-- **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
-- **Simplification Focus:** `[Apply ponytail ladder: YAGNI → stdlib → native → existing dep → one-liner → minimum / N/A]`
-- **Status:** 🔴 TODO
-- [ ] **Step 1:** ...
-- [ ] **Step 2:** ...
-- [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
-- [ ] **Advanced Test Verification:** [Command or `N/A` with reason]
-- [ ] **Runtime Verification:** [Logs + probe result, or `N/A` with reason]
-
----
-
-## Phase 2: Scenario Implementation
-
-### Task 2.1: [Task Name]
-
-> **Context:** ...
-> **Verification:** ...
-
-- **Priority:** P0
-- **Scope:** [Logical Unit of Work]
-- **Requirement Coverage:** `[Requirement IDs from Source Inputs & Normalization, or N/A with reason]`
-- **Scenario Coverage:** `[Feature/scenario names, or N/A]`
-- **Loop Type:** `BDD+TDD` / `TDD-only`
-- **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
-- **Simplification Focus:** `[Apply ponytail ladder: YAGNI → stdlib → native → existing dep → one-liner → minimum / N/A]`
-- **Status:** 🔴 TODO
-- [ ] **Step 1:** ...
-- [ ] **Step 2:** ...
-- [ ] **Step 3:** ...
-- [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
-- [ ] **Advanced Test Verification:** [Command or `N/A` with reason]
-- [ ] **Runtime Verification:** [Logs + probe result, or `N/A` with reason]
-
-### Task 2.2: [Task Name]
-
-> **Context:** ...
-> **Verification:** ...
-
-- **Priority:** P1
-- **Scope:** [Logical Unit of Work]
-- **Requirement Coverage:** `[Requirement IDs from Source Inputs & Normalization, or N/A with reason]`
-- **Scenario Coverage:** `[Feature/scenario names, or N/A]`
-- **Loop Type:** `BDD+TDD` / `TDD-only`
-- **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
-- **Simplification Focus:** `[Apply ponytail ladder: YAGNI → stdlib → native → existing dep → one-liner → minimum / N/A]`
-- **Status:** 🔴 TODO
-- [ ] **Step 1:** ...
-- [ ] **Step 2:** ...
-- [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
-- [ ] **Verification:** ...
-- [ ] **Advanced Test Verification:** [Command or `N/A` with reason]
-- [ ] **Runtime Verification:** [Logs + probe result, or `N/A` with reason]
-
----
-
-## Phase 3: Integration & Features
-
-### Task 3.1: [Task Name]
-
-> **Context:** ...
-> **Verification:** ...
-
-- **Priority:** P1
-- **Scope:** [Logical Unit of Work]
-- **Requirement Coverage:** `[Requirement IDs from Source Inputs & Normalization, or N/A with reason]`
-- **Scenario Coverage:** `[Feature/scenario names, or N/A]`
-- **Loop Type:** `BDD+TDD` / `TDD-only`
-- **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
-- **Simplification Focus:** `[Apply ponytail ladder: YAGNI → stdlib → native → existing dep → one-liner → minimum / N/A]`
-- **Status:** 🔴 TODO
-- [ ] **Step 1:** ...
-- [ ] **Step 2:** ...
-- [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
-- [ ] **Verification:** ...
-- [ ] **Runtime Verification:** [Logs + probe result, or `N/A` with reason]
-
----
-
-## Phase 4: Polish, QA & Docs
-
-### Task 4.1: [Task Name]
-
-> **Context:** ...
-> **Verification:** ...
-
-- **Priority:** P2
-- **Scope:** [Logical Unit of Work]
-- **Requirement Coverage:** `[Requirement IDs from Source Inputs & Normalization, or N/A with reason]`
-- **Scenario Coverage:** `[Feature/scenario names, or N/A]`
-- **Loop Type:** `BDD+TDD` / `TDD-only`
-- **Behavioral Contract:** `Preserve existing behavior` / `[Describe intentional behavior change]`
-- **Simplification Focus:** `[Apply ponytail ladder: YAGNI → stdlib → native → existing dep → one-liner → minimum / N/A]`
-- **Status:** 🔴 TODO
-- [ ] **Step 1:** ...
-- [ ] **Step 2:** ...
-- [ ] **BDD Verification:** [Run scenario command and confirm expected red/green outcome]
-- [ ] **Advanced Test Verification:** [Command or `N/A` with reason]
-
----
-
-## Summary & Timeline
-
-| Phase | Tasks | Target Date |
-| :--- | :---: | :--- |
-| **1. Foundation** | N | MM-DD |
-| **2. Core Logic** | N | MM-DD |
-| **3. Integration** | N | MM-DD |
-| **4. Polish** | N | MM-DD |
-| **Total** | **N** | |
-
-## Definition of Done
-
-> Every task must meet these criteria before being marked complete.
-
-1. [ ] **Linted:** No lint errors (project linter passes).
-2. [ ] **Tested:** Unit tests covering the added logic.
-3. [ ] **Formatted:** Code formatter applied.
-4. [ ] **Verified:** The task's specific Verification criterion is met.
-5. [ ] **Advanced-Tested (when applicable):** Property/fuzz/benchmark verification is captured, or `N/A` is explicitly justified.
-6. [ ] **Runtime-Evidenced (when applicable):** Runtime logs and health/probe results are captured, or `N/A` is explicitly justified.
-7. [ ] **Behavior-Preserved or Documented:** The task confirms behavior preservation or documents the intentional behavior change.
-8. [ ] **Simplified Responsibly:** Cleanup stayed within the planned scope and improved readability rather than introducing clever compaction.
-9. [ ] **Performance-Sound (when applicable):** No obvious N+1 queries, over-fetching, or missing eager loading for tasks touching data access or hot paths; or `N/A` is explicitly justified.
+- Context: Implement the error path for `@login-unknown-user`. Depends on Task 2.1 producing the login entry point. Reuse the same step definitions.
+- Verification: `uv run behave specs/<spec-dir>/features/login.feature --tags=@login-unknown-user` exits 0.
+- Status: 🔴 TODO
+- Scenario Coverage: @login-unknown-user

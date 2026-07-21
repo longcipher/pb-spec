@@ -16,7 +16,7 @@ Feature: Integrate ponytail simplification philosophy into pb-spec skills
     And design.md includes a "Simplification Strategy" section with ponytail ladder
 
   Scenario: pb-plan design template includes ponytail section
-    Given the lightweight design template in references/
+    Given the design template in references/
     When the template is rendered
     Then it contains a "Simplification Strategy" section
     And the section states the ponytail ladder
@@ -45,4 +45,4 @@ Feature: Integrate ponytail simplification philosophy into pb-spec skills
     When the design.md is read
     Then it contains a Code Simplification Constraints section
     And the section references the ponytail ladder explicitly
-    And tasks.md Simplification Focus field references the ladder
+    And tasks.md references the ponytail ladder in its task blocks
