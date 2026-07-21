@@ -28,7 +28,7 @@ def is_rumdl_available() -> bool:
             ["rumdl", "--version"], capture_output=True, check=True, timeout=RUMDL_CHECK_TIMEOUT
         )
         return True
-    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+    except FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired:
         return False
 
 

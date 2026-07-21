@@ -172,7 +172,7 @@ class CodeScanner:
                 if file_path.suffix in self.scan_extensions and self._should_scan_file(file_path):
                     files.append(file_path)
             return files
-        except (subprocess.CalledProcessError, FileNotFoundError):
+        except subprocess.CalledProcessError, FileNotFoundError:
             return None
 
     def _should_scan_file(self, file_path: Path) -> bool:
@@ -220,7 +220,7 @@ class CodeScanner:
 
         try:
             content = file_path.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
+        except UnicodeDecodeError, OSError:
             return
 
         lines = content.split("\n")
