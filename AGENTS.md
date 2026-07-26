@@ -1,305 +1,52 @@
-# High-Performance Python Agent Instructions
+# pb-spec Agent Rules
 
-## Scope
+## Stack
 
-- This template targets Python projects managed by `uv`.
-- `src/` contains the main application package (src layout).
-- `tests/` contains all tests.
-- No web-framework-specific assumptions.
+- Python 3.14+, `uv` for all commands (`uv run`, `uv add`, `uv sync --all-groups`)
+- Runtime dep: `click`. Dev deps: `ruff`, `ty`, `pytest`, `behave`.
+- Never edit `pyproject.toml` versions by hand — use `uv add`.
+- CLI output via `click.echo` (see `src/pb_spec/output.py`); no `print()`.
 
-## uv Project Rules (Critical)
-
-1. Never manually edit dependency versions in `pyproject.toml`; use `uv add`.
-2. Add runtime dependencies with:
-
-   ```bash
-   uv add <package>
-   ```
-
-3. Add development dependencies with:
-
-   ```bash
-   uv add --group dev <package>
-   ```
-
-4. Always run code through `uv run` to ensure the correct virtual environment.
-5. Lock dependencies with `uv lock`; commit `uv.lock` to version control.
-6. Use `uv sync --all-groups` to install all dependency groups.
-
-## Preferred Dependencies and Versions
-
-When introducing new dependencies, prefer these unless compatibility requires a change:
-
-```json
-// python
-// fast JSON serialization/deserialization
-orjson >= 3.11.7
-// high-performance struct-based serialization
-msgspec >= 0.20.0
-// async-first HTTP client
-httpx >= 0.28.1
-// drop-in asyncio event loop replacement (Linux/macOS)
-uvloop >= 0.22.1
-// structured logging
-structlog >= 25.5.0
-// data validation (only when full validation is needed)
-pydantic >= 2.12.5-security
-// CLI framework (for complex CLIs; argparse for simple ones)
-click >= 8.3.1
-// DataFrame operations
-polars >= 1.39.3
-// structured concurrency
-anyio >= 4.12.1
-// gRPC
-grpcio >= 1.78.0
-// database ORM (async mode preferred)
-sqlalchemy >= 2.0.48
-// async SQLite
-aiosqlite >= 0.22.1
-// async PostgreSQL
-asyncpg >= 0.31.0
-// async Redis client
-redis >= 7.4.0
-// metrics
-prometheus-client >= 0.24.1
-// OpenTelemetry tracing
-opentelemetry-api >= 1.40.0
-// OpenTelemetry SDK
-opentelemetry-sdk >= 1.40.0
-// in-process caching utilities
-cachetools >= 7.0.5
-```
-
-## Dependency Priority and Forbidden Choices
-
-- JSON preference: `orjson` over `json` (stdlib) and `ujson`.
-- Serialization preference: `msgspec` over `pydantic` for pure serialization (no validation needed).
-- HTTP client preference: `httpx` (with `h2` for HTTP/2) over `requests` and `aiohttp`.
-- DataFrame preference: `polars` over `pandas` for new code.
-- Event loop preference: `uvloop` over default asyncio loop.
-- Logging preference: `structlog` over `logging` (stdlib).
-- Forbidden by default: `requests` (sync-only), `pandas` (use `polars`), `print()` for logging.
-
-## Engineering Principles
-
-### Python Implementation Guidelines
-
-1. Type annotations:
-   - All public functions and methods must have full type annotations.
-   - Use `from __future__ import annotations` at the top of every module.
-   - Use modern union syntax (`X | None`) instead of `Optional[X]`.
-   - Use `ty` for type checking; code must pass `ty check` with zero errors.
-2. Error handling:
-   - Define explicit exception hierarchies per module/package.
-   - Never use bare `except:` or `except Exception:` without re-raising.
-   - Use `contextlib.suppress()` for intentional exception swallowing.
-   - Prefer returning typed result objects over raising exceptions in hot paths.
-3. Async/Await:
-   - Default to `async` for I/O-bound code.
-   - Use `asyncio.TaskGroup` (Python 3.11+) for structured concurrency.
-   - Never mix `asyncio.run()` with already-running event loops.
-4. Observability:
-   - Logging: `structlog` with JSON output in production.
-   - Metrics/traces: OpenTelemetry OTLP gRPC.
-   - Never use `print()` for logging or diagnostics in library code.
-5. Configuration:
-   - Use environment variables with `pydantic-settings` or `msgspec` for config parsing.
-   - Prefer TOML configuration files.
-6. Security:
-   - Never hardcode secrets; use environment variables or secret managers.
-   - Validate all external input at system boundaries.
-
-### Key Design Principles
-
-- Modularity: Design each module so it can be imported independently with clear boundaries and minimal hidden coupling.
-- Performance: Prefer zero-copy patterns, memory-mapped I/O for large datasets, vectorized operations, and pre-allocated buffers.
-- Extensibility: Use Protocols (`typing.Protocol`) and abstract base classes for pluggable implementations.
-- Type Safety: Maintain strong static typing across interfaces and internals; minimize use of `Any`.
-
-### Performance Considerations
-
-- Avoid allocations in hot loops; prefer pre-allocated lists, `array.array`, or NumPy/Polars for bulk data.
-- Use `__slots__` on data-heavy classes to reduce per-instance memory overhead.
-- Prefer `struct.pack`/`struct.unpack` or `memoryview` for binary protocol parsing.
-- Use generator expressions and `itertools` to avoid materializing large intermediate lists.
-- Profile before optimizing; use `py-spy`, `scalene`, or `cProfile` to identify real bottlenecks.
-
-### Concurrency and Async Execution
-
-- Use `uvloop` as the event loop policy for production servers.
-- Use `asyncio.TaskGroup` for structured concurrent I/O.
-- Use `concurrent.futures.ProcessPoolExecutor` for CPU-bound parallelism.
-- Use `asyncio.to_thread()` to offload blocking calls from the event loop.
-- Prefer `asyncio.Queue` for async producer-consumer patterns.
-- Offload blocking I/O (file reads, DNS, HTTP) via `asyncio.to_thread()` or dedicated async libraries instead of running it directly in async coroutines.
-- Use `anyio` for cross-runtime portability (asyncio and trio).
-- Limit concurrent connections with `asyncio.Semaphore` to prevent resource exhaustion.
-- Channel selection:
-  - Async-to-Async: `asyncio.Queue` / `anyio.create_memory_object_stream`
-  - CPU parallelism: `multiprocessing` or `concurrent.futures.ProcessPoolExecutor`
-  - Avoid threading for CPU-bound work due to the GIL (use `multiprocessing` or native extensions)
-
-### Memory and Allocation
-
-- Use `__slots__` on data-heavy classes to reduce per-instance memory overhead.
-- Use `msgspec.Struct` over `dataclasses` / `pydantic.BaseModel` for high-throughput data objects.
-- Prefer `bytes` / `bytearray` / `memoryview` over `str` for binary data; avoid repeated encode/decode.
-- Use `orjson` for JSON serialization — it returns `bytes` directly, avoiding intermediate string allocation.
-- For large datasets, use memory-mapped files (`mmap`) or Arrow-backed DataFrames (`polars`).
-- Use `sys.getsizeof()` and `tracemalloc` to profile memory usage.
-- Prefer `array.array` over `list` for homogeneous numeric data.
-- Use weak references (`weakref`) for caches that should not prevent garbage collection.
-
-### Type and Data Layout
-
-- Use `msgspec.Struct` with `frozen=True` for immutable data transfer objects.
-- Use `dataclasses` with `slots=True, frozen=True` for simple value types.
-- Use `enum.IntEnum` over `enum.Enum` for performance-critical flag/state types.
-- Prefer `typing.NamedTuple` over plain tuples for self-documenting return types.
-- Keep error types lightweight; avoid attaching large payloads to exception instances.
-- Use `typing.TypeAlias` for complex type expressions to improve readability.
-
-### C Extension and Native Interop
-
-- Use `cffi` or `ctypes` for calling C libraries; prefer `cffi` for new code.
-- Use `pyo3` / `maturin` for writing performance-critical modules in Rust.
-- Use `Cython` only when interfacing with existing C/C++ codebases.
-- Keep the Python ↔ native boundary coarse-grained; minimize per-call overhead.
-- Always release the GIL (`nogil` in Cython, `py.allow_threads` in PyO3) for long-running native computations.
-
-### Tooling and Quality
-
-- Lint with `ruff` — all code must pass `ruff check` with zero errors.
-- Format with `ruff format` — consistent style, no debates.
-- Type check with `ty` — all code must pass `ty check` with zero errors.
-- Use Gherkin + `behave` for outer-loop acceptance tests.
-- Use `pytest` for inner-loop TDD — tests must pass before claiming completion.
-- Use Hypothesis under `tests/` when you need generated coverage for invariants; these tests must run through the normal `uv run pytest` path.
-- Use `pytest-benchmark` for performance-sensitive code.
-- Use `pytest-cov` to track test coverage.
-
-### Common Pitfalls
-
-- Do not block the event loop with synchronous I/O — use `asyncio.to_thread()` or async libraries instead.
-- Do not use mutable default arguments — use `None` and initialize inside the function body instead.
-- Catch specific exceptions with `except SpecificError` and re-raise when propagating errors.
-- Pass state via function parameters or dependency injection instead of using `global` or module-level mutable state in library code.
-- Keep imports at the module top level; lazy imports inside functions are only acceptable when intentionally documented.
-- Handle `KeyboardInterrupt` and `SystemExit` separately from `Exception`.
-
-### What to Avoid
-
-- Incomplete implementations: finish features before submitting.
-- Large, sweeping changes: keep changes focused and reviewable.
-- Mixing unrelated changes: keep one logical change per commit.
-- Using `# type: ignore` without a specific error code and justification comment.
-
-## Behavioral Guidelines
-
-Adapted from [Karpathy's LLM coding observations](https://x.com/karpathy/status/2015883857489522876). These reduce common agent coding mistakes.
-
-### Think Before Coding
-
-Don't assume. Don't hide confusion. Surface tradeoffs.
-
-- State assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them — don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
-
-**Self-check:** "Did I list my assumptions before coding?"
-
-### Simplicity First
-
-Minimum code that solves the problem. Nothing speculative.
-
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
-
-**Self-check:** "Would a senior engineer say this is overcomplicated?"
-
-### Surgical Changes
-
-Touch only what you must. Clean up only your own mess.
-
-When editing existing code:
-
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it — don't delete it.
-
-When your changes create orphans:
-
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-**Self-check:** "Does every changed line trace to the user's request?"
-
-### Goal-Driven Execution
-
-Define success criteria. Loop until verified.
-
-Transform tasks into verifiable goals:
-
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
-
-**Self-check:** "Can I verify this change succeeded without asking the user?"
-
-## Development Workflow
-
-When fixing failures, identify root cause first, then apply idiomatic fixes instead of suppressing warnings or patching symptoms.
-
-Use outside-in development for behavior changes:
-
-- **Git Restrictions:** NEVER use `git worktree`. All code modifications MUST be made directly on the current branch in the existing working directory.
-- start with a failing Gherkin scenario under `features/`,
-- drive implementation with failing `pytest` tests,
-- keep example-based `pytest` tests as the default inner loop for named cases and edge cases,
-- add Hypothesis properties under `tests/` when the rule is an invariant instead of a single named example,
-- treat Atheris as conditional planning work rather than baseline template scaffolding,
-- keep step definitions thin and reuse Python domain modules.
-
-After each feature or bug fix, run:
+## Quality Gates
 
 ```bash
-just format
-just lint
-just test
-just bdd
-just test-all
+just format && just lint && just test && just bdd && just test-all
 ```
 
-If any command fails, report the failure and do not claim completion.
+- `ruff check` + `ruff format` — zero errors.
+- `ty check` — zero errors.
+- `pytest` — all pass.
+- `behave` — all scenarios pass.
+- Type annotations required on all public functions. Use `from __future__ import annotations`, `X | None` syntax.
 
-## Testing Requirements
+## Conventions
 
-- BDD scenarios: place Gherkin features under `features/` and step definitions under `features/steps/`.
-- Use BDD to define acceptance behavior first, then use `pytest` for the inner TDD loop.
-- Keep example-based and Hypothesis-based tests together under `tests/`; `just test` must exercise both without a separate property-test command.
-- Unit tests: place in `tests/` mirroring the source structure.
-- Integration tests: place in `tests/integration/`.
-- Fuzz tests: only plan or add Atheris when a module parses hostile text or binary input, decodes file or protocol formats, or wraps native extensions where crash resistance matters.
-- Fuzz workflow: when fuzzing is justified, keep the harness targeted to the affected module instead of adding a default workspace-wide fuzz command to every starter.
-- Performance tests: use `pytest-benchmark` with `@pytest.mark.benchmark` only for code with an explicit latency SLA, throughput target, or hot-path requirement.
-- Treat benchmark work as optional planning scope; keep the standard `pytest` loop as the default when no performance requirement exists.
-- For `/pb-plan` work, mark fuzzing as `conditional` or `N/A` unless the scope explicitly includes parser-like, protocol, binary-decoding, hostile-input, or native-extension-heavy code.
-- Add tests for behavioral changes and public API changes.
-- Use `pytest` fixtures for setup/teardown; avoid `setUp`/`tearDown` methods.
-- Use `pytest.raises` for exception testing; `pytest.approx` for floating-point comparisons.
+- Match existing code style in `src/pb_spec/`. Comment density and naming follow what's already there.
+- `dataclasses(frozen=True)` for value types (see `validation/result.py`).
+- Regex-based markdown parsing (see `validation/parser.py`).
+- Read-only validation: the tool never modifies source files.
+- Errors via structured `ValidationError` + `ValidationResult` types, not bare exceptions.
+- One logical change per commit. English only in docs/comments/commits.
 
-## Language Requirement
+## Workflow
 
-- Documentation, comments, and commit messages must be English only.
+- BDD outside-in: Gherkin in `features/` → `pytest` inner loop → implementation.
+- Step definitions thin; reuse domain modules from `src/pb_spec/`.
+- Tests under `tests/` mirroring source structure. BDD under `features/`.
+- Fix root cause, never suppress warnings or patch symptoms.
+
+## Git
+
+- Never use `git worktree`. Work directly on the current branch.
+- Never commit/push unless explicitly asked.
+- Never force push to main/master.
+
+## SDD Artifacts
+
+Spec-driven workflow lives in `specs/<spec-dir>/`:
+
+- `features/*.feature` — source of truth (Gherkin)
+- `design.md` — 5 required + optional sections
+- `tasks.md` — 4-field blocks (Context / Verification / Status / Scenario Coverage)
+
+See `docs/contract.md` for the executable type contract.

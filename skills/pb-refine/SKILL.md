@@ -3,133 +3,72 @@ name: pb-refine
 description: Iteratively refine feature design specs (design.md, tasks.md, features) based on user feedback or design change requests. Use when updating existing plans after build failures, scope changes, or architectural corrections.
 ---
 
-# pb-refine — Design & Plan Refinement
+# pb-refine
 
-You are the **pb-refine** agent. Your job is to read user feedback on an existing spec (`design.md` and/or `tasks.md`) and update them accordingly. This closes the gap between one-shot planning and iterative refinement.
+## Role
 
-**Trigger:** The user invokes `/pb-refine <feature-name>` with feedback or change requests.
-
----
+Apply user feedback to existing specs. This closes the gap between one-shot planning and iterative refinement.
 
 ## Workflow
 
-Execute the following steps in order.
+### 1. Resolve spec directory & load existing spec
 
-### Step 1: Resolve Spec Directory & Load Existing Spec
+- List `specs/`, find directory ending with `-<feature-name>`.
+- If multiple matches → most recent (latest date prefix).
+- If no match → report: `❌ No spec directory found for feature "<feature-name>" in specs/. Run /pb-plan <requirement> first.`
+- Load `design.md`, `tasks.md`, `features/`, `AGENTS.md` (read-only).
 
-**Resolve `<feature-name>` → `<spec-dir>`:**
+### 2. Parse feedback & validate packets
 
-1. List all directories under `specs/`.
-2. Find the directory whose name ends with `-<feature-name>` (e.g., `2026-02-15-01-add-websocket-auth` for feature-name `add-websocket-auth`).
-3. If exactly one match is found, use it as `<spec-dir>`. All `specs/<spec-dir>/` paths below refer to this resolved directory.
-4. If multiple matches exist, use the most recent one (latest date prefix).
-5. If no match is found, stop and report:
+Feedback may include: design corrections, scope changes, task adjustments, DCR packets, Build Blocked packets, general feedback.
 
-   ```text
-   ❌ No spec directory found for feature "<feature-name>" in specs/.
-      Run /pb-plan <requirement> first to generate the spec.
-   ```
+If feedback includes structured packets (see `docs/contract.md` for 3-field schema: Reason / Requested Change / Impact), validate all fields present before modifying any file. If fields missing → report and stop. Do not guess or reconstruct missing fields.
 
-**Load files:**
+### 3. Update .feature files and design.md
 
-1. `specs/<spec-dir>/design.md` — the current design.
-2. `specs/<spec-dir>/tasks.md` — the current task breakdown.
-3. `specs/<spec-dir>/features/` — existing `.feature` files and scenario inventory.
-4. `AGENTS.md` (if it exists) — read-only source of constraints and gotchas.
+If feedback changes user-visible behavior, update `features/` first:
 
-### Step 2: Parse User Feedback & Validate Packets
+- Precise edits only. Preserve unaffected scenarios.
+- If behavior contract unchanged, keep features as-is, say why.
 
-The user's feedback may include:
+Apply design changes to `design.md`:
 
-- **Design corrections** — wrong assumptions, infeasible architecture, missing requirements.
-- **Scope changes** — features added, removed, or deprioritized.
-- **Task adjustments** — tasks too large, too small, wrong order, missing tasks.
-- **Design Change Requests (DCR)** — from a failed `pb-build` run (format: `🔄 Design Change Request`).
-- **Build-block packets** — standardized `🛑 Build Blocked` reports from `pb-build` after 3 consecutive failures.
-- **General feedback** — "this approach won't work because..." or "we should use X instead of Y".
-
-Categorize the feedback into:
-
-1. **Design changes** — modifications to `design.md`.
-2. **Task changes** — modifications to `tasks.md`.
-3. **Feature changes** — modifications to `specs/<spec-dir>/features/`.
-4. **Both / All** — changes that affect feature files, design, and cascade to tasks.
-
-If feedback includes a standardized `🛑 Build Blocked` or `🔄 Design Change Request` packet, treat it as structured feedback. Validate the packet before modifying any spec file.
-
-Required `🛑 Build Blocked` fields:
-
-- `Reason`
-- `Requested Change`
-- `Impact`
-
-Required `🔄 Design Change Request` fields:
-
-- `Reason`
-- `Requested Change`
-- `Impact`
-
-If any required field is missing, stop and report:
-
-- `❌ Incomplete 🛑 Build Blocked packet. Missing required field(s): [field names]`
-- `❌ Incomplete 🔄 Design Change Request packet. Missing required field(s): [field names]`
-
-Do not guess or reconstruct missing reason, requested change, or impact. Only after packet validation passes may you update the affected `.feature`, `design.md`, and `tasks.md` files.
-
-### Step 3: Update `.feature` Files and design.md
-
-If feedback changes user-visible behavior, update the relevant files under `specs/<spec-dir>/features/` first.
-
-- **Use precise edits.** Modify only the affected scenarios and steps.
-- Keep Gherkin in business language.
-- Preserve unaffected scenarios exactly as they are.
-- If the behavior contract is unchanged and the issue is only implementation detail, keep the `.feature` files unchanged and say why.
-
-Apply design changes to `specs/<spec-dir>/design.md`:
-
-- The design.md is a single scalable template (5 required + 5 optional sections). Preserve this structure; do not split it into modes.
-- **Preserve Design Standards:** All design artifacts must conform to: EARS Notation (requirements with `[REQ-XX]` IDs), C4 Model + Mermaid (architecture), DBML / Prisma Schema (data models), MADR (architecture decisions with `[Context]`/`[Decision]`/`[Consequences]`), RFC 2119 Constraints (MUST/SHOULD/MAY), and Behavior Traceability Matrix (component → scenario mapping).
-- **Use precise edits.** Modify only the affected sections. Do not rewrite the entire file.
-- **Update the metadata table:** Change `Status` to `Revised` and update the date.
-- **Add a Revision History section** at the bottom (if not already present):
+- Precise edits. Do not rewrite the entire file.
+- Update metadata: `Status` → `Revised`, update date.
+- Add Revision History at bottom:
 
 ```markdown
 ## Revision History
 
 | Date | Change | Reason |
 | :--- | :--- | :--- |
-| YYYY-MM-DD | [What changed] | [Why — user feedback or DCR] |
+| YYYY-MM-DD | [What changed] | [user feedback or DCR] |
 ```
 
-- **Preserve unchanged sections** exactly as they are.
-- If the user's feedback contradicts the original design, note the conflict and apply the user's decision.
-- If refinement is triggered by build-block evidence, document the failed-attempt summary in Revision History.
+- Preserve unchanged sections exactly.
+- If feedback contradicts original design, apply user's decision and note the conflict.
 
-### Step 4: Cascade to tasks.md
+### 4. Cascade to tasks.md
 
-If design changes affect the task breakdown, update `specs/<spec-dir>/tasks.md`. Tasks use only four fields: `Context`, `Verification`, `Status`, `Scenario Coverage`.
+If design changes affect task breakdown, update `tasks.md` (4-field schema, see `docs/contract.md`):
 
-- **Reset Blocked Tasks:** If the refinement resolves a `🔄 DCR` packet, you MUST reset the Status of the blocked task from `🔄 DCR` back to `🔴 TODO` so that `pb-build` will re-attempt it on the next run. Also, clear its evidence checkboxes back to `- [ ]`.
-- **Add new tasks** where needed. Assign them the next available Task ID in sequence.
-- **Remove or mark tasks as obsolete** if they're no longer needed: change Status to `⛔ OBSOLETE`.
-- **Reorder tasks** if dependencies changed.
-- **Update task `Context`** to reflect new design decisions.
-- **Update `Verification`** when needed: add concrete commands and expected results.
-- **Update `Scenario Coverage`** when scenarios were added, removed, renamed, or split. Use literal `N/A` (no reason required) for non-BDD tasks where scenario coverage genuinely does not apply.
-- **Do NOT modify completed tasks** (`- [x]` or `🟢 DONE`) unless explicitly requested.
-- **Use precise edits** — do not rewrite the entire file.
+- Reset blocked tasks: `🔄 DCR` → `🔴 TODO`, clear checkboxes to `- [ ]`.
+- Add new tasks with next available Task ID.
+- Remove obsolete tasks: Status → `⛔ OBSOLETE`.
+- Reorder if dependencies changed.
+- Update Context, Verification, Scenario Coverage as needed.
+- Do NOT modify completed tasks (`🟢 DONE` or `- [x]`) unless explicitly requested.
+- Precise edits only.
 
-### Step 5: Validate Consistency
+### 5. Validate consistency
 
-After making changes, verify:
+1. Design ↔ Tasks alignment: every design section has corresponding tasks.
+2. Feature ↔ Design alignment: every changed scenario reflected in design.
+3. Dependency order: no task references later task work.
+4. No orphaned tasks: every task traces to a design decision or scenario.
+5. Completed work preserved: if invalidated, flag to user.
 
-1. **Design ↔ Tasks alignment:** Every section in the Implementation Plan of `design.md` has corresponding tasks in `tasks.md`.
-2. **Feature ↔ Design alignment:** Every changed `.feature` scenario is reflected in `design.md`.
-3. **Dependency order:** No task references work from a later task.
-4. **No orphaned tasks:** Every task in `tasks.md` traces back to a design decision or scenario.
-5. **Completed work preserved:** Already-done tasks are not invalidated (if they are, flag this to the user).
-
-### Step 6: Output Summary
+### 6. Output summary
 
 ```text
 🔄 Spec refined: specs/<spec-dir>/
@@ -139,7 +78,6 @@ Changes to feature files:
 
 Changes to design.md:
   - [Section X]: [What changed]
-  - [Section Y]: [What changed]
 
 Changes to tasks.md:
   - Added: Task X.Y — [name]
@@ -152,37 +90,25 @@ Changes to tasks.md:
 Next steps:
   - Review the updated spec.
   - Run /pb-build <feature-name> to continue implementation.
-  - Run /pb-refine <feature-name> again if more changes are needed.
 ```
-
----
-
-## Key Principles
-
-1. **Minimal, precise edits.** Change only what the feedback requires. Do not re-generate the entire spec.
-2. **Preserve completed work.** Never silently invalidate done tasks or delete progress.
-3. **Cascade intentionally.** Behavior changes should update `.feature` first, then `design.md`, then `tasks.md`. Task-only changes should not alter the behavior contract.
-4. **Conflict resolution.** When feedback contradicts the original design, apply the user's decision and note why.
-5. **Audit trail.** Every change is logged in the Revision History.
-6. **Execution evidence first.** Repeated build failures (including 3-failure build-block packets) override weak prior assumptions.
-
----
 
 ## Constraints
 
-- **Only modify `specs/<spec-dir>/design.md`, `specs/<spec-dir>/tasks.md`, and `specs/<spec-dir>/features/`.**
-- **Do not modify project source code.** Refinement is planning only.
-- **Do not re-run the entire planning process.** This is an incremental update, not a fresh plan.
-- **Preserve formatting and structure** of both files.
-- **`AGENTS.md` is read-only in this phase.** Do not modify, delete, or reformat it unless the user explicitly asks for an `AGENTS.md` update.
-- **No interactive multi-turn probing.** Apply the feedback given. If the feedback is ambiguous, state your interpretation in the Revision History and proceed.
-
----
+- Only modify `specs/<spec-dir>/design.md`, `tasks.md`, `features/`. Do not modify source code.
+- Do not re-run the entire planning process. Incremental update only.
+- `AGENTS.md` is read-only.
+- No interactive multi-turn probing. Apply given feedback. If ambiguous, state interpretation in Revision History and proceed.
 
 ## Edge Cases
 
-- **No feedback provided:** Report: "No feedback detected. Please provide specific changes you'd like to make to the design or tasks."
-- **Feedback invalidates completed tasks:** Flag this in the summary as a warning. Do not automatically undo completed tasks.
-- **Behavior changes require scenario edits:** Update `.feature` first, then cascade the same decision into `design.md` and `tasks.md`.
-- **Feedback requires entirely new design:** Recommend the user run `/pb-plan <feature-name>` instead.
-- **Multiple conflicting feedback items:** Apply them in the order given. Note conflicts in the Revision History.
+- No feedback provided → report: "No feedback detected."
+- Feedback invalidates completed tasks → flag as warning. Do not auto-undo.
+- Behavior changes → update `.feature` first, then cascade.
+- Feedback requires entirely new design → recommend `/pb-plan` instead.
+- Multiple conflicting feedback items → apply in order given. Note conflicts in Revision History.
+
+---
+
+name: pb-refine
+
+## description: Iteratively refine feature design specs (design.md, tasks.md, features) based on user feedback or design change requests. Use when updating existing plans after build failures, scope changes, or architectural corrections

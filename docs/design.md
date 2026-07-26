@@ -336,6 +336,7 @@ class ErrorSeverity(Enum):
 @dataclass(frozen=True)
 class ValidationError:
     """A single structured validation error."""
+
     severity: ErrorSeverity
     message: str
     file_path: str | None = None
@@ -346,6 +347,7 @@ class ValidationError:
 @dataclass
 class ValidationResult:
     """Result of a validation operation."""
+
     is_valid: bool
     errors: list[ValidationError] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -387,6 +389,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class TimeoutConfig:
     """Structured timeout configuration with type-safe attribute access."""
+
     git_ls_files: int = 60
     rumdl_check: int = 10
     rumdl_format: int = 30

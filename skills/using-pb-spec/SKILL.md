@@ -3,6 +3,58 @@ name: using-pb-spec
 description: Use when starting any conversation - establishes how to find and use skills, requiring Skill tool invocation before ANY response including clarifying questions
 ---
 
+# Using pb-spec
+
+## Priority
+
+1. User explicit instructions (AGENTS.md, direct requests) — highest
+2. pb-spec skills — override defaults where they conflict
+3. Default system prompt — lowest
+
+If AGENTS.md says "don't use TDD" and a skill says "always use TDD", follow the user.
+
+## The Rule
+
+Invoke relevant skills BEFORE any response. Even 1% chance a skill applies → invoke it. If it turns out wrong, don't use it.
+
+Process skills first (`pb-brainstorming`, `pb-systematic-debugging`), then implementation skills (`pb-plan`, `pb-build`).
+
+## Workflow Skills
+
+| Skill | Trigger | Purpose |
+|---|---|---|
+| `pb-init` | `/pb-init` | Audit repo, update AGENTS.md snapshot |
+| `pb-plan` | `/pb-plan <requirement>` | Design + task planning |
+| `pb-build` | `/pb-build <feature>` | Generator/Evaluator + Wave-Based execution |
+| `pb-refine` | `/pb-refine <feature>` | Apply feedback, iterate design |
+| `pb-improve` | `/pb-improve` | Codebase audit + specs |
+| `pb-brainstorming` | Before creative work | Explore intent before implementation |
+
+## Utility Skills
+
+| Skill | When |
+|---|---|
+| `pb-code-review` | Before merge — two-axis review |
+| `pb-branch-finalization` | Work complete — conflict resolution + integration |
+| `pb-systematic-debugging` | Any bug/failure — root cause before fixes |
+| `pb-prototype` | Throwaway code to answer design questions |
+| `pb-writing-skills` | Creating or editing skills |
+
+## Artifact Contract
+
+See `docs/contract.md` for the executable type contract. Summary:
+
+- `design.md` — 5 required + 5 optional sections
+- `tasks.md` — 4 fields: Context / Verification / Status / Scenario Coverage
+- `features/*.feature` — Gherkin, source of truth
+- Block packets (Build Blocked / DCR) — 3 fields: Reason / Requested Change / Impact
+
+---
+
+name: using-pb-spec
+
+## description: Use when starting any conversation - establishes how to find and use skills, requiring Skill tool invocation before ANY response including clarifying questions
+
 <SUBAGENT-STOP>
 If you were dispatched as a subagent to execute a specific task, skip this skill.
 </SUBAGENT-STOP>
@@ -38,114 +90,3 @@ If CLAUDE.md, GEMINI.md, or AGENTS.md says "don't use TDD" and a skill says "alw
 ## Platform Adaptation
 
 Skills use Claude Code tool names. Non-CC platforms: see `references/copilot-tools.md` (Copilot CLI), `references/codex-tools.md` (Codex) for tool equivalents.
-
-# Using Skills
-
-## The Rule
-
-**Invoke relevant or requested skills BEFORE any response or action.** Even a 1% chance a skill might apply means that you should invoke the skill to check. If an invoked skill turns out to be wrong for the situation, you don't need to use it.
-
-```dot
-digraph skill_flow {
-    "User message received" [shape=doublecircle];
-    "About to EnterPlanMode?" [shape=doublecircle];
-    "Already brainstormed?" [shape=diamond];
-    "Invoke brainstorming skill" [shape=box];
-    "Might any skill apply?" [shape=diamond];
-    "Invoke Skill tool" [shape=box];
-    "Announce: 'Using [skill] to [purpose]'" [shape=box];
-    "Has checklist?" [shape=diamond];
-    "Create TodoWrite todo per item" [shape=box];
-    "Follow skill exactly" [shape=box];
-    "Respond (including clarifications)" [shape=doublecircle];
-
-    "About to EnterPlanMode?" -> "Already brainstormed?";
-    "Already brainstormed?" -> "Invoke brainstorming skill" [label="no"];
-    "Already brainstormed?" -> "Might any skill apply?" [label="yes"];
-    "Invoke brainstorming skill" -> "Might any skill apply?";
-
-    "User message received" -> "Might any skill apply?";
-    "Might any skill apply?" -> "Invoke Skill tool" [label="yes, even 1%"];
-    "Might any skill apply?" -> "Respond (including clarifications)" [label="definitely not"];
-    "Invoke Skill tool" -> "Announce: 'Using [skill] to [purpose]'";
-    "Announce: 'Using [skill] to [purpose]'" -> "Has checklist?";
-    "Has checklist?" -> "Create TodoWrite todo per item" [label="yes"];
-    "Has checklist?" -> "Follow skill exactly" [label="no"];
-    "Create TodoWrite todo per item" -> "Follow skill exactly";
-}
-```
-
-## Red Flags
-
-These thoughts mean STOP—you're rationalizing:
-
-| Thought | Reality |
-|---------|---------|
-| "This is just a simple question" | Questions are tasks. Check for skills. |
-| "I need more context first" | Skill check comes BEFORE clarifying questions. |
-| "Let me explore the codebase first" | Skills tell you HOW to explore. Check first. |
-| "I can check git/files quickly" | Files lack conversation context. Check for skills. |
-| "Let me gather information first" | Skills tell you HOW to gather information. |
-| "This doesn't need a formal skill" | If a skill exists, use it. |
-| "I remember this skill" | Skills evolve. Read current version. |
-| "This doesn't count as a task" | Action = task. Check for skills. |
-| "The skill is overkill" | Simple things become complex. Use it. |
-| "I'll just do this one thing first" | Check BEFORE doing anything. |
-| "This feels productive" | Undisciplined action wastes time. Skills prevent this. |
-| "I know what that means" | Knowing the concept ≠ using the skill. Invoke it. |
-
-## Skill Priority
-
-When multiple skills could apply, use this order:
-
-1. **Process skills first** (`pb-brainstorming`, `pb-systematic-debugging`) — these determine HOW to approach the task
-2. **Implementation skills second** (`pb-plan`, `pb-build`) — these guide execution
-
-"Let's build X" → `pb-brainstorming` first, then implementation skills.
-"Fix this bug" → `pb-systematic-debugging` first, then domain-specific skills.
-
-## Skill Types
-
-**Rigid** (TDD, debugging, verification): Follow exactly. Don't adapt away discipline.
-
-**Flexible** (patterns): Adapt principles to context.
-
-The skill itself tells you which.
-
-## User Instructions
-
-Instructions say WHAT, not HOW. "Add X" or "Fix Y" doesn't mean skip workflows.
-
-## pb-spec Workflow Skills
-
-| Skill | Trigger | Purpose |
-|-------|---------|---------|
-| `pb-init` | `/pb-init` | Audit repo, update `AGENTS.md` snapshot |
-| `pb-plan` | `/pb-plan <requirement>` | Design + task planning (4-field schema, scalable template) |
-| `pb-build` | `/pb-build <feature>` | Generator/Evaluator + Wave-Based parallel execution |
-| `pb-refine` | `/pb-refine <feature>` | Apply feedback, iterate design |
-| `pb-improve` | `/pb-improve` | Codebase audit + plans |
-| `pb-brainstorming` | Before creative work | Explore intent and design before implementation |
-
-## Review/Finalization Skills
-
-| Skill | When to Use |
-|-------|-------------|
-| `pb-code-review` | Before merge — two-axis (Standards + Spec) review + receiving decision tree |
-| `pb-branch-finalization` | Work complete — conflict resolution + integration options |
-
-## Meta/Utility Skills
-
-| Skill | When to Use |
-|-------|-------------|
-| `pb-systematic-debugging` | Any bug, test failure, unexpected behavior — root cause before fixes |
-| `pb-prototype` | Build throwaway code to answer design questions (terminal or UI) |
-| `pb-writing-skills` | Creating or editing skills |
-| `using-pb-spec` | Session start — bootstrap skill discipline |
-
-## Artifact Contract Quick Reference
-
-- **`design.md`** — scalable template: 5 required sections (`Summary`, `Approach`, `Architecture Decisions`, `BDD/TDD Strategy`, `Verification`) + 5 optional sections (`Requirements & Goals`, `Architecture Overview`, `Data Models`, `Interface Contracts`, `Implementation Plan`)
-- **`tasks.md`** — 4-field task schema: `Context:`, `Verification:`, `Status:`, `Scenario Coverage:` (literal `N/A` for non-BDD tasks)
-- **`features/*.feature`** — Gherkin scenarios, the source of truth
-- **`🛑 Build Blocked` / `🔄 DCR` packets** — 3 fields each: `Reason`, `Requested Change`, `Impact`
