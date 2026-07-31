@@ -36,13 +36,30 @@ existing dep → one-liner → minimum code.>
 ## BDD/TDD Strategy <!-- REQUIRED -->
 
 <List the Gherkin scenarios from features/*.feature that this design realizes.
-State the TDD inner-loop: Red → Green → Refactor. Note any Hypothesis property
-tests needed.>
+State the TDD inner-loop: Red → Green → Refactor → Mutate. Note any Hypothesis
+property tests needed.>
+
+## Mutation Testing Strategy <!-- REQUIRED -->
+
+Define mutation testing strategy to ensure tests actually validate behavior, not
+just pass trivially.
+
+- **Mutation score target:** default ≥ 80% (override per task if needed).
+- **Target files:** list critical source files and functions to mutate.
+- **Language-specific tooling:**
+  - Rust: `cargo-mutants` (config in `.cargo/mutants.toml`)
+  - Python: `mutmut` (config in `pyproject.toml [tool.mutmut]`)
+  - TypeScript: `@stryker-mutator/core` (config in `stryker.config.json`)
+- **Incremental mode:** use `./scripts/run-mutation-diff.sh` during `pb-build` to
+  mutate only files changed in the current task.
+- **Assertion requirements:** BDD/unit test scenarios MUST include boundary checks
+  and specific assertion values (not just "no exception thrown") to kill mutants
+  that alter conditionals, return values, or boundary operators.
 
 ## Verification <!-- REQUIRED -->
 
 <Exact commands and expected outputs. Cover: lint, type-check, unit tests, BDD
-scenarios.>
+scenarios, mutation testing.>
 
 ---
 

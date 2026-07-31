@@ -53,6 +53,14 @@ ci:
     uv run ty check src tests
     uv run pytest
 
+# Run incremental mutation testing on changed files (vs main/master)
+mutation:
+    ./scripts/run-mutation-diff.sh
+
+# Run mutation testing against HEAD (staged + unstaged changes)
+mutation-head:
+    ./scripts/run-mutation-diff.sh --against HEAD
+
 # Build and publish to PyPI
 publish:
     uv build

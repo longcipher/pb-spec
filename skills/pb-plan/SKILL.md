@@ -33,6 +33,10 @@ Transform natural-language requirements into a build-eligible spec under `specs/
 - RFC 2119 for constraints (MUST / SHOULD / MAY).
 - C4 + Mermaid for topology, DBML/Prisma for data — only when those aspects change.
 - Ponytail ladder: YAGNI → stdlib → native → existing dep → one-liner → minimum code.
+- **Mutation Testing Strategy** (required): define mutation score target (default ≥ 80%),
+  target files/functions, language-specific tooling, and assertion requirements for
+  BDD/unit tests to ensure mutants are killed. Reference `./scripts/run-mutation-diff.sh`
+  for incremental mutation testing during build.
 
 ### 4. Tasks — Write tasks.md
 

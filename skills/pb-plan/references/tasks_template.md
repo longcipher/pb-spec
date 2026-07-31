@@ -35,6 +35,6 @@ Status transitions: `🔴 TODO` → `🟡 IN PROGRESS` → `🟢 DONE`. Exceptio
 ### Task 2.2 — Reject login with unknown user
 
 - Context: Implement the error path for `@login-unknown-user`. Depends on Task 2.1 producing the login entry point. Reuse the same step definitions.
-- Verification: `uv run behave specs/<spec-dir>/features/login.feature --tags=@login-unknown-user` exits 0.
+- Verification: `uv run behave specs/<spec-dir>/features/login.feature --tags=@login-unknown-user` exits 0; `./scripts/run-mutation-diff.sh` exits 0 with score ≥ 80%.
 - Status: 🔴 TODO
 - Scenario Coverage: @login-unknown-user

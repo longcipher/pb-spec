@@ -56,9 +56,21 @@ Task X.Y: DCR — <one-line reason>
 
 ## Iron Laws
 
-### I1: TDD
+### I1: TDD (+ Mutation Testing)
 
-No production code without a failing test first. Write failing test → verify fail → implement → verify pass → refactor. For bug fixes, RED phase is the reproducer. If you wrote code before the test: delete it, start over.
+No production code without a failing test first. The full cycle is
+**Red → Green → Refactor → Mutate**:
+
+1. **Red:** Write failing test → verify fail.
+2. **Green:** Implement minimum code → verify pass.
+3. **Refactor:** Clean up → verify pass.
+4. **Mutate:** Run `./scripts/run-mutation-diff.sh` on changed files.
+   - If surviving mutants are detected, treat it as a **TEST FAILURE**.
+   - Inspect surviving mutants (altered conditionals, return values, boundary operators).
+   - Strengthen test assertions until all mutants on modified code are **KILLED**.
+
+For bug fixes, RED phase is the reproducer. If you wrote code before the test:
+delete it, start over.
 
 ### I2: Evidence Before Claims
 

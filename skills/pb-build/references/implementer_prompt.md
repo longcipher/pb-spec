@@ -157,6 +157,21 @@ Output this analysis enclosed in `<error_analysis>` tags before rewriting code.
 - Do NOT add architecture or abstractions beyond what the task requires.
 - Run the full test suite again after any refactoring.
 
+#### 2h-1. MUTATE — Run Incremental Mutation Testing
+
+- Run `./scripts/run-mutation-diff.sh` (or language-specific equivalent) on files
+  changed by this task.
+- **If surviving mutants are detected**, treat this as a **TEST FAILURE**:
+  1. Inspect the surviving mutant details (e.g., conditional operator changed from
+     `>` to `>=`, return value altered from `true` to `false`).
+  2. Add or strengthen test assertions to kill the specific mutant — boundary checks,
+     exact value assertions, missing branch coverage.
+  3. Re-run mutation testing until all mutants on modified code are **KILLED** or
+     the mutation score meets the design's target (default ≥ 80%).
+- **If no mutants were generated** (pure data, config, or non-mutable code), report `N/A`.
+- **If mutation tooling is not installed**, report the warning and skip. The Evaluator
+  will flag this as a gap.
+
 #### 2i. Architecture Check
 
 - Confirm the implementation still follows the planned `Architecture Decisions`.
@@ -247,6 +262,10 @@ Report your work in this format:
 - Runtime logs: [command + key output, or `N/A` with reason]
 - Runtime probe: [command + key output/status, or `N/A` with reason]
 - Test suite result: X tests passed, 0 failed
+
+### Mutation Testing
+- [command]: [result, e.g., "All mutants killed" / "Score: 85%" / "N/A — tooling not installed"]
+- Surviving mutants: [count and brief description, or "None"]
 
 ### Commands Run
 - [command] — [key outcome]

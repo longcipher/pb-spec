@@ -64,8 +64,8 @@ Write each spec for the weakest plausible builder: all context inlined, explicit
 #### Spec artifacts
 
 - **Feature files FIRST** — Gherkin scenarios, one file per finding category. Independent, deterministic, verifiable. Tags: `@finding-N`, `@category`, `@priority-high`.
-- **design.md** — single scalable template (see `docs/contract.md`). One section per finding. Include ponytail ladder in Approach.
-- **tasks.md** — 4-field blocks (see `docs/contract.md`). RED→GREEN→REFACTOR per BDD+TDD task. Sequential numbering across findings.
+- **design.md** — single scalable template (see `docs/contract.md`). One section per finding. Include ponytail ladder in Approach. Include **Mutation Testing Strategy** section defining score targets, target files, and tooling.
+- **tasks.md** — 4-field blocks (see `docs/contract.md`). RED→GREEN→REFACTOR→MUTATE per BDD+TDD task. Sequential numbering across findings.
 
 Finish with `specs/README.md` index entry.
 

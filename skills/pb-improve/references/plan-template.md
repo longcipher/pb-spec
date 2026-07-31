@@ -72,14 +72,26 @@ Every spec is written for a `/pb-build` executor that has **zero context**: it h
 - **Property / Fuzz / Benchmark Tool:** `fast-check` / `Hypothesis` / `proptest` / `N/A`; `jazzer.js` / `Atheris` / `cargo-fuzz` / `N/A`; `Vitest Bench` / `pytest-benchmark` / `criterion` / `N/A`
 - **Feature Files:** `specs/<spec-dir>/features/*.feature`
 
+## Mutation Testing Strategy
+
+- **Mutation score target:** ≥ 80% (override per finding if needed).
+- **Language-specific tooling:**
+  - Rust: `cargo-mutants` (config in `.cargo/mutants.toml`)
+  - Python: `mutmut` (config in `pyproject.toml [tool.mutmut]`)
+  - TypeScript: `@stryker-mutator/core` (config in `stryker.config.json`)
+- **Incremental mode:** `./scripts/run-mutation-diff.sh` during `pb-build` for per-task mutation.
+- **Target files:** list critical source files and functions that require mutation testing.
+- **Assertion requirements:** BDD/unit tests MUST include boundary checks and specific value assertions.
+
 ## Verification — exact commands and expected results, verified during recon (not guessed)
 
-| Purpose   | Command                          | Expected on success |
-|-----------|----------------------------------|---------------------|
-| Lint      | `uv run ruff check`              | exit 0, no errors   |
-| Typecheck | `uv run ty check`                | exit 0, no errors   |
-| Tests     | `uv run pytest`                  | all pass            |
-| BDD       | `uv run behave`                  | all pass            |
+| Purpose   | Command                              | Expected on success |
+|-----------|--------------------------------------|---------------------|
+| Lint      | `uv run ruff check`                  | exit 0, no errors   |
+| Typecheck | `uv run ty check`                    | exit 0, no errors   |
+| Tests     | `uv run pytest`                      | all pass            |
+| BDD       | `uv run behave`                      | all pass            |
+| Mutation  | `./scripts/run-mutation-diff.sh`     | exit 0, score ≥ 80% |
 
 ## Revision History — append a row per substantive revision (date, author, change)
 

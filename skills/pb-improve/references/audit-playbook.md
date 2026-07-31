@@ -58,7 +58,26 @@ The goal is not a percentage — it's *which untested code is dangerous*.
 - Verification infrastructure: is there a one-command way to know the codebase works? If not, that's finding #1 and a prerequisite plan for any risky change.
 - BDD coverage: check `features/` for Gherkin scenarios — are the critical paths covered by BDD scenarios? Are step definitions thin and reusing domain modules?
 
-## 5. Tech Debt & Architecture
+## 5. Mutation Testing
+
+The goal is to verify that existing tests actually kill code mutations — high line coverage alone does not guarantee test quality.
+
+- **Tooling presence:** Check if mutation testing tools are configured: Rust (`cargo-mutants` with `.cargo/mutants.toml`), Python (`mutmut` in `pyproject.toml`), TypeScript (`StrykerJS` with `stryker.config.json`). Missing tooling is a finding.
+- **Existing mutation score:** If mutation reports exist (`.mutmut-cache`, `reports/mutation/`), check the score. Below 80% on critical modules is a finding.
+- **Weak assertions:** Scan test files for patterns that look high-coverage but low-quality:
+  - Assertions that only check "no exception thrown" (e.g., `assert func() is not None` instead of checking the actual value).
+  - Tests that assert on mock return values instead of real behavior.
+  - Tests with `assert_called_once()` but no assertion on the arguments.
+  - Missing boundary value tests (only happy-path values, never edges).
+  - Snapshot tests that are blindly updated without review.
+- **Surviving mutant patterns:** If mutation reports are available, categorize survivors:
+  - Conditional boundary mutants (`>` → `>=`) — missing boundary tests.
+  - Return value mutants (`true` → `false`) — assertions don't check actual values.
+  - Statement deletion mutants — code is covered but not asserted.
+  - Negation mutants (`==` → `!=`) — missing equality checks.
+- **Incremental mutation script:** Check if `scripts/run-mutation-diff.sh` exists and is executable. Its absence means the build loop has no mutation gate.
+
+## 6. Tech Debt & Architecture
 
 - Duplication: the same logic re-implemented in 3+ places (search for near-identical functions/components); divergent copies that have drifted.
 - Layering violations: UI importing from data layer internals, circular dependencies, "utils" modules that became a junk drawer with high fan-in.
@@ -80,7 +99,7 @@ Apply the ponytail ladder to find unnecessary complexity:
 
 **Impact metric:** Count the lines removable if the simpler approach were used. This is the "deletion value" of the finding.
 
-## 6. Dependencies & Migrations
+## 7. Dependencies & Migrations
 
 - Major-version lag on core framework/runtime (not every minor bump — the ones with real cost to staying behind: EOL, security-fix cutoffs, ecosystem incompatibility).
 - Deprecated APIs in use that have announced removal timelines.
@@ -89,7 +108,7 @@ Apply the ponytail ladder to find unnecessary complexity:
 - Lockfile/manifest drift, version pinning inconsistencies across a monorepo.
 - For each migration candidate, estimate blast radius (files touched) — that drives effort and whether to recommend it at all.
 
-## 7. DX & Tooling
+## 8. DX & Tooling
 
 - Missing or broken: typecheck script, lint config, formatter, pre-commit hooks, editorconfig.
 - Slow feedback loops: dev-server or test startup measured in minutes, no watch mode, CI without caching.
@@ -98,7 +117,7 @@ Apply the ponytail ladder to find unnecessary complexity:
 - Error messages/logging: unstructured logs on services, missing request IDs/correlation, debugging requiring code changes.
 - Skill completeness: are the AI agent skills (`skills/`) complete and working? Are reference files up to date? Do verification commands in skills match actual project commands?
 
-## 8. Docs
+## 9. Docs
 
 Lowest default priority — only flag where absence has a concrete cost:
 
@@ -106,7 +125,7 @@ Lowest default priority — only flag where absence has a concrete cost:
 - Architectural decisions nobody can reconstruct (why X over Y) for actively-contested areas.
 - Stale docs that are actively wrong (worse than missing) — setup instructions, API examples that no longer compile.
 
-## 9. Direction — features & where to take this next
+## 10. Direction — features & where to take this next
 
 Forward-looking: not what's broken, but what this codebase wants to become. **Grounding rule:** every suggestion must cite evidence from the repo itself — a suggestion that could apply to any project in the category ("add dark mode", "add AI") is noise, not a finding. Sources of grounded direction signal:
 
