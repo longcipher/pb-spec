@@ -44,5 +44,7 @@ jobs:
           else
             BASE_REF="origin/${{ github.ref_name }}"
           fi
-          git fetch origin --depth=1 "$BASE_REF"
-          ./scripts/run-mutation-diff.sh --against "$BASE_REF"
+          # checkout with fetch-depth: 0 already has all refs; fetch defensively.
+          git fetch origin "$BASE_REF" || true
+          # Exit 2 means "no changed files" — a skip, not a failure.
+          ./scripts/run-mutation-diff.sh --against "$BASE_REF" || [ "$?" -eq 2 ]

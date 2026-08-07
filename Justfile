@@ -61,14 +61,16 @@ mutation-full:
 # Run all checks and tests
 all: check coverage
 
-# CI checks (format, lint, type-check, coverage, mutation gate)
+# CI checks (format, lint, type-check, coverage, mutation gate).
+# The mutation script exits 2 when there are no changed files to test; on a
+# clean checkout that is a skip, not a failure.
 ci:
     uv run ruff format --check .
     uv run ruff check .
     uvx rumdl check .
     uv run ty check src tests
     uv run pytest --cov=pb_spec --cov-report=term-missing
-    ./scripts/run-mutation-diff.sh
+    @bash -c './scripts/run-mutation-diff.sh || [ $? -eq 2 ]'
 
 # Full verification gate: strict TDD tests + coverage + incremental mutation
 verify: coverage mutation

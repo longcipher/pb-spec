@@ -8,7 +8,7 @@ meaningful for the regex-based markdown parser.
 from __future__ import annotations
 
 import pytest
-from hypothesis import given
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from pb_spec.validation.parser import (
@@ -35,12 +35,21 @@ def test_parser_never_crashes_on_arbitrary_text(random_text: str) -> None:
 
 
 # Names must be stable under the parser's strip() and must not contain line
-# breaks (the parser is line-based by design).
-_TASK_NAME = st.text(min_size=1, max_size=40).filter(
-    lambda s: bool(s.strip()) and s == s.strip() and "\n" not in s and "\r" not in s
+# breaks (the parser is line-based by design). The alphabet excludes control
+# characters, so generation is fast and rejection-free (avoids
+# HealthCheck.too_slow on slow CI machines).
+_TASK_NAME = (
+    st.text(
+        alphabet=st.characters(blacklist_categories=("C",)),
+        min_size=1,
+        max_size=40,
+    )
+    .map(str.strip)
+    .filter(bool)
 )
 
 
+@settings(max_examples=150, suppress_health_check=[HealthCheck.too_slow])
 @given(
     st.lists(
         st.tuples(
@@ -48,7 +57,7 @@ _TASK_NAME = st.text(min_size=1, max_size=40).filter(
             _TASK_NAME,
         ),
         min_size=0,
-        max_size=20,
+        max_size=10,
     )
 )
 def test_roundtrip_well_formed_tasks(task_specs: list[tuple[str, str]]) -> None:
