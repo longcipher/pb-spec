@@ -2,7 +2,7 @@
 
 The advisor's job doesn't end at the spec. This file covers the follow-through flows: keeping the spec backlog alive (`reconcile`) and publishing specs where work gets picked up (`--issues`).
 
-The founding rule survives unchanged: **the advisor never edits source code.** To execute specs, use `/pb-build <feature-name>` — it handles the Generator/Evaluator loop with BDD+TDD verification.
+The founding rule survives unchanged: **the advisor never edits source code.** To execute specs, use `/pb-build <feature-name>` — it handles the Generator/Evaluator loop with strict TDD + mutation-testing verification.
 
 ---
 
@@ -16,9 +16,8 @@ Mode: <Lightweight | Full>
 Findings: N consolidated into one spec
 
 Files:
-  - specs/<spec-dir>/design.md       ← all findings in one document
+  - specs/<spec-dir>/design.md       ← all findings in one document (TDD & Mutation Testing Strategy per finding)
   - specs/<spec-dir>/tasks.md        ← all tasks numbered sequentially
-  - specs/<spec-dir>/features/*.feature
 
 To execute: /pb-build <feature-name>
 ```
@@ -26,7 +25,7 @@ To execute: /pb-build <feature-name>
 The builder will:
 
 1. Resolve `<feature-name>` → `<spec-dir>` under `specs/`
-2. Validate the spec contract (design.md + tasks.md + features/)
+2. Validate the spec contract (design.md + tasks.md)
 3. Execute ALL tasks sequentially across all findings with Generator/Evaluator isolation
 4. Update tasks.md status as work completes
 

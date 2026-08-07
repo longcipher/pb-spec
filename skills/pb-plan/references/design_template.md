@@ -33,18 +33,23 @@ existing dep → one-liner → minimum code.>
 - **Decision:** <what was decided>
 - **Consequences:** <trade-offs, risks, follow-ups>
 
-## BDD/TDD Strategy <!-- REQUIRED -->
+## TDD & Mutation Testing Strategy <!-- REQUIRED -->
 
-<List the Gherkin scenarios from features/*.feature that this design realizes.
-State the TDD inner-loop: Red → Green → Refactor → Mutate. Note any Hypothesis
-property tests needed.>
+State the strict TDD inner-loop: Red → Green → Refactor → Mutate.
+
+- **Type contracts:** input/output shapes (dataclasses/Pydantic), invariants, and error codes.
+- **Test matrix:** the pytest test paths (unit + integration) and the **hypothesis
+  property tests** that prove each behavior. Boundary-first: happy path, error path,
+  and edge case each get explicit test cases.
+- **Mutation testing:** define the strategy that proves the tests actually validate
+  behavior, not just pass trivially.
 
 ## Mutation Testing Strategy <!-- REQUIRED -->
 
 Define mutation testing strategy to ensure tests actually validate behavior, not
 just pass trivially.
 
-- **Mutation score target:** default ≥ 80% (override per task if needed).
+- **Mutation score target:** default ≥ 85% (override per task if needed).
 - **Target files:** list critical source files and functions to mutate.
 - **Language-specific tooling:**
   - Rust: `cargo-mutants` (config in `.cargo/mutants.toml`)
@@ -52,14 +57,14 @@ just pass trivially.
   - TypeScript: `@stryker-mutator/core` (config in `stryker.config.json`)
 - **Incremental mode:** use `./scripts/run-mutation-diff.sh` during `pb-build` to
   mutate only files changed in the current task.
-- **Assertion requirements:** BDD/unit test scenarios MUST include boundary checks
+- **Assertion requirements:** unit/property tests MUST include boundary checks
   and specific assertion values (not just "no exception thrown") to kill mutants
   that alter conditionals, return values, or boundary operators.
 
 ## Verification <!-- REQUIRED -->
 
-<Exact commands and expected outputs. Cover: lint, type-check, unit tests, BDD
-scenarios, mutation testing.>
+<Exact commands and expected outputs. Cover: lint, type-check, unit tests,
+property tests, mutation testing.>
 
 ---
 

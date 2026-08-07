@@ -39,7 +39,7 @@ KNOWN_TASK_FIELDS = frozenset(
         "Context:",
         "Verification:",
         "Status:",
-        "Scenario Coverage:",
+        "Test Coverage:",
     }
 )
 

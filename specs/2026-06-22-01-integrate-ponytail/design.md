@@ -69,7 +69,7 @@ Never simplify away: input validation at trust boundaries, error handling that p
 - Don't change the pb-spec workflow contract
 - Don't remove existing validation, error handling, or security requirements
 - Don't add dependencies
-- Don't change the BDD/TDD cycle structure
+- Don't change the TDD + mutation-testing cycle structure
 
 ## Architecture Decisions
 
@@ -125,22 +125,22 @@ Never simplify away: input validation at trust boundaries, error handling that p
 - **[REQ-06]:** The ponytail ladder *shall not* override security, validation, or error handling requirements.
 - **[REQ-07]:** The `ponytail:` comment convention *shall* be recommended for tracked deferrals in generated code.
 
-## BDD/TDD Strategy
+## TDD & Mutation Testing Strategy
 
 - **Primary Language:** Markdown (skill files) + Python (templates)
 - **Verification:** `wc -l` for line counts, `grep` for ladder presence, manual review for behavior preservation
-- **TDD inner-loop:** Red → Green → Refactor; grep-based checks act as the regression gate for skill-file edits.
+- **TDD inner-loop:** Red → Green → Refactor → Mutate; grep-based checks act as the regression gate for skill-file edits.
 
-### BDD Scenario Inventory
+### Test Matrix
 
-| Feature File | Scenario Name | Business Outcome | Task Coverage |
+| Behavior | Test Case | Business Outcome | Task Coverage |
 | :--- | :--- | :--- | :--- |
-| `features/integrate-ponytail.feature` | pb-plan applies ladder to arch decisions | Minimal architecture choices | Task 1.1 |
-| `features/integrate-ponytail.feature` | design template includes ponytail section | Generated specs have simplification strategy | Task 2.1 |
-| `features/integrate-ponytail.feature` | pb-build Generator applies ladder | Minimal code in implementation | Task 1.2 |
-| `features/integrate-ponytail.feature` | pb-build Evaluator detects over-engineering | Over-engineering caught at eval time | Task 1.2 |
-| `features/integrate-ponytail.feature` | pb-improve audits for over-engineering | Over-engineering found in existing code | Task 1.3 |
-| `features/integrate-ponytail.feature` | Generated specs include ponytail ladder | All specs carry the ladder forward | Task 2.2 |
+| pb-plan applies ladder to arch decisions | `grep -c "ponytail" skills/pb-plan/SKILL.md` | Minimal architecture choices | Task 1.1 |
+| design template includes ponytail section | `grep -c "ponytail" skills/pb-plan/references/design_template.md` | Generated specs have simplification strategy | Task 2.1 |
+| pb-build Generator applies ladder | `grep -c "ponytail" skills/pb-build/references/implementer_prompt.md` | Minimal code in implementation | Task 1.2 |
+| pb-build Evaluator detects over-engineering | `grep -c "ponytail" skills/pb-build/references/evaluator_prompt.md` | Over-engineering caught at eval time | Task 1.2 |
+| pb-improve audits for over-engineering | `grep -c "ponytail" skills/pb-improve/references/audit-playbook.md` | Over-engineering found in existing code | Task 1.3 |
+| Generated specs include ponytail ladder | `grep -c "ponytail" skills/pb-plan/references/tasks_template.md` | All specs carry the ladder forward | Task 2.2 |
 
 ## Verification
 

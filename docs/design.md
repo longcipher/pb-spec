@@ -22,7 +22,7 @@ The tool integrates with existing pb-spec workflow as a validation layer, scanni
 
 ### 2.1 Problem Statement
 
-The pb-spec workflow produces markdown artifacts (design.md, tasks.md, features/) that must conform to structural contracts before implementation can begin. Without automated validation, agents may produce incomplete or malformed artifacts, leading to failed builds or silent contract violations.
+The pb-spec workflow produces markdown artifacts (design.md, tasks.md) that must conform to structural contracts before implementation can begin. Without automated validation, agents may produce incomplete or malformed artifacts, leading to failed builds or silent contract violations.
 
 ### 2.2 Functional Requirements (EARS)
 
@@ -30,7 +30,7 @@ The pb-spec workflow produces markdown artifacts (design.md, tasks.md, features/
 
 - **[REQ-01]:** The system *shall* validate `design.md` sections when `--plan` is specified.
 - **[REQ-02]:** The system *shall* validate `tasks.md` task block structure when `--plan` is specified.
-- **[REQ-03]:** The system *shall* check for `.feature` files under `features/` when `--plan` is specified.
+- **[REQ-03]:** The system *shall* validate the `TDD & Mutation Testing Strategy` section in `design.md` when `--plan` is specified.
 - **[REQ-04]:** The system *shall* scan git-modified files for code quality issues when `--task` is specified.
 - **[REQ-05]:** The system *shall* output structured error messages with file paths and line numbers.
 
@@ -72,19 +72,19 @@ The pb-spec workflow produces markdown artifacts (design.md, tasks.md, features/
 
 ## 3. Requirements Coverage Matrix
 
-| Requirement ID | EARS Pattern | Covered In Design | Scenario Coverage | Task Coverage | Status / Rationale |
+| Requirement ID | EARS Pattern | Covered In Design | Test Coverage | Task Coverage | Status / Rationale |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `REQ-01` | Ubiquitous | §4.1 Plan Validation | validate.feature | N/A | Covered |
-| `REQ-02` | Ubiquitous | §4.1 Plan Validation | validate.feature | N/A | Covered |
-| `REQ-03` | Ubiquitous | §4.1 Plan Validation | validate.feature | N/A | Covered |
-| `REQ-04` | Ubiquitous | §4.3 Task Validation | validate.feature | N/A | Covered |
-| `REQ-05` | Ubiquitous | §7 Error Handling | validate.feature | N/A | Covered |
-| `REQ-06` | State-driven | §4.2 Build Validation | validate.feature | N/A | Covered |
+| `REQ-01` | Ubiquitous | §4.1 Plan Validation | tests/test_validate.py | N/A | Covered |
+| `REQ-02` | Ubiquitous | §4.1 Plan Validation | tests/test_validate.py | N/A | Covered |
+| `REQ-03` | Ubiquitous | §4.1 Plan Validation | tests/test_validate.py | N/A | Covered |
+| `REQ-04` | Ubiquitous | §4.3 Task Validation | tests/test_validate.py | N/A | Covered |
+| `REQ-05` | Ubiquitous | §7 Error Handling | tests/test_validate.py | N/A | Covered |
+| `REQ-06` | State-driven | §4.2 Build Validation | tests/test_validate.py | N/A | Covered |
 | `REQ-07` | State-driven | §6.2 Contract | N/A | N/A | Covered |
-| `REQ-08` | Event-driven | §7.1 Exception Hierarchy | validate.feature | N/A | Covered |
+| `REQ-08` | Event-driven | §7.1 Exception Hierarchy | tests/test_validate.py | N/A | Covered |
 | `REQ-09` | Event-driven | §6.3 Safety Mechanisms | N/A | N/A | Covered |
-| `REQ-10` | Unwanted | §6.3 Safety Mechanisms | validate.feature | N/A | Covered |
-| `REQ-11` | Unwanted | §7.1 Exception Hierarchy | validate.feature | N/A | Covered |
+| `REQ-10` | Unwanted | §6.3 Safety Mechanisms | tests/test_validate.py | N/A | Covered |
+| `REQ-11` | Unwanted | §7.1 Exception Hierarchy | tests/test_validate.py | N/A | Covered |
 | `REQ-12` | Exception | §7.2 Validation Contracts | N/A | N/A | Covered |
 
 ---
@@ -295,7 +295,7 @@ Table task_blocks {
   task_id varchar [not null]  // e.g., '1.1', '2.3'
   name varchar [not null]
   status varchar [not null]  // 'TODO', 'IN_PROGRESS', 'DONE', etc.
-  loop_type varchar  // 'BDD+TDD', 'TDD-only'
+  test_strategy varchar  // 'TDD', 'TDD + property-based'
   spec_dir varchar [not null]
 }
 
@@ -448,7 +448,7 @@ sequenceDiagram
     P-->>V: list[ValidationError]
     V->>P: parse tasks.md
     P-->>V: list[ValidationError]
-    V->>P: check features/
+    V->>P: check design/tasks structure
     P-->>V: list[ValidationError]
     V->>P: scan code (if --build/--task)
     P-->>V: list[ScanIssue]
@@ -460,7 +460,7 @@ sequenceDiagram
 
 | Mode | Purpose | Scope |
 | :--- | :--- | :--- |
-| `--plan` | Validate spec documents after `/pb-plan` | `design.md`, `tasks.md`, `features/` structure |
+| `--plan` | Validate spec documents after `/pb-plan` | `design.md`, `tasks.md` structure |
 | `--build` | Validate task completion after `/pb-build` | Task status, step completion, code quality |
 | `--task` | Code quality check before READY_FOR_EVAL | Git-modified files or full codebase scan |
 
@@ -472,15 +472,16 @@ sequenceDiagram
 
 - CLI interface and argument parsing
 - File discovery and git integration
-- Validation logic for design.md, tasks.md, features/
+- Validation logic for design.md, tasks.md
 - Code scanner pattern matching
 - Exception handling and error cases
 
-### 9.2 BDD Acceptance Testing
+### 9.2 Mutation Testing
 
-| Scenario ID | Feature File | Command | Success Criteria |
+| Check ID | Scope | Command | Success Criteria |
 | :--- | :--- | :--- | :--- |
-| **BDD-01** | `features/validate.feature` | `uv run behave` | All scenarios pass |
+| **MT-01** | Changed source files | `uv run mutmut run` + `uv run mutmut results --all` | Mutation score ≥ 85% on changed code |
+| **MT-02** | Property-based tests | `uv run pytest -m property` | All hypothesis tests pass |
 
 ### 9.3 Critical Path Verification
 
@@ -489,7 +490,7 @@ sequenceDiagram
 | **VP-01** | `uv run ruff check` | exit 0, no errors |
 | **VP-02** | `uv run ty check` | exit 0, no errors |
 | **VP-03** | `uv run pytest` | all tests pass |
-| **VP-04** | `uv run behave` | all scenarios pass |
+| **VP-04** | `uv run pytest -m property` | all property tests pass |
 | **VP-05** | `uv run pb-spec validate --help` | shows help text |
 
 ---

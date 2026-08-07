@@ -5,7 +5,10 @@ from __future__ import annotations
 import click
 
 from pb_spec import __version__
+from pb_spec.commands.mutate import mutate_cmd
+from pb_spec.commands.test import test_cmd
 from pb_spec.commands.validate import validate_cmd
+from pb_spec.commands.verify import verify_cmd
 
 
 @click.group()
@@ -15,6 +18,9 @@ def main() -> None:
 
 
 main.add_command(validate_cmd)
+main.add_command(test_cmd)
+main.add_command(mutate_cmd)
+main.add_command(verify_cmd)
 
 
 if __name__ == "__main__":

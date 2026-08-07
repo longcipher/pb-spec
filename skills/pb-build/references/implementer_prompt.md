@@ -43,7 +43,7 @@ Before coding, define a compact task contract from the provided task block:
 - What must change
 - What must not change
 - How success is verified
-- Which `Scenario Coverage` entries and scenario name apply to this task
+- Which `Test Coverage` entries (pytest test paths) apply to this task
 - Which `Architecture Decisions` are binding for this task, including any SRP, DIP, Factory, Strategy, Observer, Adapter, or Decorator choice
 - If the provided task block or project context is missing any required contract field, stop immediately.
 
@@ -52,7 +52,7 @@ Report malformed spec context with precise output:
 ```text
 ❌ Missing required design section in specs/<spec-dir>/design.md: [Section Name]
 ❌ Missing required task field in specs/<spec-dir>/tasks.md for Task X.Y: [Field Name]
-❌ Missing required feature scenario in specs/<spec-dir>/features/[file].feature: [Missing scenario detail]
+❌ Missing required TDD & Mutation Testing Strategy in specs/<spec-dir>/design.md: [Missing contract detail]
 ```
 
 Do not continue to grounding, test writing, or implementation work after reporting a malformed contract.
@@ -70,26 +70,19 @@ Do not continue to grounding, test writing, or implementation work after reporti
 
 > **Why this step is mandatory:** Long-running agents are prone to "path hallucination" — assuming files exist at locations they don't or that code has a structure it doesn't. This grounding step synchronizes your mental model with the actual workspace state.
 
-### 2. BDD + TDD Cycle
+### 2. TDD Cycle
 
-Follow the outside-in cycle strictly. `BDD+TDD` tasks must first prove the business scenario fails, then pass through TDD, then pass the scenario. **Each phase must be a separate action — do NOT combine writing tests and implementation in the same step.**
+Follow the strict TDD cycle. **Each phase must be a separate action — do NOT combine writing tests and implementation in the same step.**
 
-#### 2a. BDD OUTER RED — Run the Scenario First
+#### 2a. RED — Write Failing Test (STOP AFTER THIS)
 
-- If `Loop Type` is `BDD+TDD`, run the referenced scenario from `Scenario Coverage` before writing implementation code.
-- The BDD command must fail first so you know the outer loop is red.
-- Quote the failing step and scenario name from the runner output.
-- If the task is `TDD-only`, explicitly report `N/A`.
-
-#### 2b. RED — Write Failing Test (STOP AFTER THIS)
-
-- Write a test (or tests) that capture the task's requirements.
-- The test should assert the expected behavior described in the task.
+- Write a test (or tests) that capture the task's requirements, matching the `Test Coverage:` entries in `tasks.md`.
+- The test should assert the expected behavior described in the task, with **exact-value assertions and boundary checks** — never just "no exception thrown".
+- For parsers, pure functions, and validation logic, add a **hypothesis property test** (see `tests/test_parser_property.py` for the pattern) asserting invariants over randomized inputs.
 - Place tests in the project's test directory, following existing conventions.
-- If using a BDD runner and the failure is an `UndefinedStepError`, your RED phase consists ONLY of writing the step definition and wiring it to an unimplemented function/assertion that fails. **Do not implement the business logic in the step definition itself yet.**
 - **⚠️ STOP HERE.** Do not write any implementation code yet.
 
-#### 2c. Confirm RED (Error Analysis Required)
+#### 2b. Confirm RED (Error Analysis Required)
 
 - Run the test suite.
 - **The new test(s) MUST fail.** If they pass without implementation, your test is not testing the right thing — fix the test.
@@ -99,7 +92,7 @@ Follow the outside-in cycle strictly. `BDD+TDD` tasks must first prove the busin
   - ❌ **Bad failure** (e.g., `SyntaxError`, `IndentationError`, file not found) → Fix the test code immediately, then re-run.
 - **Only proceed to GREEN after seeing and quoting the failure output.**
 
-#### 2d. GREEN — Write Minimum Implementation
+#### 2c. GREEN — Write Minimum Implementation
 
 **Ponytail ladder (mandatory before writing code):**
 Before writing any implementation, climb the ladder:
@@ -117,7 +110,7 @@ Mark deliberate simplifications with `ponytail:` comments naming the ceiling and
 - **Constraint:** Do not edit files you did not read in Step 1. If you need to modify a new file, read it first.
 - Follow existing project patterns and conventions.
 
-#### 2e. Confirm GREEN (Full Suite Required)
+#### 2d. Confirm GREEN (Full Suite Required)
 
 - Run the **full** test suite (not just the new tests).
 - **All tests must pass** — both the new ones and all pre-existing tests.
@@ -134,14 +127,7 @@ Before writing ANY fix for a failing test, you MUST output a Root Cause Analysis
 
 Output this analysis enclosed in `<error_analysis>` tags before rewriting code.
 
-#### 2f. BDD OUTER GREEN — Re-run the BDD Scenario
-
-- If `Loop Type` is `BDD+TDD`, re-run the BDD scenario until it passes.
-- Re-run the BDD scenario until it passes with the expected Given/When/Then behavior.
-- Quote the passing scenario name and key outcome in your report.
-- If the scenario still fails, treat the task as incomplete even if unit tests are green.
-
-#### 2g. Runtime Verification (When Applicable)
+#### 2e. Runtime Verification (When Applicable)
 
 - If the task includes runtime checks in `Verification`, or if your change affects runtime behavior (service startup, request flow, UI runtime state, health endpoints), run the runtime verification commands.
 - At minimum, capture:
@@ -151,13 +137,13 @@ Output this analysis enclosed in `<error_analysis>` tags before rewriting code.
 - If runtime verification is not applicable, explicitly report `N/A` with the reason.
 - If runtime verification fails, treat it as task failure and stop for orchestrator handling.
 
-#### 2h. REFACTOR (if needed)
+#### 2f. REFACTOR (if needed)
 
 - Clean up code if there's obvious duplication or poor naming.
 - Do NOT add architecture or abstractions beyond what the task requires.
 - Run the full test suite again after any refactoring.
 
-#### 2h-1. MUTATE — Run Incremental Mutation Testing
+#### 2f-1. MUTATE — Run Incremental Mutation Testing
 
 - Run `./scripts/run-mutation-diff.sh` (or language-specific equivalent) on files
   changed by this task.
@@ -167,12 +153,12 @@ Output this analysis enclosed in `<error_analysis>` tags before rewriting code.
   2. Add or strengthen test assertions to kill the specific mutant — boundary checks,
      exact value assertions, missing branch coverage.
   3. Re-run mutation testing until all mutants on modified code are **KILLED** or
-     the mutation score meets the design's target (default ≥ 80%).
+     the mutation score meets the design's target (default ≥ 85%).
 - **If no mutants were generated** (pure data, config, or non-mutable code), report `N/A`.
 - **If mutation tooling is not installed**, report the warning and skip. The Evaluator
   will flag this as a gap.
 
-#### 2i. Architecture Check
+#### 2g. Architecture Check
 
 - Confirm the implementation still follows the planned `Architecture Decisions`.
 - Verify the change does not violate **SRP** or **DIP**.
@@ -180,22 +166,22 @@ Output this analysis enclosed in `<error_analysis>` tags before rewriting code.
 - Confirm external dependencies still flow through interfaces or abstract classes when required.
 - If you discover the planned architecture no longer fits, stop and raise a Design Change Request instead of improvising a new pattern mid-build.
 
-#### 2i-a. Performance Sanity Check (when applicable)
+#### 2g-a. Performance Sanity Check (when applicable)
 
 For tasks touching data access, API endpoints, or hot paths:
 
 1. **N+1 detection:** Scan for loops that make individual DB/API calls where batching or eager loading would work.
 2. **Eager loading:** If the design specifies eager loading or joins, verify they are present.
-3. **Over-fetching:** Check that API responses return only what the scenario requires.
+3. **Over-fetching:** Check that API responses return only what the task/test contract requires.
 4. **Performance constraints:** If the design includes latency/throughput targets, verify the implementation doesn't obviously violate them.
 5. **Skip** this check for tasks that don't touch data access, API boundaries, or hot paths.
 
-#### 2j. Scope Check
+#### 2h. Scope Check
 
 - Confirm implementation matches the task contract and does not include extra scope.
 - If extra scope slipped in, remove it before submitting.
 
-#### 2k. Simplicity Check (Ponytail)
+#### 2i. Simplicity Check (Ponytail)
 
 - Did you apply the ponytail ladder before writing code?
 - Is there an unnecessary abstraction (interface with one implementation, factory for one product, config for a value that never changes)?
@@ -256,8 +242,8 @@ Report your work in this format:
 - [file path] — [what changed and why]
 
 ### Verification
-- Scenario name: [Scenario name, or `N/A` for `TDD-only` tasks]
-- BDD Verification: [command + failed-first/passed-later evidence, or `N/A` with reason]
+- Test Coverage: [pytest paths exercised, or `N/A` for infrastructure-only tasks]
+- RED evidence: [failing test output quoted — proves the test was written first]
 - [Describe how the task's Verification criterion was met]
 - Runtime logs: [command + key output, or `N/A` with reason]
 - Runtime probe: [command + key output/status, or `N/A` with reason]
@@ -266,6 +252,7 @@ Report your work in this format:
 ### Mutation Testing
 - [command]: [result, e.g., "All mutants killed" / "Score: 85%" / "N/A — tooling not installed"]
 - Surviving mutants: [count and brief description, or "None"]
+- Property tests: [hypothesis cases exercised, or `N/A`]
 
 ### Commands Run
 - [command] — [key outcome]
@@ -291,7 +278,8 @@ READY_FOR_EVAL: Task {{TASK_NUMBER}}
 - **Do not modify unrelated code.** Your changes should be scoped to this task only.
 - **NEVER run `git commit`.** Leave all your changes in the working directory. The orchestrator and evaluator rely on `git diff` against the working tree to review your work and handle rollbacks.
 - **Tests are mandatory.** Never submit implementation without tests.
-- **`BDD+TDD` tasks must satisfy Scenario Coverage.** Do not skip the outer loop when the task says `BDD+TDD`.
+- **Every task must satisfy its `Test Coverage:` entries.** Do not skip listed tests; add hypothesis property tests for parsers/pure logic.
+- **Surviving mutants are test failures.** If `./scripts/run-mutation-diff.sh` reports survivors, strengthen assertions until they are killed.
 - **TDD phases are separate actions.** Never write test and implementation in the same step. Write tests first, see them fail, then write implementation.
 - **Runtime evidence is mandatory when applicable.** Do not claim completion without runtime logs/probe evidence for runtime-facing tasks.
 - **File a Design Change Request** if the design is infeasible rather than forcing a broken approach.

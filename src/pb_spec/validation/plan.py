@@ -222,27 +222,6 @@ def validate_tasks_structure(spec_dir: Path) -> ValidationResult:
     return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings)
 
 
-def validate_features_directory(spec_dir: Path) -> ValidationResult:
-    """Validate features directory contains at least one .feature file."""
-    errors: list[ValidationError] = []
-    warnings: list[str] = []
-    features_dir = spec_dir / "features"
-    has_features = features_dir.exists() and list(features_dir.glob("*.feature"))
-
-    if not has_features:
-        errors.append(
-            ValidationError(
-                message="No .feature files found in features/. Specs require at least one Scenario.",
-                file_path=str(features_dir),
-                severity=ErrorSeverity.HIGH,
-            )
-        )
-    else:
-        warnings.append("Found Gherkin .feature files.")
-
-    return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings)
-
-
 def validate_plan(spec_dir: Path) -> ValidationResult:
     """Validate pb-plan generated documents.
 
@@ -272,9 +251,5 @@ def validate_plan(spec_dir: Path) -> ValidationResult:
     tasks_result = validate_tasks_structure(spec_dir)
     errors.extend(tasks_result.errors)
     warnings.extend(tasks_result.warnings)
-
-    features_result = validate_features_directory(spec_dir)
-    errors.extend(features_result.errors)
-    warnings.extend(features_result.warnings)
 
     return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings)

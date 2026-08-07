@@ -1,4 +1,4 @@
-# Integrate Ponytail into pb-spec Skills — Tasks (BDD-Driven)
+# Integrate Ponytail into pb-spec Skills — Tasks
 
 | Metadata | Details |
 | :--- | :--- |
@@ -20,7 +20,7 @@ Each task modifies one file (or related set) and ends with a grep verification.
 Context: pb-plan currently says "code-simplification lens" (line 24) and "prefer explicit readable solutions" (line 298). These are vague. Replace with the specific ponytail ladder. Preserve all existing pb-plan behavior; only inject the ladder at existing decision points.
 Verification: `grep -c "ponytail" skills/pb-plan/SKILL.md` ≥ 3
 Status: 🟢 DONE
-Scenario Coverage: features/integrate-ponytail.feature — pb-plan applies ponytail ladder to architecture decisions
+Test Coverage: N/A (doc-editing task; verified by grep)
 
 - [x] Step 1: Read `skills/pb-plan/SKILL.md` lines 20-30 (execution contract)
 - [x] Step 2: At line 24, replace "code-simplification lens" with ponytail ladder reference
@@ -37,7 +37,7 @@ Scenario Coverage: features/integrate-ponytail.feature — pb-plan applies ponyt
 Context: pb-build says "follow YAGNI" (line 546) and implementer_prompt says "minimum code" (line 102) but neither gives the specific ladder. The Evaluator flags "over-engineering" as a red flag (evaluator_prompt:75) but doesn't have a systematic check. Preserve all existing pb-build behavior; add the ladder at decision points.
 Verification: `grep -c "ponytail" skills/pb-build/SKILL.md` ≥ 2 AND `grep -c "ponytail" skills/pb-build/references/implementer_prompt.md` ≥ 1 AND `grep -c "ponytail" skills/pb-build/references/evaluator_prompt.md` ≥ 1
 Status: 🟢 DONE
-Scenario Coverage: features/integrate-ponytail.feature — pb-build Generator applies ponytail before coding, pb-build Evaluator detects over-engineering
+Test Coverage: N/A (doc-editing task; verified by grep)
 
 - [x] Step 1: Read `skills/pb-build/SKILL.md` line 546 ("ALWAYS follow YAGNI")
 - [x] Step 2: Expand to ponytail ladder
@@ -58,7 +58,7 @@ Scenario Coverage: features/integrate-ponytail.feature — pb-build Generator ap
 Context: pb-improve has "Code Simplification Constraints" (line 284) that is generic. The audit-playbook.md has 9 categories but no over-engineering category. Generated specs don't carry the ponytail ladder. Preserve all existing pb-improve behavior; add over-engineering audit and carry the ladder forward in generated specs.
 Verification: `grep -c "ponytail" skills/pb-improve/SKILL.md` ≥ 2 AND `grep -c "ponytail" skills/pb-improve/references/audit-playbook.md` ≥ 1
 Status: 🟢 DONE
-Scenario Coverage: features/integrate-ponytail.feature — pb-improve audits for over-engineering
+Test Coverage: N/A (doc-editing task; verified by grep)
 
 - [x] Step 1: Read `skills/pb-improve/SKILL.md` lines 284-289 (Code Simplification Constraints)
 - [x] Step 2: Replace with ponytail ladder
@@ -78,7 +78,7 @@ Scenario Coverage: features/integrate-ponytail.feature — pb-improve audits for
 Context: The design_template.md has "Code Simplification Constraints" (line 87) but it's generic. Need to replace with ponytail ladder. Preserve existing template structure. Depends on Task 1.1.
 Verification: `grep -c "ponytail" skills/pb-plan/references/design_template.md` ≥ 1
 Status: 🟢 DONE
-Scenario Coverage: features/integrate-ponytail.feature — pb-plan design template includes ponytail section
+Test Coverage: N/A (doc-editing task; verified by grep)
 
 - [x] Step 1: Read `skills/pb-plan/references/design_template.md` lines 85-90
 - [x] Step 2: Replace Code Simplification Constraints with ponytail ladder
@@ -89,7 +89,7 @@ Scenario Coverage: features/integrate-ponytail.feature — pb-plan design templa
 Context: tasks_template.md has "Simplification Focus" fields (lines 49, 68, 91, 111, 135, 158) but the placeholder text is generic. Preserve existing template structure. Depends on Task 1.1.
 Verification: `grep -c "ponytail" skills/pb-plan/references/tasks_template.md` ≥ 1
 Status: 🟢 DONE
-Scenario Coverage: features/integrate-ponytail.feature — Generated specs include ponytail ladder
+Test Coverage: N/A (doc-editing task; verified by grep)
 
 - [x] Step 1: Read `skills/pb-plan/references/tasks_template.md`
 - [x] Step 2: Replace all Simplification Focus placeholder text with ponytail ladder reference
@@ -103,7 +103,7 @@ Scenario Coverage: features/integrate-ponytail.feature — Generated specs inclu
 Context: Confirm ponytail is present in all target files and no existing behavior was lost. Depends on Tasks 1.1, 1.2, 1.3, 2.1, 2.2.
 Verification: All grep checks pass
 Status: 🟢 DONE
-Scenario Coverage: features/integrate-ponytail.feature — all scenarios
+Test Coverage: N/A (doc-editing task; verified by grep)
 
 - [x] Step 1: `grep -c "ponytail" skills/pb-plan/SKILL.md` = 4 ≥ 3 ✅
 - [x] Step 2: `grep -c "ponytail" skills/pb-build/SKILL.md` = 2 ≥ 2 ✅

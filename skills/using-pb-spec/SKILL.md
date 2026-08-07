@@ -44,9 +44,8 @@ Process skills first (`pb-brainstorming`, `pb-systematic-debugging`), then imple
 
 See `docs/contract.md` for the executable type contract. Summary:
 
-- `design.md` — 5 required + 5 optional sections
-- `tasks.md` — 4 fields: Context / Verification / Status / Scenario Coverage
-- `features/*.feature` — Gherkin, source of truth
+- `design.md` — 5 required + 5 optional sections, incl. `TDD & Mutation Testing Strategy`
+- `tasks.md` — 4 fields: Context / Verification / Status / Test Coverage
 - Block packets (Build Blocked / DCR) — 3 fields: Reason / Requested Change / Impact
 
 ---

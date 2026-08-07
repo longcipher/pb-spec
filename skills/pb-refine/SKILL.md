@@ -16,7 +16,7 @@ Apply user feedback to existing specs. This closes the gap between one-shot plan
 - List `specs/`, find directory ending with `-<feature-name>`.
 - If multiple matches → most recent (latest date prefix).
 - If no match → report: `❌ No spec directory found for feature "<feature-name>" in specs/. Run /pb-plan <requirement> first.`
-- Load `design.md`, `tasks.md`, `features/`, `AGENTS.md` (read-only).
+- Load `design.md`, `tasks.md`, `AGENTS.md` (read-only).
 
 ### 2. Parse feedback & validate packets
 
@@ -24,12 +24,12 @@ Feedback may include: design corrections, scope changes, task adjustments, DCR p
 
 If feedback includes structured packets (see `docs/contract.md` for 3-field schema: Reason / Requested Change / Impact), validate all fields present before modifying any file. If fields missing → report and stop. Do not guess or reconstruct missing fields.
 
-### 3. Update .feature files and design.md
+### 3. Update design.md
 
-If feedback changes user-visible behavior, update `features/` first:
+If feedback changes behavior, update the `TDD & Mutation Testing Strategy` section first (type contracts, invariants, test matrix):
 
-- Precise edits only. Preserve unaffected scenarios.
-- If behavior contract unchanged, keep features as-is, say why.
+- Precise edits only. Preserve unaffected contract parts.
+- If the behavior contract is unchanged, keep the section as-is, say why.
 
 Apply design changes to `design.md`:
 
@@ -56,16 +56,16 @@ If design changes affect task breakdown, update `tasks.md` (4-field schema, see 
 - Add new tasks with next available Task ID.
 - Remove obsolete tasks: Status → `⛔ OBSOLETE`.
 - Reorder if dependencies changed.
-- Update Context, Verification, Scenario Coverage as needed.
+- Update Context, Verification, Test Coverage as needed.
 - Do NOT modify completed tasks (`🟢 DONE` or `- [x]`) unless explicitly requested.
 - Precise edits only.
 
 ### 5. Validate consistency
 
 1. Design ↔ Tasks alignment: every design section has corresponding tasks.
-2. Feature ↔ Design alignment: every changed scenario reflected in design.
+2. Test matrix ↔ Design alignment: every changed contract reflected in the `TDD & Mutation Testing Strategy` section.
 3. Dependency order: no task references later task work.
-4. No orphaned tasks: every task traces to a design decision or scenario.
+4. No orphaned tasks: every task traces to a design decision or test coverage entry.
 5. Completed work preserved: if invalidated, flag to user.
 
 ### 6. Output summary
@@ -73,8 +73,8 @@ If design changes affect task breakdown, update `tasks.md` (4-field schema, see 
 ```text
 🔄 Spec refined: specs/<spec-dir>/
 
-Changes to feature files:
-  - [Feature file]: [scenario or step changes]
+Changes to design.md (TDD & Mutation Testing Strategy):
+  - [Section X]: [test-matrix or contract changes]
 
 Changes to design.md:
   - [Section X]: [What changed]
@@ -94,7 +94,7 @@ Next steps:
 
 ## Constraints
 
-- Only modify `specs/<spec-dir>/design.md`, `tasks.md`, `features/`. Do not modify source code.
+- Only modify `specs/<spec-dir>/design.md` and `tasks.md`. Do not modify source code.
 - Do not re-run the entire planning process. Incremental update only.
 - `AGENTS.md` is read-only.
 - No interactive multi-turn probing. Apply given feedback. If ambiguous, state interpretation in Revision History and proceed.
@@ -103,7 +103,7 @@ Next steps:
 
 - No feedback provided → report: "No feedback detected."
 - Feedback invalidates completed tasks → flag as warning. Do not auto-undo.
-- Behavior changes → update `.feature` first, then cascade.
+- Behavior changes → update the `TDD & Mutation Testing Strategy` section (test matrix) first, then cascade.
 - Feedback requires entirely new design → recommend `/pb-plan` instead.
 - Multiple conflicting feedback items → apply in order given. Note conflicts in Revision History.
 

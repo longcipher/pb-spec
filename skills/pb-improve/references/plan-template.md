@@ -65,23 +65,23 @@ Every spec is written for a `/pb-build` executor that has **zero context**: it h
 
 **Context:** ... **Decision:** ... **Consequences:** ...
 
-## BDD/TDD Strategy
+## TDD & Mutation Testing Strategy
 
-- **BDD Runner / Command:** `@cucumber/cucumber` / `behave` / `cucumber` — `<exact command>`
-- **Unit Test Command:** ...
+- **Unit Test Command:** `pytest` / `vitest` / `cargo test` — `<exact command>`
+- **Parallel Execution:** `pytest -n auto` (pytest-xdist) / vitest `--pool` / cargo nextest
 - **Property / Fuzz / Benchmark Tool:** `fast-check` / `Hypothesis` / `proptest` / `N/A`; `jazzer.js` / `Atheris` / `cargo-fuzz` / `N/A`; `Vitest Bench` / `pytest-benchmark` / `criterion` / `N/A`
-- **Feature Files:** `specs/<spec-dir>/features/*.feature`
+- **Type contracts & invariants:** state input/output shapes, boundary conditions, error codes.
 
 ## Mutation Testing Strategy
 
-- **Mutation score target:** ≥ 80% (override per finding if needed).
+- **Mutation score target:** ≥ 85% (override per finding if needed).
 - **Language-specific tooling:**
   - Rust: `cargo-mutants` (config in `.cargo/mutants.toml`)
   - Python: `mutmut` (config in `pyproject.toml [tool.mutmut]`)
   - TypeScript: `@stryker-mutator/core` (config in `stryker.config.json`)
 - **Incremental mode:** `./scripts/run-mutation-diff.sh` during `pb-build` for per-task mutation.
 - **Target files:** list critical source files and functions that require mutation testing.
-- **Assertion requirements:** BDD/unit tests MUST include boundary checks and specific value assertions.
+- **Assertion requirements:** unit/property tests MUST include boundary checks and specific value assertions.
 
 ## Verification — exact commands and expected results, verified during recon (not guessed)
 
@@ -89,9 +89,9 @@ Every spec is written for a `/pb-build` executor that has **zero context**: it h
 |-----------|--------------------------------------|---------------------|
 | Lint      | `uv run ruff check`                  | exit 0, no errors   |
 | Typecheck | `uv run ty check`                    | exit 0, no errors   |
-| Tests     | `uv run pytest`                      | all pass            |
-| BDD       | `uv run behave`                      | all pass            |
-| Mutation  | `./scripts/run-mutation-diff.sh`     | exit 0, score ≥ 80% |
+| Tests     | `uv run pytest -n auto`              | all pass            |
+| Property  | `uv run pytest -m property`          | all pass            |
+| Mutation  | `./scripts/run-mutation-diff.sh`     | exit 0, score ≥ 85% |
 
 ## Revision History — append a row per substantive revision (date, author, change)
 
@@ -106,7 +106,7 @@ Every spec is written for a `/pb-build` executor that has **zero context**: it h
 
 ## tasks.md Template
 
-> **⚠️ pb-build REJECTS tasks.md if ANY of these 4 fields is missing:** `Context:` · `Verification:` · `Status:` · `Scenario Coverage:`
+> **⚠️ pb-build REJECTS tasks.md if ANY of these 4 fields is missing:** `Context:` · `Verification:` · `Status:` · `Test Coverage:`
 
 ```markdown
 # <Feature Name> — Tasks
@@ -121,7 +121,7 @@ Every spec is written for a `/pb-build` executor that has **zero context**: it h
 
 > **Context:** ...
 > **Verification:** ...
-> **Scenario Coverage:** `@scenario-id-1`, `@scenario-id-2` — or `N/A` for non-BDD tasks
+> **Test Coverage:** `tests/test_foo.py::test_bar` — or `N/A` for infrastructure-only tasks
 
 - **Status:** 🔴 TODO
 - [ ] Step 1: ...
@@ -130,7 +130,7 @@ Every spec is written for a `/pb-build` executor that has **zero context**: it h
 ### Task 2.1: [Task Name — depends on Finding 1] — same 4 fields; numbered X.Y where X = Finding index
 ```
 
-**Status values:** `🔴 TODO` / `🟡 IN PROGRESS` / `🟢 DONE` / `🔄 DCR` / `⛔ OBSOLETE`. **Scenario Coverage:** BDD+TDD tasks list `@scenario-id` tags from `.feature` files; non-BDD tasks use literal `N/A`.
+**Status values:** `🔴 TODO` / `🟡 IN PROGRESS` / `🟢 DONE` / `🔄 DCR` / `⛔ OBSOLETE`. **Test Coverage:** tasks list the pytest test paths (unit + hypothesis property tests) that prove the task; infrastructure-only tasks use literal `N/A`.
 
 ---
 
@@ -142,29 +142,37 @@ When a task cannot proceed, emit a packet with exactly these 3 fields (`Reason`,
 > 🛑 BUILD BLOCKED — Task <X.Y>
 >
 > **Reason:** <why the task cannot proceed — e.g., upstream design ambiguity, missing dependency, spec contradicts code>
-> **Requested Change:** <concrete change to design.md / tasks.md / .feature that would unblock>
+> **Requested Change:** <concrete change to design.md / tasks.md / the test matrix that would unblock>
 > **Impact:** <what is blocked downstream — list affected task IDs and any verification gate that won't run>
 ```
 
 ---
 
-## feature file Template
+## Test Matrix Template
 
-```gherkin
-Feature: <Feature Name>
-  As a [role]
-  I want [capability]
-  So that [benefit]
+Define the strict TDD contract per finding in design.md:
 
-  Background:
-    Given [common preconditions]
+```markdown
+### Finding N — <Title>
 
-  Scenario: [Happy path scenario name]
-    Given [precondition]
-    When [action]
-    Then [expected outcome]
+#### Type Contracts
+- Input: <dataclass/pydantic shape + constraints>
+- Output: <shape>
+- Errors: <error codes / exceptions>
 
-  Scenario: [Edge case — preconditions, actions, expected outcome]
+#### Invariants
+- <invariant 1>
+- <invariant 2>
+
+#### Boundary Conditions
+- <boundary value / expected behavior>
+
+#### Test Matrix
+| Test Case | Type | File::test | Verifies |
+|-----------|------|------------|----------|
+| Happy path | unit | tests/...py::test_x | <behavior> |
+| Boundary | unit | tests/...py::test_x_edge | <boundary> |
+| Property | hypothesis | tests/...py::test_x_property | <invariant> |
 ```
 
 ---
@@ -207,5 +215,5 @@ Feature: <Feature Name>
 - Are the STOP conditions specific to this spec's actual risks, not boilerplate?
 - Would a reviewer reading only `## Summary` + the Done criteria understand what they're approving?
 - No secret values anywhere in the files — locations and credential types only. "Planned at" SHA is filled in; in-scope paths in the drift check match the Scope section.
-- Every requirement maps to at least one task; every task has a verification command; every BDD+TDD task references a specific `.feature` scenario.
-- Every task has exactly 4 required fields: Context, Verification, Status, Scenario Coverage.
+- Every requirement maps to at least one task; every task has a verification command; every task references its `Test Coverage:` pytest paths.
+- Every task has exactly 4 required fields: Context, Verification, Status, Test Coverage.

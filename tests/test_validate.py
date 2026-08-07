@@ -25,7 +25,6 @@ def _create_spec_files(
     spec_dir: Path,
     design_content: str | None = None,
     tasks_content: str | None = None,
-    features_content: str | None = None,
 ) -> None:
     """Helper to create spec files."""
     spec_dir.mkdir(parents=True, exist_ok=True)
@@ -33,10 +32,6 @@ def _create_spec_files(
         (spec_dir / "design.md").write_text(design_content)
     if tasks_content is not None:
         (spec_dir / "tasks.md").write_text(tasks_content)
-    if features_content is not None:
-        features_dir = spec_dir / "features"
-        features_dir.mkdir(exist_ok=True)
-        (features_dir / "test.feature").write_text(features_content)
 
 
 VALID_DESIGN_CONTENT = (
@@ -44,7 +39,7 @@ VALID_DESIGN_CONTENT = (
     "## Summary\nA brief summary of the feature.\n\n"
     "## Approach\nImplementation approach.\n\n"
     "## Architecture Decisions\nDecision 1: Use Python\n\n"
-    "## BDD/TDD Strategy\nWe will use BDD+TDD approach\n\n"
+    "## TDD & Mutation Testing Strategy\nStrict TDD: Red → Green → Refactor → Mutate.\n\n"
     "## Verification\nTests will verify the implementation\n"
 )
 
@@ -53,32 +48,24 @@ VALID_TASKS_CONTENT = (
     "### Task 1.1: Implement feature\n"
     "Context: Implement the core feature logic.\n"
     "Verification: Run the full test suite.\n"
-    "Scenario Coverage: Test scenario in test.feature.\n"
+    "Test Coverage: tests/test_validate.py::test_valid_spec_passes\n"
     "Status: 🟢 DONE\n"
     "- [x] Step 1: Write test\n"
     "- [x] Step 2: Implement\n"
-)
-
-VALID_FEATURE_CONTENT = (
-    "Feature: Test Feature\n"
-    "  Scenario: Test scenario\n"
-    "    Given a condition\n"
-    "    When action\n"
-    "    Then result\n"
 )
 
 _DESIGN_SECTIONS: dict[str, str] = {
     "Summary": "## Summary\nSummary.\n\n",
     "Approach": "## Approach\nApproach.\n\n",
     "Architecture Decisions": "## Architecture Decisions\nDecision.\n\n",
-    "BDD/TDD Strategy": "## BDD/TDD Strategy\nStrategy.\n\n",
+    "TDD & Mutation Testing Strategy": "## TDD & Mutation Testing Strategy\nStrategy.\n\n",
     "Verification": "## Verification\nVerify.\n",
 }
 
 _TASK_FIELDS: dict[str, str] = {
     "Context:": "Context: Build piece.\n",
     "Verification:": "Verification: Run tests.\n",
-    "Scenario Coverage:": "Scenario Coverage: N/A\n",
+    "Test Coverage:": "Test Coverage: N/A\n",
     "Status:": "Status: 🔴 TODO\n",
 }
 
@@ -102,9 +89,9 @@ def _task_with_packet(
 ) -> str:
     """Build a tasks.md with a task block followed by a contract packet.
 
-    Status is placed before Scenario Coverage so the contract block header
-    (which the parser treats as a continuation line) contaminates Scenario
-    Coverage rather than Status. Scenario Coverage is only checked for
+    Status is placed before Test Coverage so the contract block header
+    (which the parser treats as a continuation line) contaminates Test
+    Coverage rather than Status. Test Coverage is only checked for
     non-emptiness, while Status must match an allowed marker.
     """
     return (
@@ -113,7 +100,7 @@ def _task_with_packet(
         f"Status: {status}\n"
         "Context: Build piece.\n"
         "Verification: Run tests.\n"
-        "Scenario Coverage: N/A\n"
+        "Test Coverage: N/A\n"
         "- [ ] Step 1: Resolve\n"
         "\n"
         f"{packet_header}\n"
@@ -130,7 +117,6 @@ def valid_spec_dir(tmp_path: Path) -> Path:
         spec_dir,
         design_content=VALID_DESIGN_CONTENT,
         tasks_content=VALID_TASKS_CONTENT,
-        features_content=VALID_FEATURE_CONTENT,
     )
     return spec_dir
 
@@ -254,17 +240,17 @@ class TestValidatePlan:
         assert result.is_valid is False
         assert any("Architecture Decisions" in e.message for e in result.errors)
 
-    def test_missing_bdd_tdd_strategy_section_fails(self, tmp_path: Path) -> None:
-        """Test that design missing BDD/TDD Strategy section fails."""
+    def test_missing_tdd_mutation_strategy_section_fails(self, tmp_path: Path) -> None:
+        """Test that design missing TDD & Mutation Testing Strategy section fails."""
         spec_dir = tmp_path / "specs" / "test"
         _create_spec_files(
             spec_dir,
-            design_content=_design_missing("BDD/TDD Strategy"),
+            design_content=_design_missing("TDD & Mutation Testing Strategy"),
             tasks_content=VALID_TASKS_CONTENT,
         )
         result = validate_plan(spec_dir)
         assert result.is_valid is False
-        assert any("BDD/TDD Strategy" in e.message for e in result.errors)
+        assert any("TDD & Mutation Testing Strategy" in e.message for e in result.errors)
 
     def test_missing_verification_section_fails(self, tmp_path: Path) -> None:
         """Test that design missing Verification section fails."""
@@ -296,7 +282,7 @@ class TestValidatePlan:
             "### Task 1.1: Task\n"
             "Context: Build.\n"
             "Verification: Run tests.\n"
-            "Scenario Coverage: N/A\n"
+            "Test Coverage: N/A\n"
             "Status: 🔴 TODO\n"
             "- [ ] Step 1: Write test\n"
         )
@@ -334,15 +320,13 @@ class TestValidatePlan:
         assert result.is_valid is False
         assert any("missing required field: 'Verification:'" in e.message for e in result.errors)
 
-    def test_task_missing_scenario_coverage_fails(self, tmp_path: Path) -> None:
-        """Test that task missing Scenario Coverage field fails."""
+    def test_task_missing_test_coverage_fails(self, tmp_path: Path) -> None:
+        """Test that task missing Test Coverage field fails."""
         spec_dir = tmp_path / "specs" / "test"
-        _create_spec_files(spec_dir, tasks_content=_tasks_missing("Scenario Coverage:"))
+        _create_spec_files(spec_dir, tasks_content=_tasks_missing("Test Coverage:"))
         result = validate_tasks_structure(spec_dir)
         assert result.is_valid is False
-        assert any(
-            "missing required field: 'Scenario Coverage:'" in e.message for e in result.errors
-        )
+        assert any("missing required field: 'Test Coverage:'" in e.message for e in result.errors)
 
     def test_invalid_task_status_fails(self, tmp_path: Path) -> None:
         """Test that task with invalid Status (no emoji marker) fails."""
@@ -352,7 +336,7 @@ class TestValidatePlan:
             "### Task 1.1: Invalid status\n"
             "Context: Build piece.\n"
             "Verification: Run tests.\n"
-            "Scenario Coverage: N/A\n"
+            "Test Coverage: N/A\n"
             "Status: DONE\n"
             "- [ ] Step 1: Write test\n"
         )
@@ -369,7 +353,7 @@ class TestValidatePlan:
             "### Task 1.1: No checkbox\n"
             "Context: Build piece.\n"
             "Verification: Run tests.\n"
-            "Scenario Coverage: N/A\n"
+            "Test Coverage: N/A\n"
             "Status: 🔴 TODO\n"
         )
         _create_spec_files(spec_dir, tasks_content=tasks_content)
@@ -377,15 +361,15 @@ class TestValidatePlan:
         assert result.is_valid is False
         assert any("contains no step checkboxes" in e.message for e in result.errors)
 
-    def test_na_scenario_coverage_passes(self, tmp_path: Path) -> None:
-        """Test that Scenario Coverage: N/A (literal) passes for non-BDD tasks."""
+    def test_na_test_coverage_passes(self, tmp_path: Path) -> None:
+        """Test that Test Coverage: N/A (literal) passes for infrastructure tasks."""
         spec_dir = tmp_path / "specs" / "test"
         tasks_content = (
             "# Tasks\n\n"
             "### Task 1.1: Infrastructure task\n"
             "Context: Setup CI.\n"
             "Verification: Run pipeline.\n"
-            "Scenario Coverage: N/A\n"
+            "Test Coverage: N/A\n"
             "Status: 🔴 TODO\n"
             "- [ ] Step 1: Configure CI\n"
         )
@@ -399,7 +383,7 @@ class TestValidatePlan:
         packet = (
             "Reason: Three consecutive failures.\n"
             "Requested Change: Update design boundary.\n"
-            "Impact: Task 1.1 blocked; affects @scenario-1.\n"
+            "Impact: Task 1.1 blocked; downstream tasks wait.\n"
         )
         tasks = _task_with_packet("🔄 DCR", "🛑 Build Blocked — Task 1.1: Test task", packet)
         _create_spec_files(spec_dir, tasks_content=tasks)
@@ -422,7 +406,7 @@ class TestValidatePlan:
         packet = (
             "Reason: Spec is ambiguous about data format.\n"
             "Requested Change: Add Data Models section with DBML schema.\n"
-            "Impact: Task 1.1 blocked; affects @scenario-2.\n"
+            "Impact: Task 1.1 blocked; downstream tasks wait.\n"
         )
         tasks = _task_with_packet(
             "🔄 DCR", "🔄 Design Change Request — Task 1.1: Test task", packet
@@ -584,7 +568,8 @@ CONSOLIDATED_VALID_DESIGN = (
     "**Context:** N+1 queries detected.\n"
     "**Decision:** Use DataLoader pattern.\n"
     "**Consequences:** Reduces query count.\n\n"
-    "## BDD/TDD Strategy\nBDD+TDD with behave.\n\n"
+    "## TDD & Mutation Testing Strategy\n"
+    "Strict TDD with mutmut; mutation score target ≥ 85%.\n\n"
     "## Verification\nRun full test suite.\n"
 )
 
@@ -593,7 +578,7 @@ CONSOLIDATED_VALID_TASKS = (
     "### Task 1.1: Fix N+1 query\n"
     "Context: Address performance issue.\n"
     "Verification: Run tests.\n"
-    "Scenario Coverage: features/performance.feature — Batch loading.\n"
+    "Test Coverage: tests/test_performance.py::test_batch_loading\n"
     "Status: 🔴 TODO\n"
     "- [ ] Step 1: Write failing test\n"
 )
@@ -603,14 +588,14 @@ CONSOLIDATED_CROSS_FINDING_TASKS = (
     "### Task 1.1: Finding 1 — Fix bug\n"
     "Context: Fix the bug.\n"
     "Verification: Run tests.\n"
-    "Scenario Coverage: features/correctness.feature — Bug fix.\n"
+    "Test Coverage: tests/test_correctness.py::test_bug_fix\n"
     "Status: 🔴 TODO\n"
     "- [ ] Step 1: Write test\n"
     "\n"
     "### Task 2.1: Finding 2 — Add feature\n"
     "Context: Add new feature.\n"
     "Verification: Run tests.\n"
-    "Scenario Coverage: features/security.feature — Auth check.\n"
+    "Test Coverage: tests/test_security.py::test_auth_check\n"
     "Status: 🔴 TODO\n"
     "- [ ] Step 1: Write test\n"
 )
@@ -626,10 +611,6 @@ class TestConsolidatedSpec:
             spec_dir,
             design_content=CONSOLIDATED_VALID_DESIGN,
             tasks_content=CONSOLIDATED_VALID_TASKS,
-            features_content=(
-                "Feature: Performance\n  Scenario: Batch loading\n    Given orders\n"
-                "    When fetched\n    Then one query\n"
-            ),
         )
         result = validate_plan(spec_dir)
         assert result.is_valid is True
@@ -641,12 +622,6 @@ class TestConsolidatedSpec:
             spec_dir,
             design_content=CONSOLIDATED_VALID_DESIGN,
             tasks_content=CONSOLIDATED_CROSS_FINDING_TASKS,
-            features_content=(
-                "Feature: Correctness\n  Scenario: Bug fix\n    Given bug\n"
-                "    When fixed\n    Then works\n"
-                "Feature: Security\n  Scenario: Auth\n    Given user\n"
-                "    When auth\n    Then ok\n"
-            ),
         )
         result = validate_plan(spec_dir)
         assert result.is_valid is True

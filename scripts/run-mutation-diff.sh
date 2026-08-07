@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
-# scripts/run-mutation-diff.sh — Incremental mutation testing on modified files.
-# Runs mutation testing ONLY on files changed (vs main/master or HEAD) to keep
-# the TDD agent loop fast. Supports Rust (cargo-mutants), Python (mutmut),
-# and TypeScript (StrykerJS).
+# scripts/run-mutation-diff.sh — Incremental mutation testing on modified code.
+# Verifies the TDD test suite actually kills mutations in recently changed code.
+# Supports Rust (cargo-mutants), Python (mutmut), and TypeScript (StrykerJS).
+#
+# Incremental design:
+#   - Python (mutmut 3.x) keeps a `mutants/` cache keyed by per-function hashes plus
+#     git change detection, so re-runs only re-test new/changed functions — keeping
+#     the AI agent loop fast while staying strict on what changed.
+#   - Rust uses `cargo mutants --in-diff`.
+#   - TypeScript mutates only changed files via `--mutate`.
 #
 # Usage:
 #   ./scripts/run-mutation-diff.sh                # compare against main (or master)
 #   ./scripts/run-mutation-diff.sh --against HEAD # compare against HEAD (staged+unstaged)
-#   ./scripts/run-mutation-diff.sh --threshold 85 # custom mutation score threshold
+#   ./scripts/run-mutation-diff.sh --threshold 90 # custom mutation score threshold
 #
 # Exit codes:
 #   0 — all mutants killed or score >= threshold
@@ -17,7 +23,7 @@
 set -euo pipefail
 
 # ---------- Configuration ----------
-THRESHOLD=80
+THRESHOLD=85
 AGAINST=""
 
 # ---------- Argument parsing ----------
@@ -72,6 +78,17 @@ RS_FILES=$(echo "$CHANGED_FILES" | grep -E '\.rs$' || true)
 PY_FILES=$(echo "$CHANGED_FILES" | grep -E '\.py$' || true)
 TS_FILES=$(echo "$CHANGED_FILES" | grep -E '\.(ts|tsx)$' || true)
 
+# ---------- Resolve the mutmut executable ----------
+# Prefer PATH, then the local venv, then uv (which resolves the locked env).
+MUTMUT_CMD=""
+if command -v mutmut >/dev/null 2>&1; then
+    MUTMUT_CMD="mutmut"
+elif [[ -x ".venv/bin/mutmut" ]]; then
+    MUTMUT_CMD=".venv/bin/mutmut"
+elif command -v uv >/dev/null 2>&1; then
+    MUTMUT_CMD="uv run mutmut"
+fi
+
 OVERALL_EXIT=0
 
 # ---------- Rust: cargo-mutants ----------
@@ -97,55 +114,68 @@ elif [[ -n "$RS_FILES" ]]; then
 fi
 
 # ---------- Python: mutmut ----------
-if [[ -n "$PY_FILES" ]] && command -v mutmut >/dev/null 2>&1; then
+if [[ -n "$PY_FILES" ]] && [[ -n "$MUTMUT_CMD" ]]; then
     echo "━━━ Python (mutmut) ━━━"
     echo "Python files changed:"
     echo "$PY_FILES" | sed 's/^/  /'
     echo ""
+    echo "Mutmut: $MUTMUT_CMD"
 
-    # Build comma-separated list for --paths-to-mutate
-    PY_PATHS=$(echo "$PY_FILES" | tr '\n' ',' | sed 's/,$//')
-
-    # Clean previous mutmut cache
-    rm -rf .mutmut-cache 2>/dev/null || true
-
-    echo "Running: mutmut run --paths-to-mutate $PY_PATHS"
-    if mutmut run --paths-to-mutate "$PY_PATHS" 2>&1; then
-        echo "mutmut run completed."
-    else
-        echo "WARNING: mutmut run exited with error (may indicate all killed or tool issue)."
-    fi
-
-    # Get results
-    echo ""
-    echo "--- mutmut results ---"
-    MUTMUT_OUTPUT=$(mutmut results 2>&1 || true)
-    echo "$MUTMUT_OUTPUT"
-
-    # Parse mutation score from results
-    # mutmut results shows lines like "Killed: N  Survived: N  Timeout: N"
-    KILLED=$(echo "$MUTMUT_OUTPUT" | grep -oE 'Killed: [0-9]+' | grep -oE '[0-9]+' || echo "0")
-    SURVIVED=$(echo "$MUTMUT_OUTPUT" | grep -oE 'Survived: [0-9]+' | grep -oE '[0-9]+' || echo "0")
-
-    TOTAL=$((KILLED + SURVIVED))
-    if [[ $TOTAL -gt 0 ]]; then
-        SCORE=$(( (KILLED * 100) / TOTAL ))
+    # mutmut 3.x is incremental by default: verdicts are cached per mutant and
+    # re-run only for new/changed functions (per-function hashes + git change
+    # detection). Do NOT wipe `mutants/` here — that would destroy incrementality.
+    echo "Running: $MUTMUT_CMD run (incremental — cached verdicts are reused)"
+    if ! $MUTMUT_CMD run 2>&1; then
         echo ""
-        echo "Python mutation score: ${SCORE}% (killed: $KILLED, survived: $SURVIVED, total: $TOTAL)"
-        if [[ $SCORE -lt $THRESHOLD ]]; then
-            echo "Python: SCORE ${SCORE}% < ${THRESHOLD}% threshold. FAILING."
-            OVERALL_EXIT=1
-        else
-            echo "Python: score ${SCORE}% >= ${THRESHOLD}% threshold. PASSING."
+        echo "Python: mutmut run FAILED (clean-test failure or tooling error)."
+        echo "  A failing clean test means the suite must be green before mutation is meaningful."
+        OVERALL_EXIT=1
+        echo ""
+        # Skip to the TS section if present; do not parse bogus stats below.
+        if [[ -n "$TS_FILES" ]]; then
+            : # continue with the TypeScript block after this if/elif chain
         fi
     else
-        echo "Python: no mutants generated (files may contain only non-mutable code)."
+        echo "mutmut run completed."
+        echo ""
+
+        # Export CI/CD stats: killed / total from mutants/mutmut-cicd-stats.json
+        $MUTMUT_CMD export-cicd-stats >/dev/null 2>&1 || true
+        if [[ -f "mutants/mutmut-cicd-stats.json" ]]; then
+            STATS=$(python3 -c 'import json; d = json.load(open("mutants/mutmut-cicd-stats.json")); print(d["killed"], d["total"], d.get("survived", 0), d.get("timeout", 0), d.get("suspicious", 0), d.get("no_tests", 0), d.get("skipped", 0), d.get("segfault", 0))' 2>/dev/null || true)
+            if [[ -z "$STATS" ]]; then
+                echo "Python: could not parse mutmut CI/CD stats."
+                OVERALL_EXIT=1
+            else
+                read -r KILLED TOTAL SURVIVED TIMEOUT SUSPICIOUS NO_TESTS SKIPPED SEGFAULT <<< "$STATS"
+                if [[ ${TOTAL:-0} -gt 0 ]]; then
+                    SCORE=$(( (KILLED * 100) / TOTAL ))
+                    echo ""
+                    echo "Python mutation score: ${SCORE}% (killed: $KILLED, total: $TOTAL)"
+                    echo "  non-killed: survived=$SURVIVED timeout=$TIMEOUT suspicious=$SUSPICIOUS no_tests=$NO_TESTS skipped=$SKIPPED segfault=$SEGFAULT"
+                    if [[ $SCORE -lt $THRESHOLD ]]; then
+                        echo ""
+                        echo "Python: SCORE ${SCORE}% < ${THRESHOLD}% threshold. FAILING."
+                        echo "  Surviving mutants mean the TDD tests miss behavior — add boundary"
+                        echo "  checks and exact-value assertions until every mutant is killed."
+                        echo "  Inspect them with: $MUTMUT_CMD show <mutant-name>"
+                        OVERALL_EXIT=1
+                    else
+                        echo "Python: score ${SCORE}% >= ${THRESHOLD}% threshold. PASSING."
+                    fi
+                else
+                    echo "Python: no mutants generated (files may contain only non-mutable code)."
+                fi
+            fi
+        else
+            echo "Python: no mutation stats produced (run produced no mutants?)."
+        fi
     fi
     echo ""
 elif [[ -n "$PY_FILES" ]]; then
     echo "━━━ Python (mutmut) ━━━"
     echo "WARNING: Python files changed but mutmut is not installed."
-    echo "  Install: pip install mutmut"
+    echo "  Install: pip install mutmut   (or run inside the project venv)"
     echo ""
 fi
 

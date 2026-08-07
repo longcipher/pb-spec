@@ -29,29 +29,21 @@ type-check:
 # Run format, lint, and type-check
 check: format lint type-check
 
-# Run tests
+# Run tests (strict TDD suite, single process)
 test:
     uv run pytest
 
-# Run BDD acceptance tests
-bdd:
-    uv run behave
+# Run tests in parallel with pytest-xdist (fast feedback)
+test-fast:
+    uv run pytest -n auto
 
-# Run both pytest and behave suites
-test-all:
-    uv run pytest
-    uv run behave
+# Run property-based tests (hypothesis) only
+test-prop:
+    uv run pytest -m property
 
-# Run all checks and tests
-all: format lint type-check test
-
-# CI checks (format, lint, type-check, test - for CI pipeline)
-ci:
-    uv run ruff format --check .
-    uv run ruff check .
-    uvx rumdl check .
-    uv run ty check src tests
-    uv run pytest
+# Run tests with coverage (coverage gate: fail_under = 80)
+coverage:
+    uv run pytest --cov=pb_spec --cov-report=term-missing
 
 # Run incremental mutation testing on changed files (vs main/master)
 mutation:
@@ -60,6 +52,26 @@ mutation:
 # Run mutation testing against HEAD (staged + unstaged changes)
 mutation-head:
     ./scripts/run-mutation-diff.sh --against HEAD
+
+# Run a clean, full mutation pass (wipes mutmut cache — CI-grade strictness)
+mutation-full:
+    rm -rf mutants .mutmut-cache
+    ./scripts/run-mutation-diff.sh --against HEAD
+
+# Run all checks and tests
+all: check coverage
+
+# CI checks (format, lint, type-check, coverage, mutation gate)
+ci:
+    uv run ruff format --check .
+    uv run ruff check .
+    uvx rumdl check .
+    uv run ty check src tests
+    uv run pytest --cov=pb_spec --cov-report=term-missing
+    ./scripts/run-mutation-diff.sh
+
+# Full verification gate: strict TDD tests + coverage + incremental mutation
+verify: coverage mutation
 
 # Build and publish to PyPI
 publish:

@@ -8,9 +8,11 @@ Prose is minimal; types and tests are the contract.
 ```
 specs/<spec-dir>/
 ├── design.md          # 5 required + 5 optional sections
-├── tasks.md           # 4-field task blocks
-└── features/*.feature # Gherkin scenarios (source of truth)
+└── tasks.md           # 4-field task blocks
 ```
+
+No Gherkin/BDD artifacts. Behavior is captured by the `TDD & Mutation Testing Strategy`
+section (type contracts, invariants, test matrix) and by the pytest suite itself.
 
 ## Type Contracts
 
@@ -23,7 +25,7 @@ DESIGN_REQUIRED: list[str] = [
     "Summary",
     "Approach",
     "Architecture Decisions",
-    "BDD/TDD Strategy",
+    "TDD & Mutation Testing Strategy",
     "Verification",
 ]
 DESIGN_OPTIONAL: list[str] = [
@@ -34,6 +36,10 @@ DESIGN_OPTIONAL: list[str] = [
     "Implementation Plan",
 ]
 ```
+
+`TDD & Mutation Testing Strategy` must state: type contracts (input/output shapes),
+invariants, boundary conditions, the test matrix (unit + hypothesis property tests),
+and the mutation score target (default ≥ 85%).
 
 ### Task Block
 
@@ -49,7 +55,7 @@ TASK_REQUIRED_FIELDS: list[str] = [
     "Context:",
     "Verification:",
     "Status:",
-    "Scenario Coverage:",
+    "Test Coverage:",
 ]
 ALLOWED_STATUSES: frozenset[str] = {
     "🔴 TODO",
@@ -62,7 +68,8 @@ ALLOWED_STATUSES: frozenset[str] = {
 ```
 
 Legacy `TODO` (without emoji) and `IN PROGRESS` (with space) are accepted on input,
-normalized before execution.
+normalized before execution. `Test Coverage:` lists the pytest test paths that prove
+the task, or literal `N/A` for infrastructure-only tasks.
 
 ### Block Packets
 
@@ -127,11 +134,26 @@ def test_design_requires_5_sections():
     assert any(e.severity == ErrorSeverity.HIGH and "Summary" in e.message for e in result.errors)
 
 
+def test_design_requires_tdd_mutation_strategy():
+    """design.md missing 'TDD & Mutation Testing Strategy' -> error."""
+    result = validate_design_structure(
+        spec_dir_with_missing_section("TDD & Mutation Testing Strategy")
+    )
+    assert not result.is_valid
+
+
 def test_task_block_requires_4_fields():
     """Task block missing any of 4 fields -> error."""
     result = validate_tasks_structure(spec_dir_with_missing_field("Context:"))
     assert not result.is_valid
     assert any("Context:" in e.message for e in result.errors)
+
+
+def test_task_block_requires_test_coverage():
+    """Task block missing 'Test Coverage:' -> error."""
+    result = validate_tasks_structure(spec_dir_with_missing_field("Test Coverage:"))
+    assert not result.is_valid
+    assert any("Test Coverage:" in e.message for e in result.errors)
 
 
 def test_task_block_requires_checkbox():
@@ -162,13 +184,6 @@ def test_empty_placeholder_rejected():
     assert any("empty" in e.message for e in result.errors)
 
 
-def test_features_require_at_least_one_scenario():
-    """features/ with no .feature file -> HIGH error."""
-    result = validate_features_directory(spec_dir_without_features())
-    assert not result.is_valid
-    assert any(e.severity == ErrorSeverity.HIGH for e in result.errors)
-
-
 def test_build_blocked_requires_3_fields():
     """Build Blocked missing any field -> error."""
     result = validate_contract_blocks(content_missing_field("Impact"))
@@ -181,8 +196,8 @@ def test_dcr_requires_3_fields():
     assert any("Reason" in e for e in result)
 
 
-def test_na_scenario_coverage_valid():
-    """Literal 'N/A' in Scenario Coverage is valid; no reason required."""
+def test_na_test_coverage_valid():
+    """Literal 'N/A' in Test Coverage is valid for infrastructure tasks."""
     result = validate_tasks_structure(spec_dir_with_na_coverage())
     assert result.is_valid
 
@@ -203,6 +218,15 @@ class CLIParams:
     specs_dir: Path = Path("specs/")
 ```
 
+CLI commands:
+
+| Command | Behavior | Exit 0 when |
+|---|---|---|
+| `pb-spec validate --plan` | validate spec structure | all checks pass |
+| `pb-spec test [--parallel/--serial] [--coverage]` | run pytest (xdist) | suite green (+ coverage ≥ 80 with `--coverage`) |
+| `pb-spec mutate [--against REF] [--threshold N]` | incremental mutation on changed files | score ≥ threshold (default 85) |
+| `pb-spec verify [--against REF]` | tests + coverage + mutation gate | all three pass |
+
 ## Environment Variables
 
 | Variable | Default | Scope |
@@ -217,3 +241,5 @@ class CLIParams:
 2. Non-zero exit on CRITICAL or HIGH errors.
 3. `rumdl` optional: skip gracefully if absent.
 4. `contract_sections.toml` is the single config source; project overrides allowed.
+5. No BDD artifacts (`.feature`, step definitions, behave) anywhere in the workflow.
+6. A surviving mutant on changed code is a test failure, not a warning.

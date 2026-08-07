@@ -104,7 +104,7 @@ Mark deferrals: Use `ponytail:` comments for deliberate simplifications with kno
 - Don't change the pb-spec workflow contract
 - Don't remove existing validation, error handling, or security requirements
 - Don't add dependencies
-- Don't change the BDD/TDD cycle structure
+- Don't change the TDD + mutation-testing cycle structure
 - Don't change the Generator/Evaluator isolation model
 
 ## Architecture Decisions
@@ -196,25 +196,24 @@ Mark deferrals: Use `ponytail:` comments for deliberate simplifications with kno
 
 - **[REQ-10]:** Where a task fails during parallel execution, pb-build *shall* continue other independent tasks and apply the standard 3-failure retry protocol to the failed task.
 
-## BDD/TDD Strategy
+## TDD & Mutation Testing Strategy
 
 - **Primary Language:** Markdown (skill files)
 - **Verification:** grep for key patterns, manual review for behavior preservation, test execution for functional correctness
-- **Feature Files:** `specs/2026-07-08-01-kiro-inspired-improvements/features/kiro-improvements.feature`
-- **TDD inner-loop:** Red → Green → Refactor; grep-based checks act as the regression gate for skill-file edits.
+- **TDD inner-loop:** Red → Green → Refactor → Mutate; grep-based checks act as the regression gate for skill-file edits.
 
-### BDD Scenario Inventory
+### Test Matrix
 
-| Feature File | Scenario Name | Business Outcome | Task Coverage |
+| Behavior | Test Case | Business Outcome | Task Coverage |
 | :--- | :--- | :--- | :--- |
-| `features/kiro-improvements.feature` | pb-plan catches ambiguous requirements | Ambiguity surfaced as clarifying question | Task 1.1 |
-| `features/kiro-improvements.feature` | pb-plan detects inconsistent requirements | Conflict surfaced as clarifying question | Task 1.1 |
-| `features/kiro-improvements.feature` | pb-plan detects incomplete requirements | Missing error paths identified | Task 1.2 |
-| `features/kiro-improvements.feature` | pb-plan enforces EARS quality | Requirements rewritten to be testable | Task 1.2 |
-| `features/kiro-improvements.feature` | pb-build executes independent tasks in parallel | Concurrent execution with isolation | Task 2.1 |
-| `features/kiro-improvements.feature` | pb-build respects dependency ordering | Dependent tasks wait for prerequisites | Task 2.1 |
-| `features/kiro-improvements.feature` | pb-brainstorming fast-tracks features | Quick plan with targeted questions | Task 3.1 |
-| `features/kiro-improvements.feature` | pb-brainstorming selects clarification targets | Questions cover 4 dimensions | Task 3.1 |
+| pb-plan catches ambiguous requirements | `grep -c "EARS quality" skills/pb-plan/SKILL.md` | Ambiguity surfaced as clarifying question | Task 1.1 |
+| pb-plan detects inconsistent requirements | `grep -c "abductive" skills/pb-plan/SKILL.md` | Conflict surfaced as clarifying question | Task 1.1 |
+| pb-plan detects incomplete requirements | `grep -c "abductive" skills/pb-plan/SKILL.md` | Missing error paths identified | Task 1.2 |
+| pb-plan enforces EARS quality | `grep -c "EARS quality" skills/pb-plan/SKILL.md` | Requirements rewritten to be testable | Task 1.2 |
+| pb-build executes independent tasks in parallel | `grep -c "Wave" skills/pb-build/SKILL.md` | Concurrent execution with isolation | Task 2.1 |
+| pb-build respects dependency ordering | `grep -c "dependency graph" skills/pb-build/SKILL.md` | Dependent tasks wait for prerequisites | Task 2.1 |
+| pb-brainstorming fast-tracks features | `grep -c "quick plan" skills/pb-brainstorming/SKILL.md` | Quick plan with targeted questions | Task 3.1 |
+| pb-brainstorming selects clarification targets | `grep -c "quick plan" skills/pb-brainstorming/SKILL.md` | Questions cover 4 dimensions | Task 3.1 |
 
 ## Verification
 

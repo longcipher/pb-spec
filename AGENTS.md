@@ -3,20 +3,21 @@
 ## Stack
 
 - Python 3.14+, `uv` for all commands (`uv run`, `uv add`, `uv sync --all-groups`)
-- Runtime dep: `click`. Dev deps: `ruff`, `ty`, `pytest`, `behave`.
+- Runtime dep: `click`. Dev deps: `ruff`, `ty`, `pytest`, `pytest-xdist`, `pytest-cov`, `hypothesis`, `mutmut`.
 - Never edit `pyproject.toml` versions by hand — use `uv add`.
 - CLI output via `click.echo` (see `src/pb_spec/output.py`); no `print()`.
 
 ## Quality Gates
 
 ```bash
-just format && just lint && just test && just bdd && just test-all
+just format && just lint && just type-check && just verify
 ```
 
 - `ruff check` + `ruff format` — zero errors.
 - `ty check` — zero errors.
-- `pytest` — all pass.
-- `behave` — all scenarios pass.
+- `pytest` — all pass (parallel via `just test-fast`; coverage gate via `just coverage`).
+- Incremental mutation testing (`just mutation`) — mutation score ≥ 85% on changed code; surviving mutants on new logic are test failures.
+- Hypothesis property tests run in the normal suite (`tests/test_parser_property.py`).
 - Type annotations required on all public functions. Use `from __future__ import annotations`, `X | None` syntax.
 
 ## Conventions
@@ -30,9 +31,8 @@ just format && just lint && just test && just bdd && just test-all
 
 ## Workflow
 
-- BDD outside-in: Gherkin in `features/` → `pytest` inner loop → implementation.
-- Step definitions thin; reuse domain modules from `src/pb_spec/`.
-- Tests under `tests/` mirroring source structure. BDD under `features/`.
+- Strict TDD: type contracts in `design.md` → **Red** (failing pytest, incl. hypothesis property tests) → **Green** (minimum implementation) → **Refactor** → **Mutate** (incremental mutation testing on changed files).
+- Tests under `tests/` mirroring source structure.
 - Fix root cause, never suppress warnings or patch symptoms.
 
 ## Git
@@ -45,8 +45,7 @@ just format && just lint && just test && just bdd && just test-all
 
 Spec-driven workflow lives in `specs/<spec-dir>/`:
 
-- `features/*.feature` — source of truth (Gherkin)
-- `design.md` — 5 required + optional sections
-- `tasks.md` — 4-field blocks (Context / Verification / Status / Scenario Coverage)
+- `design.md` — 5 required + optional sections, incl. `TDD & Mutation Testing Strategy`
+- `tasks.md` — 4-field blocks (Context / Verification / Status / Test Coverage)
 
 See `docs/contract.md` for the executable type contract.

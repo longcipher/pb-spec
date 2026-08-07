@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 
 from pb_spec.exceptions import FileReadError
@@ -21,8 +20,6 @@ from pb_spec.validation.result import (
     ValidationResult,
 )
 from pb_spec.validation.scanner import CodeScanner, IssueType, ScanResult
-
-logger = logging.getLogger(__name__)
 
 
 def _scan_result_to_errors(scan_result: ScanResult) -> list[ValidationError]:
@@ -150,31 +147,6 @@ def _validate_codebase_scan(root_dir: Path | str = ".") -> list[ValidationError]
     return errors
 
 
-def _validate_feature_scenarios(spec_dir: Path) -> list[ValidationError]:
-    """Validate that .feature files contain at least one Scenario."""
-    errors: list[ValidationError] = []
-    features_dir = spec_dir / "features"
-    if not features_dir.exists():
-        return errors
-
-    for feature_file in features_dir.glob("*.feature"):
-        try:
-            content = read_file_content(feature_file)
-        except FileReadError as e:
-            logger.warning("Cannot read %s: %s", feature_file, e)
-            continue
-        if "Scenario" not in content:
-            errors.append(
-                ValidationError(
-                    message=f"{feature_file.name} contains no Scenario definition",
-                    file_path=str(feature_file),
-                    severity=ErrorSeverity.HIGH,
-                )
-            )
-
-    return errors
-
-
 def validate_build(spec_dir: Path) -> ValidationResult:
     """Validate pb-build task completion (Orchestrator level).
 
@@ -217,8 +189,6 @@ def validate_build(spec_dir: Path) -> ValidationResult:
     # Determine project root: spec_dir is typically specs/xxx, so root is two levels up
     project_root = spec_dir.parent.parent if spec_dir.parent.name == "specs" else spec_dir.parent
     errors.extend(_validate_codebase_scan(root_dir=project_root))
-
-    errors.extend(_validate_feature_scenarios(spec_dir))
 
     return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings)
 

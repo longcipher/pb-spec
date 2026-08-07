@@ -45,7 +45,7 @@ Both intents matter. Do not blindly prefer "ours" or "theirs". Understand what e
 - All tests pass: `just test` (or equivalent).
 - Lint passes: `just lint`.
 - Type-check passes: `just type-check`.
-- BDD passes: `just bdd`.
+- Mutation gate passes: `just mutation` (or `pb-spec mutate`).
 - Working tree clean: `git status` shows no uncommitted changes.
 - Branch is up to date with remote (if applicable): `git pull --rebase`.
 

@@ -8,17 +8,19 @@
 
 ![pb-spec](https://socialify.git.ci/longcipher/pb-spec/image?font=Source+Code+Pro&language=1&name=1&owner=1&pattern=Circuit+Board&theme=Auto)
 
-pb-spec is a set of [Agent Skills Specification](https://agentskills.io) compliant AI Coding assistant workflow skill packages. It provides a structured process — `plan` → `build` — that turns natural-language requirements into well-architected, BDD-driven, tested code.
+pb-spec is a set of [Agent Skills Specification](https://agentskills.io) compliant AI Coding assistant workflow skill packages. It provides a structured process — `plan` → `build` → `verify` — that turns natural-language requirements into well-architected, strictly tested code via **TDD + incremental mutation testing**.
 
 ## Design Philosophy
 
-pb-spec implements the **Plan-Build pattern**: a Planner Agent generates design specs, and a Builder Agent executes code with verification. The core innovation is making `.feature` files the **absolute source of truth** — all design and tasks derive FROM scenarios, not the other way around.
+pb-spec implements the **Plan-Build pattern**: a Planner Agent generates design specs, and a Builder Agent executes code with verification. The core loop is **strict TDD (Red → Green → Refactor → Mutate)**: type contracts and test matrices are the source of truth, and **incremental mutation testing** proves the tests actually kill bugs — no pseudo-green "step-matched" tests.
 
 ### Core Principles
 
 | Principle | Description |
 |---|---|
-| **BDD-First** | Feature scenarios are the source of truth. Design and tasks derive FROM scenarios. |
+| **Type-First** | Design.md defines input/output type contracts (dataclasses/Pydantic), invariants, boundary conditions, and error codes. |
+| **TDD-First** | Every task starts with a failing test (unit + hypothesis property tests). No production code without a failing test first. |
+| **Mutation-Gated** | Incremental mutation testing on changed files; surviving mutants are treated as test failures. |
 | **RFC 2119 Constraints** | Architectural constraints use MUST/SHOULD/MAY keywords — binding for the Builder. |
 | **DAG Execution** | Tasks include DependsOn metadata for parallel execution of independent tasks. |
 | **Adaptive Steering** | Tasks with Complexity=High route to reasoning models; Low to fast models. |
@@ -48,8 +50,8 @@ npx skills add longcipher/pb-spec --skill pb-improve
 
 ```text
 /pb-init            → audit project, write AGENTS.md snapshot
-/pb-plan "<req>"    → generate design.md, tasks.md, features/*.feature
-/pb-build "<feat>"  → execute via Generator/Evaluator with BDD+TDD loops
+/pb-plan "<req>"    → generate design.md, tasks.md
+/pb-build "<feat>"  → execute via Generator/Evaluator with strict TDD + mutation loops
 /pb-refine "<feat>" → (optional) iterate specs on Build Blocked / DCR
 /pb-improve         → audit codebase, generate prioritized specs
 ```
@@ -61,8 +63,8 @@ npx skills add longcipher/pb-spec --skill pb-improve
 | Skill | Trigger | Output | Description |
 |---|---|---|---|
 | `pb-init` | `/pb-init` | `AGENTS.md` | Audit repo and update managed snapshot block |
-| `pb-plan` | `/pb-plan <requirement>` | `specs/<spec>/design.md` + `tasks.md` + `features/*.feature` | Design + Gherkin scenarios + ordered task breakdown with RFC 2119 constraints and DAG metadata |
-| `pb-build` | `/pb-build <feature>` | Code + tests | BDD+TDD via Generator/Evaluator with Escalation protocol and Wave-Based parallel execution (4 Invariants) |
+| `pb-plan` | `/pb-plan <requirement>` | `specs/<spec>/design.md` + `tasks.md` | Design + TDD test matrix + ordered task breakdown with RFC 2119 constraints and DAG metadata |
+| `pb-build` | `/pb-build <feature>` | Code + tests | Strict TDD + mutation testing via Generator/Evaluator with Escalation protocol and Wave-Based parallel execution (4 Invariants) |
 | `pb-refine` | `/pb-refine <feature>` | Revised spec files | Apply feedback or Design Change Requests |
 | `pb-improve` | `/pb-improve` | `specs/<spec>/` + `specs/context.md` | Codebase audit → prioritized findings → pb-plan-compatible specs |
 | `pb-brainstorming` | Before creative work | Design exploration | Explores intent, requirements, and design before implementation |
@@ -114,18 +116,17 @@ Produces a complete feature spec:
 ```text
 specs/<YYYY-MM-DD-NO-feature-name>/
 ├── design.md    # Scalable template: 5 required + 5 optional sections
-├── tasks.md     # 4-field task blocks with DAG metadata
-└── features/    # Gherkin acceptance artifacts (Source of Truth)
+└── tasks.md     # 4-field task blocks with DAG metadata
 ```
 
 Key capabilities:
 
-- **BDD-First**: Feature scenarios written FIRST; design and tasks derive FROM scenarios
-- **Scalable design template**: 5 required sections (`Summary`, `Approach`, `Architecture Decisions`, `BDD/TDD Strategy`, `Verification`) + 5 optional sections (`Requirements & Goals`, `Architecture Overview`, `Data Models`, `Interface Contracts`, `Implementation Plan`)
+- **Type-First**: `design.md` carries a `TDD & Mutation Testing Strategy` section with type contracts, invariants, boundary conditions, and the TDD test matrix (unit + property tests)
+- **Scalable design template**: 5 required sections (`Summary`, `Approach`, `Architecture Decisions`, `TDD & Mutation Testing Strategy`, `Verification`) + 5 optional sections
 - **RFC 2119 Constraints**: `§Architectural Constraints` section with MUST/SHOULD/MAY keywords — binding for Builder
-- **4-field task schema**: `Context:`, `Verification:`, `Status:`, `Scenario Coverage:`
+- **4-field task schema**: `Context:`, `Verification:`, `Status:`, `Test Coverage:`
 - **DAG-Enabled Tasks**: `TaskID`, `DependsOn`, `Complexity` metadata
-- **Behavior Traceability Matrix**: Every design component maps to a Feature scenario (no scenario = remove from design)
+- **Mutation Strategy**: every design defines a mutation score target (default ≥ 85%) and tooling (`mutmut` / `cargo-mutants` / `stryker`)
 
 ### 3. `/pb-refine <feature-name>` — Design Iteration (Optional)
 
@@ -145,7 +146,7 @@ On 2nd FAIL → Escalate to stronger model for root-cause analysis
 On 3rd FAIL → DCR packet to /pb-refine
 ```
 
-Key principles: BDD-First, RFC 2119 constraints BINDING, fresh context per subagent (Evaluator never inherits Generator context), escalation over thrashing, interactive (default) or `--auto` mode.
+Key principles: TDD-First (Red → Green → Refactor → **Mutate**), RFC 2119 constraints BINDING, fresh context per subagent (Evaluator never inherits Generator context), escalation over thrashing, interactive (default) or `--auto` mode.
 
 ### 5. `/pb-improve` — Codebase Audit & Plan Generation
 
@@ -163,17 +164,38 @@ Audits any codebase and writes pb-plan-compatible specs for other agents to exec
 /pb-improve reconcile              refresh the backlog: verify, unblock, retire
 ```
 
-## BDD-First Integration
+## Strict TDD + Mutation Testing
 
-The core innovation: `.feature` files are the **absolute source of truth**. All design and tasks derive FROM scenarios.
+The core loop replaces behavior-driven layers with a single, strict, typed pipeline:
 
 ```text
-features/*.feature (Source of Truth) → design.md → tasks.md → /pb-build (RED→GREEN→REFACTOR)
+specs/design.md (Type Contracts + Test Matrix) → tasks.md → /pb-build (RED → GREEN → REFACTOR → MUTATE)
 ```
 
-### RFC 2119 Constraints
+### The Four-Phase Loop
 
-`design.md` carries a `§Architectural Constraints` section with MUST/SHOULD/MAY keywords — binding for the Builder. Example: `[C-01] Database interactions MUST use the existing ORM layer; raw SQL MUST NOT be introduced.`
+1. **RED** — Write a failing unit/integration test. For parsers and pure logic, add **hypothesis property tests** (randomized inputs, invariants). Verify it fails.
+2. **GREEN** — Write the minimum implementation that makes it pass.
+3. **REFACTOR** — Clean up; re-run the full suite.
+4. **MUTATE** — Run incremental mutation testing on the changed files. If any mutant survives, the test suite is not strict enough — strengthen assertions (boundary checks, exact values) until all mutants on changed code are killed.
+
+```bash
+# The whole gate in one command
+pb-spec verify
+
+# Or individually
+pb-spec test           # pytest, parallel (-n auto), optional --coverage
+pb-spec mutate         # incremental mutation on git-changed files
+```
+
+### CLI Commands
+
+| Command | Purpose |
+|---|---|
+| `pb-spec validate --plan/--build/--task` | Validate workflow artifacts and code quality |
+| `pb-spec test` | Run the strict TDD suite (pytest-xdist parallel; `--coverage` for the coverage gate) |
+| `pb-spec mutate` | Run incremental mutation testing on changed files (mutmut / cargo-mutants / stryker) |
+| `pb-spec verify` | One-command gate: tests + coverage + mutation kill-rate check |
 
 ### 4-Field Task Schema
 
@@ -182,9 +204,9 @@ features/*.feature (Source of Truth) → design.md → tasks.md → /pb-build (R
 
 - **TaskID:** `T1` - **DependsOn:** `None` - **Complexity:** `High`
 - **Context:** Implement JWT auth guard for login endpoint. Key files: src/auth/jwt.ts, src/routes/login.ts.
-- **Verification:** `behave --tags=@login_success` exits 0; `pytest tests/auth/test_jwt.py` all pass.
+- **Verification:** `pytest tests/auth/test_jwt.py -q` exits 0; `pb-spec mutate --against HEAD` score ≥ 85%.
 - **Status:** 🔴 TODO
-- **Scenario Coverage:** @auth-login-success, @auth-login-invalid-credentials
+- **Test Coverage:** tests/auth/test_jwt.py::test_valid_token, tests/auth/test_jwt.py::test_expired_token
 ```
 
 | Field | Required | Description |
@@ -192,11 +214,11 @@ features/*.feature (Source of Truth) → design.md → tasks.md → /pb-build (R
 | `Context:` | Yes | Why this task exists, what to do, key files, dependencies |
 | `Verification:` | Yes | Exact command(s) + expected output proving task is done |
 | `Status:` | Yes | 🔴 TODO / 🟡 IN_PROGRESS / 🟢 DONE / 🔄 DCR / ⛔ OBSOLETE |
-| `Scenario Coverage:` | Yes | @scenario-id list from .feature files, or `N/A` for non-BDD tasks |
+| `Test Coverage:` | Yes | pytest test paths proving the task, or `N/A` for infrastructure-only tasks |
 
 ### Build Blocked / DCR Packets
 
-Both `🛑 Build Blocked` and `🔄 Design Change Request` packets carry 3 fields: `Reason` (one sentence), `Requested Change` (one paragraph), `Impact` (affected task IDs and scenario tags).
+Both `🛑 Build Blocked` and `🔄 Design Change Request` packets carry 3 fields: `Reason` (one sentence), `Requested Change` (one paragraph), `Impact` (affected task IDs).
 
 ### Escalation Protocol
 
@@ -209,7 +231,7 @@ Both `🛑 Build Blocked` and `🔄 Design Change Request` packets carry 3 field
 ## Verification
 
 ```bash
-just format && just lint && just test && just bdd && just test-all
+just format && just lint && just type-check && just verify
 ```
 
 ## Supported AI Tools

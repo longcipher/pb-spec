@@ -23,7 +23,7 @@ Three improvements ported from Kiro's spec-driven workflow: (1) requirements ana
 Context: Kiro's requirements analysis validates 5 quality properties: testable, solution-free, unambiguous, consistent, complete. pb-plan currently extracts requirements but doesn't validate their quality. This task adds the quality checklist as a mandatory step after requirement extraction. Preserve existing behavior — add new step without changing existing workflow.
 Verification: `grep -c "EARS quality" skills/pb-plan/SKILL.md` ≥ 2 (returns 5)
 Status: 🟢 DONE
-Scenario Coverage: features/kiro-improvements.feature — pb-plan catches ambiguous requirements, pb-plan detects inconsistent requirements
+Test Coverage: N/A (doc-editing task; verified by grep)
 
 - [x] Step 1: Read `skills/pb-plan/SKILL.md` and identify the insertion point between Step 1 (Parse Requirements) and Step 2 (Collect Project Context)
 - [x] Step 2: Add "Step 1.5: Requirements Quality Analysis" section with:
@@ -39,7 +39,7 @@ Scenario Coverage: features/kiro-improvements.feature — pb-plan catches ambigu
 Context: Kiro's refinement works backwards from success state to identify missing error paths. pb-plan currently extracts requirements from user input but doesn't proactively identify gaps. This task adds abductive reasoning as part of the requirements analysis step. Preserve existing behavior — add refinement patterns without changing extraction.
 Verification: `grep -c "abductive" skills/pb-plan/SKILL.md` ≥ 1 (returns 3)
 Status: 🟢 DONE
-Scenario Coverage: features/kiro-improvements.feature — pb-plan detects incomplete requirements, pb-plan enforces EARS quality
+Test Coverage: N/A (doc-editing task; verified by grep)
 
 - [x] Step 1: Read `skills/pb-plan/SKILL.md` Step 1.5 section added by Task 1.1
 - [x] Step 2: Add abductive refinement pattern to Step 1.5:
@@ -63,7 +63,7 @@ Scenario Coverage: features/kiro-improvements.feature — pb-plan detects incomp
 Context: pb-build currently runs tasks sequentially ("No parallelism" at line 544). Tasks already have DependsOn metadata. Kiro's parallel execution builds a dependency graph and runs independent tasks concurrently in waves. This task adds wave-based parallelism. Preserve existing sequential fallback — parallelism is additive, sequential remains default when DependsOn is absent.
 Verification: `grep -c "Wave" skills/pb-build/SKILL.md` ≥ 3 (returns 6)
 Status: 🟢 DONE
-Scenario Coverage: features/kiro-improvements.feature — pb-build executes independent tasks in parallel, pb-build respects dependency ordering
+Test Coverage: N/A (doc-editing task; verified by grep)
 
 - [x] Step 1: Read `skills/pb-build/SKILL.md` and identify Step 3 (Execute Tasks Sequentially)
 - [x] Step 2: Add "Step 3a: Build Dependency Graph" before task execution:
@@ -92,7 +92,7 @@ Scenario Coverage: features/kiro-improvements.feature — pb-build executes inde
 Context: Kiro's quick plan mode fast-tracks spec generation for well-understood features by asking targeted questions upfront and generating all artifacts in one pass. pb-brainstorming currently follows a multi-step approval flow. This task adds a fast-track path. Preserve existing standard flow — quick plan is additive, triggered by scope detection.
 Verification: `grep -c "quick plan" skills/pb-brainstorming/SKILL.md` ≥ 2 (returns 7)
 Status: 🟢 DONE
-Scenario Coverage: features/kiro-improvements.feature — pb-brainstorming fast-tracks features, pb-brainstorming selects clarification targets
+Test Coverage: N/A (doc-editing task; verified by grep)
 
 - [x] Step 1: Read `skills/pb-brainstorming/SKILL.md` and identify the scope assessment point after Step 1
 - [x] Step 2: Add scope complexity detection after "Explore project context":
@@ -116,7 +116,7 @@ Scenario Coverage: features/kiro-improvements.feature — pb-brainstorming fast-
 Context: The design template needs a "Requirements Quality Audit" subsection. The tasks template needs an optional `Wave:` field for explicit wave assignment. Preserve existing template structure — add new fields, don't remove existing ones.
 Verification: `grep -c "Quality Audit" skills/pb-plan/references/design_template.md` ≥ 1 (returns 1)
 Status: 🟢 DONE
-Scenario Coverage: N/A
+Test Coverage: N/A (doc-editing task; verified by grep)
 
 - [x] Step 1: Read `skills/pb-plan/references/design_template.md`
 - [x] Step 2: Add "Requirements Quality Audit" subsection under "Source Inputs & Normalization" (after §2.3):

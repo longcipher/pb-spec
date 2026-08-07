@@ -14,9 +14,35 @@ jobs:
         python-version: ["3.14"]
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
       - uses: extractions/setup-just@v2
       - run: uv sync
       - run: just ci
+
+  mutation:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.14"]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: extractions/setup-just@v2
+      - run: uv sync
+      - name: Incremental mutation gate (changed files vs base)
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            BASE_REF="origin/${{ github.base_ref }}"
+          else
+            BASE_REF="origin/${{ github.ref_name }}"
+          fi
+          git fetch origin --depth=1 "$BASE_REF"
+          ./scripts/run-mutation-diff.sh --against "$BASE_REF"

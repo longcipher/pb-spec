@@ -1,6 +1,6 @@
 ---
 name: pb-build
-description: Execute specs from specs/<spec-dir>/ via Generator/Evaluator dual-agent loop with Wave-Based parallel execution. Drives BDD+TDD inner loop. Escalates to DCR after 3 failures.
+description: Execute specs from specs/<spec-dir>/ via Generator/Evaluator dual-agent loop with Wave-Based parallel execution. Drives a strict TDD + mutation-testing inner loop. Escalates to DCR after 3 failures.
 ---
 
 # pb-build
@@ -13,7 +13,7 @@ Execute the spec task-by-task. Spec is source of truth.
 
 ### 1. Load Spec & Resolve Task DAG
 
-- Load `specs/<spec-dir>/design.md`, `tasks.md`, `features/*.feature`.
+- Load `specs/<spec-dir>/design.md` and `tasks.md`.
 - Resolve `<spec-dir>` from actual directory names under `specs/`. Never guess.
 - Parse `### Task X.Y:` blocks. Read 4 fields per task (see `docs/contract.md`).
 - Build dependency graph from `DependsOn`. Detect cycles → STOP.
@@ -23,10 +23,10 @@ Execute the spec task-by-task. Spec is source of truth.
 
 Per task in the Wave:
 
-1. Dispatch **Generator** subagent with minimal context: task description, relevant design sections, `.feature` scenarios, `AGENTS.md`. No raw logs or full design.md.
-2. Generator follows TDD inner loop (see I1). Outputs: code + fresh verification evidence.
+1. Dispatch **Generator** subagent with minimal context: task description, relevant design sections, the task's `Test Coverage` entries, `AGENTS.md`. No raw logs or full design.md.
+2. Generator follows the strict TDD inner loop (see I1). Outputs: code + fresh verification evidence.
 3. Generator signals `READY_FOR_EVAL: Task X.Y`.
-4. **Evaluator** subagent (fresh context, no Generator transcript) re-runs verification, inspects `git diff`, probes edge cases, re-runs BDD/tests.
+4. **Evaluator** subagent (fresh context, no Generator transcript) re-runs verification, inspects `git diff`, probes edge cases, re-runs tests and mutation checks.
 5. Evaluator PASS → mark 🟢 DONE. Reject → Generator retries (see Step 3).
 
 Wave isolation: tasks in same Wave are independent. A failure in one doesn't abort others. Next Wave starts only after all current Wave tasks DONE or exhausted retries.
@@ -56,12 +56,12 @@ Task X.Y: DCR — <one-line reason>
 
 ## Iron Laws
 
-### I1: TDD (+ Mutation Testing)
+### I1: Strict TDD + Mutation Testing
 
 No production code without a failing test first. The full cycle is
 **Red → Green → Refactor → Mutate**:
 
-1. **Red:** Write failing test → verify fail.
+1. **Red:** Write failing test (unit + hypothesis property tests where applicable) → verify fail.
 2. **Green:** Implement minimum code → verify pass.
 3. **Refactor:** Clean up → verify pass.
 4. **Mutate:** Run `./scripts/run-mutation-diff.sh` on changed files.
@@ -116,4 +116,4 @@ See `docs/contract.md` for Build Blocked and DCR field requirements (3 fields ea
 
 name: pb-build
 
-## description: Execute specs from specs/<spec-dir>/ via Generator/Evaluator dual-agent loop with Wave-Based parallel execution. Drives BDD+TDD inner loop. Escalates to DCR after 3 failures
+## description: Execute specs from specs/<spec-dir>/ via Generator/Evaluator dual-agent loop with Wave-Based parallel execution. Drives a strict TDD + mutation-testing inner loop. Escalates to DCR after 3 failures

@@ -1,6 +1,6 @@
 ---
 name: pb-improve
-description: Survey any codebase as a senior advisor and produce prioritized, pb-plan-compatible specs (design.md, tasks.md, features/*.feature) in specs/ for execution via /pb-build. Strictly read-only on source code — never implements, fixes, or refactors anything itself. Use when asked to audit a codebase, find improvement opportunities (bugs, security, performance, test coverage, tech debt, migrations, DX), suggest features or where to take the project next (roadmap, product direction), or generate implementation specs for another agent to build.
+description: Survey any codebase as a senior advisor and produce prioritized, pb-plan-compatible specs (design.md, tasks.md) in specs/ for execution via /pb-build. Strictly read-only on source code — never implements, fixes, or refactors anything itself. Use when asked to audit a codebase, find improvement opportunities (bugs, security, performance, test coverage, tech debt, migrations, DX), suggest features or where to take the project next (roadmap, product direction), or generate implementation specs for another agent to build.
 ---
 
 # pb-improve
@@ -44,7 +44,7 @@ Present vetted findings table ordered by leverage (impact ÷ effort, weighted by
 
 Ask which findings to turn into specs (default: top 3-5). Surface dependency ordering. If non-interactive, write specs for top 3-5 and record in `specs/README.md`.
 
-### Phase 4 — Write specs (BDD-First, single consolidated)
+### Phase 4 — Write specs (TDD-First, single consolidated)
 
 Consolidate ALL selected findings into ONE spec directory:
 
@@ -52,8 +52,7 @@ Consolidate ALL selected findings into ONE spec directory:
 specs/
   README.md              ← index: execution order, findings, status
   YYYY-MM-DD-01-<slug>/
-    features/            ← WRITE FIRST (source of truth)
-    design.md            ← all findings consolidated
+    design.md            ← all findings consolidated (TDD & Mutation Testing Strategy first)
     tasks.md             ← tasks numbered sequentially across findings
 ```
 
@@ -63,9 +62,9 @@ Write each spec for the weakest plausible builder: all context inlined, explicit
 
 #### Spec artifacts
 
-- **Feature files FIRST** — Gherkin scenarios, one file per finding category. Independent, deterministic, verifiable. Tags: `@finding-N`, `@category`, `@priority-high`.
+- **Test matrix FIRST** — for each finding, define the `TDD & Mutation Testing Strategy` section: type contracts, invariants, boundary conditions, the pytest test paths (unit + hypothesis property tests), and the mutation score target. Deterministic and verifiable.
 - **design.md** — single scalable template (see `docs/contract.md`). One section per finding. Include ponytail ladder in Approach. Include **Mutation Testing Strategy** section defining score targets, target files, and tooling.
-- **tasks.md** — 4-field blocks (see `docs/contract.md`). RED→GREEN→REFACTOR→MUTATE per BDD+TDD task. Sequential numbering across findings.
+- **tasks.md** — 4-field blocks (see `docs/contract.md`). RED→GREEN→REFACTOR→MUTATE per task. Sequential numbering across findings.
 
 Finish with `specs/README.md` index entry.
 
@@ -89,4 +88,4 @@ Finish with `specs/README.md` index entry.
 
 name: pb-improve
 
-## description: Survey any codebase as a senior advisor and produce prioritized, pb-plan-compatible specs (design.md, tasks.md, features/*.feature) in specs/ for execution via /pb-build. Strictly read-only on source code — never implements, fixes, or refactors anything itself. Use when asked to audit a codebase, find improvement opportunities (bugs, security, performance, test coverage, tech debt, migrations, DX), suggest features or where to take the project next (roadmap, product direction), or generate implementation specs for another agent to build
+## description: Survey any codebase as a senior advisor and produce prioritized, pb-plan-compatible specs (design.md, tasks.md) in specs/ for execution via /pb-build. Strictly read-only on source code — never implements, fixes, or refactors anything itself. Use when asked to audit a codebase, find improvement opportunities (bugs, security, performance, test coverage, tech debt, migrations, DX), suggest features or where to take the project next (roadmap, product direction), or generate implementation specs for another agent to build

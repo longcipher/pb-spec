@@ -56,7 +56,7 @@ The goal is not a percentage — it's *which untested code is dangerous*.
 - Existing test quality: tests that assert nothing meaningful, heavy mocking that tests the mocks, snapshot tests nobody reads, flaky patterns (real timers, real network, order dependence).
 - Missing test layers: unit-only suites with zero integration coverage on API boundaries, or the inverse (slow E2E for what a unit test would catch).
 - Verification infrastructure: is there a one-command way to know the codebase works? If not, that's finding #1 and a prerequisite plan for any risky change.
-- BDD coverage: check `features/` for Gherkin scenarios — are the critical paths covered by BDD scenarios? Are step definitions thin and reusing domain modules?
+- TDD discipline: were tests written before implementation? Check for tautological tests, tests that only assert "no exception thrown", missing boundary-value cases, and code with zero tests on critical paths. No property tests for parsers/pure logic is a gap.
 
 ## 5. Mutation Testing
 
