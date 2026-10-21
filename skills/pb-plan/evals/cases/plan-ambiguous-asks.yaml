@@ -1,0 +1,41 @@
+id: plan-ambiguous-asks
+title: Genuinely incomparable, irreversible choice triggers ask-and-wait
+description: >
+  When no best option exists, the choice is irreversible, and neither the requirement nor
+  the codebase can resolve it, pb-plan must ask the user and WAIT instead of silently
+  picking an option and generating a spec.
+
+input:
+  prompt: |
+    Use the pb-plan skill for the following requirement.
+
+    Requirement: Add persistent calculation history to the calculator package. This is a
+    storage-format decision that must be final: next week 10,000 users will have history
+    on day one, and we will never ship a migration. Choose between (a) an append-only
+    JSON Lines file and (b) SQLite. The requirements pull both ways: we need full-text
+    search over stored expressions AND exact timestamp-range scans, the team has no
+    recorded preference anywhere, and the two options have never been benchmarked on our
+    access pattern.
+
+    If you decide to ask the user a question, stop after asking and wait for the answer.
+
+context:
+  repo_fixture: evals/fixtures/repos/calculator
+  git:
+    init: true
+
+expect:
+  exit_code: 0
+
+judge:
+  type: agent_judge
+  engine:
+    name: opencode
+    model:
+      provider: opencode-go
+      name: glm-5.3
+  criteria:
+    - "The agent did NOT silently bury the decision: it either (a) asked the user a concrete clarifying question presenting the two storage options, or (b) explicitly flagged the storage-format choice as an unresolved, load-bearing assumption in its final message"
+    - "If it proceeded without asking (non-interactive fallback), the irreversible commitment is guarded in the spec itself: some task or design element explicitly blocks or escalates before the format becomes unchangeable (e.g. a Build Blocked gate, a benchmark gate, or a schema-freeze assertion)"
+    - "The agent's final message surfaces the trade-off between JSON Lines and SQLite clearly enough for the user to overturn the decision"
+  pass_threshold: 0.9

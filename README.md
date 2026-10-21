@@ -2,30 +2,26 @@
 
 [![DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/longcipher/pb-spec)
 [![Context7](https://img.shields.io/badge/Website-context7.com-blue)](https://context7.com/longcipher/pb-spec)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.14+](https://img.shields.io/badge/python-3.14%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/pb-spec.svg)](https://pypi.org/project/pb-spec/)
 
 ![pb-spec](https://socialify.git.ci/longcipher/pb-spec/image?font=Source+Code+Pro&language=1&name=1&owner=1&pattern=Circuit+Board&theme=Auto)
 
-pb-spec is a set of [Agent Skills Specification](https://agentskills.io) compliant AI Coding assistant workflow skill packages. It provides a structured process — `plan` → `build` → `verify` — that turns natural-language requirements into well-architected, strictly tested code via **TDD + incremental mutation testing**.
+pb-spec is a set of [Agent Skills Specification](https://agentskills.io) compliant AI Coding assistant workflow skill packages. It turns natural-language requirements into well-architected, strictly tested code via **strict TDD + selective, scope-bounded mutation testing**.
 
 ## Design Philosophy
 
-pb-spec implements the **Plan-Build pattern**: a Planner Agent generates design specs, and a Builder Agent executes code with verification. The core loop is **strict TDD (Red → Green → Refactor → Mutate)**: type contracts and test matrices are the source of truth, and **incremental mutation testing** proves the tests actually kill bugs — no pseudo-green "step-matched" tests.
-
-### Core Principles
+Five skills, no ceremony. Modern models are strong: pb-spec adds the few things they still miss — a spec that stays the source of truth, a strict Red → Green → Refactor → Mutate loop, multi-layer test coverage, and goal-driven execution that doesn't stop until the objective is verifiably achieved.
 
 | Principle | Description |
 |---|---|
-| **Type-First** | Design.md defines input/output type contracts (dataclasses/Pydantic), invariants, boundary conditions, and error codes. |
-| **TDD-First** | Every task starts with a failing test (unit + hypothesis property tests). No production code without a failing test first. |
-| **Mutation-Gated** | Incremental mutation testing on changed files; surviving mutants are treated as test failures. |
-| **RFC 2119 Constraints** | Architectural constraints use MUST/SHOULD/MAY keywords — binding for the Builder. |
-| **DAG Execution** | Tasks include DependsOn metadata for parallel execution of independent tasks. |
-| **Adaptive Steering** | Tasks with Complexity=High route to reasoning models; Low to fast models. |
-| **Escalation Protocol** | Repeated failures auto-escalate to stronger models for root-cause analysis. |
-| **Generator/Evaluator Isolation** | Generator builds; Evaluator judges with fresh context — never inherits Generator state. |
+| **Spec Is Source of Truth** | `design.md` + `tasks.md` carry type contracts, invariants, and the test matrix. Builders don't improvise — ambiguity routes back via DCR. |
+| **TDD-First** | No production code without a failing test first. |
+| **Multi-Layer Testing** | Unit + property (hypothesis/proptest) + fuzz + integration + E2E — covering all business scenarios, all branches, boundary and exception paths. |
+| **Selective Mutation-Gating** | Mutation testing only where subtle correctness risk lives (parsers, state machines, boundary math), only on changed files. Surviving mutants are test failures. |
+| **Autonomy with an Escape Hatch** | Agents pick the best option themselves. They ask the user — and wait — only for genuinely incomparable, expensive-to-undo choices. |
+| **Goal-Driven Mode** | `/pb-goal` locks one objective, persists state to disk, and keeps working until evidence proves completion. No token budget. |
 
 ## Installation
 
@@ -38,131 +34,91 @@ Run in your project root:
 npx skills add longcipher/pb-spec
 
 # Or install only the ones you need
-npx skills add longcipher/pb-spec --skill pb-init
 npx skills add longcipher/pb-spec --skill pb-plan
 npx skills add longcipher/pb-spec --skill pb-build
+npx skills add longcipher/pb-spec --skill pb-refine
 npx skills add longcipher/pb-spec --skill pb-improve
+npx skills add longcipher/pb-spec --skill pb-goal
 ```
 
 *(After installation, skills will be placed in `.agents/skills/` or the compatible local directory for your environment, and automatically indexed by your AI.)*
 
-## Quick Start
-
-```text
-/pb-init            → audit project, write AGENTS.md snapshot
-/pb-plan "<req>"    → generate design.md, tasks.md
-/pb-build "<feat>"  → execute via Generator/Evaluator with strict TDD + mutation loops
-/pb-refine "<feat>" → (optional) iterate specs on Build Blocked / DCR
-/pb-improve         → audit codebase, generate prioritized specs
-```
-
 ## Skills Overview
-
-### Core SDD Workflow Skills
 
 | Skill | Trigger | Output | Description |
 |---|---|---|---|
-| `pb-init` | `/pb-init` | `AGENTS.md` | Audit repo and update managed snapshot block |
-| `pb-plan` | `/pb-plan <requirement>` | `specs/<spec>/design.md` + `tasks.md` | Design + TDD test matrix + ordered task breakdown with RFC 2119 constraints and DAG metadata |
-| `pb-build` | `/pb-build <feature>` | Code + tests | Strict TDD + mutation testing via Generator/Evaluator with Escalation protocol and Wave-Based parallel execution (4 Invariants) |
-| `pb-refine` | `/pb-refine <feature>` | Revised spec files | Apply feedback or Design Change Requests |
+| `pb-plan` | `/pb-plan <requirement>` | `specs/<spec-dir>/design.md` + `tasks.md` | Design + multi-layer test matrix + DAG task breakdown |
+| `pb-build` | `/pb-build <feature>` | Code + tests | Strict TDD loop; selective, scope-bounded mutation testing; DCR escalation |
+| `pb-refine` | `/pb-refine <feature>` | Revised spec files | Apply feedback or Design Change Requests to an existing spec |
 | `pb-improve` | `/pb-improve` | `specs/<spec>/` + `specs/context.md` | Codebase audit → prioritized findings → pb-plan-compatible specs |
-| `pb-brainstorming` | Before creative work | Design exploration | Explores intent, requirements, and design before implementation |
-
-### Review/Finalization Skills
-
-| Skill | Trigger | Description |
-|---|---|---|
-| `pb-code-review` | Before merge | Two-axis review (Standards + Spec) + receiving decision tree |
-| `pb-branch-finalization` | Work complete | Conflict resolution + integration options |
-
-### Meta/Utility Skills
-
-| Skill | Trigger | Description |
-|---|---|---|
-| `pb-systematic-debugging` | Any bug or failure | Find root cause before attempting fixes |
-| `pb-prototype` | Design validation | Build throwaway prototypes (terminal or UI) for design questions |
-| `pb-writing-skills` | Creating/editing skills | Skills are code, not prose — test them |
-| `using-pb-spec` | Session start | Bootstrap: establishes skill invocation discipline |
+| `pb-goal` | `/pb-goal <objective>` | `.pb-goal.md` + shipped work | Goal-driven mode: persist state, keep working, evidence-driven completion |
 
 ## Workflow
 
 ```text
-/pb-init → /pb-plan → [/pb-refine] → /pb-build
-                    ↘
-                    /pb-improve → specs/ → /pb-build
+/pb-plan → [/pb-refine] → /pb-build
+           ↘
+           /pb-improve → specs/ → /pb-build
+           ↘
+           /pb-goal <objective>   # free-form, runs to completion
 ```
 
-Supporting skills activate automatically during the workflow:
-
-- `pb-brainstorming` — before `/pb-plan` when requirements are unclear
-- `pb-code-review` — review cycles around `/pb-build` tasks
-- `pb-branch-finalization` — finalization after `/pb-build`
-- `pb-systematic-debugging` — when tasks fail repeatedly
-
-### 1. `/pb-init` — AGENTS.md Snapshot & Safe Merge
-
-Audits your project and writes a `pb-init` snapshot into `AGENTS.md` using managed markers:
-
-- `<!-- BEGIN PB-INIT MANAGED BLOCK -->`
-- `<!-- END PB-INIT MANAGED BLOCK -->`
-
-Merge behavior is non-destructive: existing content outside the managed block is preserved verbatim. The snapshot includes an **Architecture Decision Snapshot** so later agents inherit repo-level conventions.
-
-### 2. `/pb-plan <requirement>` — Design & Task Planning
+### 1. `/pb-plan <requirement>` — Design & Task Planning
 
 Produces a complete feature spec:
 
 ```text
 specs/<YYYY-MM-DD-NO-feature-name>/
-├── design.md    # Scalable template: 5 required + 5 optional sections
+├── design.md    # 5 required sections
 └── tasks.md     # 4-field task blocks with DAG metadata
 ```
 
 Key capabilities:
 
-- **Type-First**: `design.md` carries a `TDD & Mutation Testing Strategy` section with type contracts, invariants, boundary conditions, and the TDD test matrix (unit + property tests)
-- **Scalable design template**: 5 required sections (`Summary`, `Approach`, `Architecture Decisions`, `TDD & Mutation Testing Strategy`, `Verification`) + 5 optional sections
-- **RFC 2119 Constraints**: `§Architectural Constraints` section with MUST/SHOULD/MAY keywords — binding for Builder
-- **4-field task schema**: `Context:`, `Verification:`, `Status:`, `Test Coverage:`
-- **DAG-Enabled Tasks**: `TaskID`, `DependsOn`, `Complexity` metadata
-- **Mutation Strategy**: every design defines a mutation score target (default ≥ 85%) and tooling (`mutmut` / `cargo-mutants` / `stryker`)
+- **Type-First**: `design.md` carries a `TDD & Mutation Testing Strategy` section with type contracts, invariants, boundary conditions, and the test matrix.
+- **Multi-layer test matrix**: unit + property (hypothesis) + fuzz + integration + E2E tests covering all scenarios, branches, and boundary/exception paths.
+- **Selective mutation strategy**: the spec declares which files/functions get mutated (core logic only), the score target (default ≥ 85%), and the tool. Infra/trivial code is mutation-exempt.
+- **4-field task schema**: `Context:`, `Verification:`, `Status:`, `Test Coverage:` with `TaskID`/`DependsOn` DAG metadata.
+- **Decision protocol**: picks the best option and records it as an assumption; asks the user — and waits — only when options are genuinely incomparable and the choice is expensive to undo.
 
-### 3. `/pb-refine <feature-name>` — Design Iteration (Optional)
+### 2. `/pb-refine <feature-name>` — Design Iteration (Optional)
 
-Reads user feedback or Design Change Requests and updates `design.md` and `tasks.md`. Maintains a revision history and cascades changes without overwriting completed work.
+Reads user feedback or Design Change Requests and updates `design.md` and `tasks.md` with precise, incremental edits. Maintains a revision history, resets invalidated tasks, and never silently modifies completed work. Validates `🛑 Build Blocked` and `🔄 Design Change Request` packets (3 fields each: `Reason`, `Requested Change`, `Impact`).
 
-Validates `🛑 Build Blocked` and `🔄 Design Change Request` packets — each carrying 3 fields: `Reason`, `Requested Change`, `Impact`.
+### 3. `/pb-build <feature-name>` — Strict TDD Execution
 
-### 4. `/pb-build <feature-name>` — Generator/Evaluator Implementation
-
-Implements tasks using a **Generator/Evaluator dual-persona workflow** with **Wave-Based parallel execution** (4 Invariants) and **Escalation protocol**:
+Executes tasks in dependency order (independent tasks may fan out to parallel subagents; same-file tasks never share a wave):
 
 ```text
-Generator (subagent) → READY_FOR_EVAL → Evaluator (independent context) → PASS / FAIL
-On PASS  → mark task DONE
-On FAIL  → fresh Generator subagent → retry
-On 2nd FAIL → Escalate to stronger model for root-cause analysis
-On 3rd FAIL → DCR packet to /pb-refine
+Red (failing test) → Green (minimum code) → Refactor → Mutate (only core logic, only changed files)
+Task failure: retry → root-cause analysis → Build Blocked packet → /pb-refine
 ```
 
-Key principles: TDD-First (Red → Green → Refactor → **Mutate**), RFC 2119 constraints BINDING, fresh context per subagent (Evaluator never inherits Generator context), escalation over thrashing, interactive (default) or `--auto` mode.
+Key principles: evidence before claims (fresh command output, pasted, exit code checked), no mutation runs for infra/trivial/UI code, surviving mutants on changed code are test failures, DCR instead of silent design changes.
 
-### 5. `/pb-improve` — Codebase Audit & Plan Generation
+### 4. `/pb-improve` — Codebase Audit & Plan Generation
 
 Audits any codebase and writes pb-plan-compatible specs for other agents to execute. Never modifies source code — only produces specs under `specs/`.
 
 ```text
 /pb-improve                        full audit → prioritized findings → specs
 /pb-improve quick                  cheap pass: hotspots, top findings only
-/pb-improve deep                   exhaustive: every package, every category
-/pb-improve security               focused audit (also: perf, tests, bugs, ...)
+/pb-improve deep                   exhaustive: whole repo
+/pb-improve security               focused audit (also: perf, tests, ...)
 /pb-improve branch                 audit only what the current branch changes
 /pb-improve next                   feature suggestions — where to take the project
 /pb-improve plan <description>     skip the audit, spec one thing
 /pb-improve review-spec <feature>  critique and tighten an existing spec
-/pb-improve reconcile              refresh the backlog: verify, unblock, retire
 ```
+
+### 5. `/pb-goal <objective>` — Goal-Driven Mode
+
+For large objectives meant to run to completion without hand-holding (inspired by [goal mode](https://github.com/prevalentWare/opencode-goal-plugin)):
+
+- **One explicit goal** with acceptance criteria, persisted to `.pb-goal.md` so state survives compaction and session resume.
+- **Keeps working**: at the end of every turn it continues the next unblocked step instead of asking "shall I continue?". No token/time budget.
+- **Evidence-driven completion**: `COMPLETE` only when every criterion has fresh verifiable evidence (command output, passing tests, real artifacts). Criteria are never silently weakened.
+- **Stops only on real blockers**: a genuinely ambiguous criterion with no best interpretation, a missing external dependency, or a user interrupt. Everything else is work to push through — on no progress, change the approach, don't repeat it.
 
 ## Strict TDD + Mutation Testing
 
@@ -172,12 +128,14 @@ The core loop replaces behavior-driven layers with a single, strict, typed pipel
 specs/design.md (Type Contracts + Test Matrix) → tasks.md → /pb-build (RED → GREEN → REFACTOR → MUTATE)
 ```
 
-### The Four-Phase Loop
+**Multi-layer testing** — all business scenarios, all branches, boundary and exception paths, via unit tests, property tests (hypothesis/proptest), fuzz tests for untrusted input, integration tests for cross-module behavior, and E2E tests for user-visible flows.
 
-1. **RED** — Write a failing unit/integration test. For parsers and pure logic, add **hypothesis property tests** (randomized inputs, invariants). Verify it fails.
-2. **GREEN** — Write the minimum implementation that makes it pass.
-3. **REFACTOR** — Clean up; re-run the full suite.
-4. **MUTATE** — Run incremental mutation testing on the changed files. If any mutant survives, the test suite is not strict enough — strengthen assertions (boundary checks, exact values) until all mutants on changed code are killed.
+**Mutation testing is selective and scope-bounded** — it is very slow:
+
+- Run it only for core logic with subtle correctness risk (parsers, state machines, crypto/boundary math, concurrency), or when the spec marks it required.
+- Mutate only files changed by the current task — `pb-spec mutate --against <base>` or the diff-based script. Never whole-repo runs.
+- Skip it for infra, config, docs, trivial accessors, and UI code.
+- Surviving mutants on changed code = test failure: strengthen assertions until killed, or record a justified exemption.
 
 ```bash
 # The whole gate in one command
@@ -185,7 +143,7 @@ pb-spec verify
 
 # Or individually
 pb-spec test           # pytest, parallel (-n auto), optional --coverage
-pb-spec mutate         # incremental mutation on git-changed files
+pb-spec mutate         # incremental mutation on git-changed files only
 ```
 
 ### CLI Commands
@@ -220,13 +178,27 @@ pb-spec mutate         # incremental mutation on git-changed files
 
 Both `🛑 Build Blocked` and `🔄 Design Change Request` packets carry 3 fields: `Reason` (one sentence), `Requested Change` (one paragraph), `Impact` (affected task IDs).
 
-### Escalation Protocol
+## Skill Evaluation (skill-up)
 
-| Failure Count | Action |
-|---|---|
-| 1 | Retry with same model |
-| 2 | Escalate — auto-upgrade to stronger model for root-cause analysis |
-| 3 | File DCR, stop build |
+Every skill ships integration/E2E evals for [skill-up](https://github.com/alibaba/skill-up) — declarative cases run against a real agent engine in a fixture workspace, graded by `expect` gating, `script` judges (workspace assertions) and `agent_judge` (semantic rubrics).
+
+```text
+skills/<skill>/
+├── SKILL.md
+└── evals/
+    ├── eval.yaml            # opencode engine
+    ├── eval-cmd.yaml        # cross-engine variant (Command Code via custom local transport)
+    ├── cases/*.yaml         # one file per case (happy path + decision-protocol cases)
+    └── fixtures/            # repo fixtures + judge scripts
+```
+
+```bash
+just skill-eval-validate                 # validate all eval configs
+just skill-eval pb-plan                  # run one skill's evals (reports in skills/<skill>-workspace/)
+skill-up run skills/pb-plan/evals/eval-cmd.yaml   # cross-engine comparison with `cmd`
+```
+
+Case highlights: `pb-plan` verifies both sides of the decision protocol (clear requirement → autonomous spec; genuinely incomparable → ask / flag a load-bearing assumption), `pb-build` runs a full TDD E2E in a fixture repo, `pb-improve` asserts strict read-only behavior, and `pb-goal` covers evidence-driven completion plus honest `BLOCKED` reporting.
 
 ## Verification
 

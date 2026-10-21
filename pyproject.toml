@@ -1,10 +1,10 @@
 [build-system]
-requires = ["uv-build>=0.10.2,<0.12"]
+requires = ["uv-build>=0.13.4,<0.14"]
 build-backend = "uv_build"
 
 [project]
 name = "pb-spec"
-version = "1.1.12"
+version = "1.2.9"
 description = "Plan-Build Spec (pb-spec): A CLI tool for managing AI coding assistant skills"
 readme = "README.md"
 license = "Apache-2.0"
@@ -22,7 +22,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "click>=8.4.2",
+    "click>=8.5.0",
 ]
 
 [project.urls]
@@ -43,13 +43,13 @@ markers = [
 
 [dependency-groups]
 dev = [
-    "hypothesis>=6.165.2",
-    "mutmut>=3.7.0",
+    "hypothesis>=6.170.5",
+    "mutmut>=3.8.0",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "pytest-xdist>=3.8.0",
-    "ruff>=0.16.1",
-    "ty>=0.0.69",
+    "ruff>=0.17.1",
+    "ty>=0.0.90",
 ]
 
 [tool.ruff]

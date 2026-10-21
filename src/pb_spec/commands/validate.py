@@ -36,7 +36,7 @@ from pb_spec.validation.rumdl import run_rumdl_format
     "--task",
     "mode",
     flag_value="task",
-    help="Subagent self-check before signaling READY_FOR_EVAL.",
+    help="Per-task code-quality self-check before marking a task done.",
 )
 @click.option(
     "--specs-dir",
@@ -62,7 +62,7 @@ def validate_cmd(
 
     Use --plan after /pb-plan to check spec structure.
     Use --build after /pb-build to verify task completion.
-    Use --task for subagent self-check before signaling READY_FOR_EVAL.
+    Use --task for a per-task code-quality self-check before marking a task done.
     Use --config to load project-specific validation rules.
     """
     if config_path is not None:

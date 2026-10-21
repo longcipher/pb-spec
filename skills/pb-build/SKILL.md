@@ -1,119 +1,46 @@
 ---
 name: pb-build
-description: Execute specs from specs/<spec-dir>/ via Generator/Evaluator dual-agent loop with Wave-Based parallel execution. Drives a strict TDD + mutation-testing inner loop. Escalates to DCR after 3 failures.
+description: Execute a spec task-by-task via a strict TDD loop (Red → Green → Refactor → selective Mutate). Escalates to DCR after 3 failures on a task.
 ---
 
 # pb-build
 
-## Role
-
-Execute the spec task-by-task. Spec is source of truth.
+Execute the spec task-by-task. The spec is the source of truth.
 
 ## Workflow
 
-### 1. Load Spec & Resolve Task DAG
+### 1. Load spec and resolve tasks
 
-- Load `specs/<spec-dir>/design.md` and `tasks.md`.
 - Resolve `<spec-dir>` from actual directory names under `specs/`. Never guess.
-- Parse `### Task X.Y:` blocks. Read 4 fields per task (see `docs/contract.md`).
-- Build dependency graph from `DependsOn`. Detect cycles → STOP.
-- Topologically sort. Group independent tasks into Waves by dependency depth.
+- Parse `### Task X.Y:` blocks (4 fields, schema in `docs/contract.md`), build the dependency graph from `DependsOn` (cycle → stop), and execute in dependency order. Independent tasks may run in parallel subagents; same-file tasks must not.
 
-### 2. Execute Wave (parallel subagents)
+### 2. Per task — strict TDD loop
 
-Per task in the Wave:
+1. **Red:** write the failing test first (unit + property tests where applicable; for bug fixes the reproducer IS the red test) → verify it fails. If you wrote code before the test, delete it and start over.
+2. **Green:** minimum implementation → verify pass.
+3. **Refactor:** clean up → suite still green.
+4. **Verify layers:** per the project testing principle, add integration/E2E/fuzz coverage the task's test matrix calls for — boundary and exception paths included. No production code without a failing test first; no completion claims without fresh evidence (run the command, paste output, check exit code — "should pass" is a lie).
 
-1. Dispatch **Generator** subagent with minimal context: task description, relevant design sections, the task's `Test Coverage` entries, `AGENTS.md`. No raw logs or full design.md.
-2. Generator follows the strict TDD inner loop (see I1). Outputs: code + fresh verification evidence.
-3. Generator signals `READY_FOR_EVAL: Task X.Y`.
-4. **Evaluator** subagent (fresh context, no Generator transcript) re-runs verification, inspects `git diff`, probes edge cases, re-runs tests and mutation checks.
-5. Evaluator PASS → mark 🟢 DONE. Reject → Generator retries (see Step 3).
+### 3. Mutation testing — selective and scope-bounded
 
-Wave isolation: tasks in same Wave are independent. A failure in one doesn't abort others. Next Wave starts only after all current Wave tasks DONE or exhausted retries.
+Mutation testing is very slow. Do NOT run it unconditionally:
 
-### 3. Adaptive Model Routing
+- **Run it** when the task touches core logic with subtle correctness risk (parsers, state machines, gas/crypto/boundary math, concurrency), or when the spec's `TDD & Mutation Testing Strategy` marks it required.
+- **Scope it strictly:** mutate only the files changed by this task — `pb-spec mutate --against <base>` or the project's diff-based script. Never whole-repo runs. Prefer targeted selection (e.g. `mutmut` path filters) to shrink the run further.
+- **Skip it** for infra, config, docs, trivial getters/setters, and UI code.
+- Surviving mutants on changed code are **test failures**: strengthen assertions until they are killed — or record a justified exemption in the task.
 
-Per-task consecutive failure:
+### 4. Failures and handoff
 
-- **Failure 1:** Retry same model. Fresh context. Pass previous error as hint.
-- **Failure 2:** Upgrade to stronger model. Spawn root-cause analysis subagent (no implementation), then retry.
-- **Failure 3:** Emit 🛑 Build Blocked packet (see `docs/contract.md` for format). STOP. Hand off to `/pb-refine`.
-
-### 4. Wave Completion & Handoff
-
-After each task evaluation, append to `specs/<spec-dir>/progress.md`:
-```
-Task X.Y: complete (commits <base7>..<head7>, eval PASS)
-```
-Or on failure/DCR:
-```
-Task X.Y: FAILED (attempt N) — <one-line reason>
-Task X.Y: DCR — <one-line reason>
-```
-- All tasks done → run full test suite once, emit Handoff Document (summary + evidence + next steps). Save to `$TMPDIR`. Redact secrets.
-- More Waves remain → proceed to next Wave.
-- On session resume/compaction: read the ledger first. Trust files over memory.
-
-## Iron Laws
-
-### I1: Strict TDD + Mutation Testing
-
-No production code without a failing test first. The full cycle is
-**Red → Green → Refactor → Mutate**:
-
-1. **Red:** Write failing test (unit + hypothesis property tests where applicable) → verify fail.
-2. **Green:** Implement minimum code → verify pass.
-3. **Refactor:** Clean up → verify pass.
-4. **Mutate:** Run `./scripts/run-mutation-diff.sh` on changed files.
-   - If surviving mutants are detected, treat it as a **TEST FAILURE**.
-   - Inspect surviving mutants (altered conditionals, return values, boundary operators).
-   - Strengthen test assertions until all mutants on modified code are **KILLED**.
-
-For bug fixes, RED phase is the reproducer. If you wrote code before the test:
-delete it, start over.
-
-### I2: Evidence Before Claims
-
-No completion claims without fresh verification evidence. Run the FULL verification command in the current message, paste output, check exit code. "Should pass" / "looks correct" = lying. Previous-run evidence is stale.
-
-### I3: Wave Isolation
-
-Tasks in the same Wave are independent. A Generator sees only its assigned task + spec + already-merged DONE tasks. No shared mutable state. Same-file tasks must NOT be in the same Wave.
-
-### I4: Spec Is Source of Truth
-
-Never improvise beyond the spec. If ambiguous or wrong → emit DCR (see `docs/contract.md`). Do not silently "improve" the design.
-
-## Block Packet Formats
-
-See `docs/contract.md` for Build Blocked and DCR field requirements (3 fields each: Reason / Requested Change / Impact).
-
-## Task States
-
-| State | Marker |
-|---|---|
-| Pending | `🔴 TODO` |
-| In Progress | `🟡 IN PROGRESS` |
-| Done | `🟢 DONE` (only after Evaluator PASS) |
-| Design Block | `🔄 DCR` |
+- Per-task failure retry: 1st → retry with the error as hint; 2nd → root-cause analysis before retrying; 3rd → emit a Build Blocked / DCR packet (3 fields: `Reason` / `Requested Change` / `Impact`) and stop, hand off to `/pb-refine`.
+- After each task: flip its `Status:` to `🟢 DONE` in `tasks.md` and append a one-line result (task, commits, verdict) to the spec's progress notes.
+- All tasks done → run the full suite once, emit a handoff summary (what shipped, evidence, next steps). On session resume, trust files over memory.
 
 ## Constraints
 
-- Only modify source code under project root. Never modify `specs/` directly — use DCR.
+- Never improvise beyond the spec: ambiguity or defect → DCR packet, not silent "improvement".
+- The only permitted edits under `specs/` are bookkeeping: flipping task `Status:` markers and
+  appending progress notes. Any design/content change goes through a DCR packet instead.
 - Never commit/push unless explicitly asked.
-- One subagent per task. Fresh context per subagent.
-- Run incremental tests after each task; full suite only after ALL tasks complete.
+- Incremental tests after each task; full suite only at the end.
 - Match `AGENTS.md` conventions.
-
-## Stopping Conditions
-
-- 3 consecutive failures on same task → Build Blocked → hand off to `/pb-refine`.
-- Spec ambiguity unresolvable from `design.md` → emit DCR, stop.
-- User interrupts → persist progress to Ledger, summarize, stop.
-- Dependency cycle detected → stop and report.
-
----
-
-name: pb-build
-
-## description: Execute specs from specs/<spec-dir>/ via Generator/Evaluator dual-agent loop with Wave-Based parallel execution. Drives a strict TDD + mutation-testing inner loop. Escalates to DCR after 3 failures

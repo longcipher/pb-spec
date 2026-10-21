@@ -1,61 +1,78 @@
 ---
 name: pb-plan
-description: Generate design.md and tasks.md from a natural-language requirement. TDD-First with a strict mutation-testing strategy. Drives /pb-build.
+description: Generate design.md and tasks.md from a natural-language requirement. TDD-first, multi-layer test matrix, selective mutation strategy. Drives /pb-build.
 ---
 
 # pb-plan
 
-## Role
-
-Transform natural-language requirements into a build-eligible spec under `specs/<spec-dir>/`.
+Transform a natural-language requirement into a build-eligible spec under `specs/<spec-dir>/`.
 
 ## Workflow
 
-### 1. Discover & Model
+### 1. Understand the requirement
 
-- Read the requirement, `AGENTS.md`, existing code conventions.
-- Search codebase for affected modules and reusable components.
-- Domain modeling: list nouns/verbs, sketch data shape.
-- EARS quality pass: requirements use 5 EARS forms. Generate 2-3 alternative interpretations, pick best.
-- Confirm understanding to user before proceeding.
+- Read the requirement, `AGENTS.md`, and the affected code yourself (search, read key files, reuse what exists).
+- Restate the goal in one sentence, list scope boundaries (in scope / out of scope), and surface assumptions.
+- Only proceed when the behavior is pin-downable to testable cases.
 
-### 2. TDD-First — Define the Test Matrix
+### 2. Design — write design.md
 
-- For each requirement, specify the **type contract** (input/output shapes), **invariants**, **boundary conditions**, and **error codes**.
-- Define the **test matrix**: the pytest test paths (unit + integration) and the **hypothesis property tests** that prove each behavior.
-- Boundary-first: happy path, error path, and edge case each get explicit test cases.
-- Tag each task with its test coverage in `tasks.md` via the `Test Coverage:` field.
+Required sections (schema in `docs/contract.md`): `Summary`, `Approach`, `Architecture Decisions`,
+`TDD & Mutation Testing Strategy`, `Verification`. Add optional sections only when the aspect changes
+(topology → Mermaid, data → DBML/Prisma). Decisions use MADR (Context / Decision / Consequences);
+constraints use RFC 2119 keywords. Prefer the ladder: YAGNI → stdlib → existing dep → minimum code.
 
-### 3. Design — Write design.md
+**TDD & Mutation Testing Strategy** must define:
 
-- 5 required + optional sections (see `docs/contract.md`).
-- MADR for architecture decisions (Context / Decision / Consequences).
-- RFC 2119 for constraints (MUST / SHOULD / MAY).
-- C4 + Mermaid for topology, DBML/Prisma for data — only when those aspects change.
-- Ponytail ladder: YAGNI → stdlib → native → existing dep → one-liner → minimum code.
-- **TDD & Mutation Testing Strategy** (required): state the type contracts, invariants, the test matrix, and the mutation score target (default ≥ 85%), target files/functions, language-specific tooling, and assertion requirements so mutants are killed. Reference `./scripts/run-mutation-diff.sh` for incremental mutation testing during build.
+- **Type contracts:** input/output shapes, invariants, boundary conditions, error codes.
+- **Test matrix — multi-layer, per the project testing principle.** Cover all business scenarios,
+  all branches, and boundary/exception paths, combining:
+  - Unit tests for every branch and edge (happy path, error path, boundary values).
+  - Property tests (hypothesis/proptest) for parsers and pure logic — invariants over randomized inputs.
+  - Fuzz tests where input is untrusted or complex (malformed input, adversarial payloads).
+  - Integration tests for cross-module behavior (real filesystem/db/IPC as appropriate).
+  - E2E tests for user-visible flows through the public entry point.
+- **Mutation strategy — selective and scope-bounded.** Mutation testing is slow: declare WHICH
+  files/functions get mutated (core logic with subtle correctness risk only), the score target
+  (default ≥ 85%), and the tool (`mutmut` / `cargo-mutants` / `stryker`). Explicitly mark
+  infra/trivial/UI code as mutation-exempt. Never plan whole-repo mutation runs.
 
-### 4. Tasks — Write tasks.md
+### 3. Tasks — write tasks.md
 
-- 4 fields per task (see `docs/contract.md` for schema).
-- DAG ordering: respect dependencies, no forward references.
-- Each Verification field MUST be machine-checkable.
-- Map tasks to tests via the `Test Coverage:` field (pytest paths + hypothesis cases).
+- 4 fields per task: `Context:`, `Verification:`, `Status:`, `Test Coverage:` (schema in `docs/contract.md`).
+- Order tasks by dependency (DAG); each `Verification:` MUST be a machine-checkable command.
+- Map every task to its test paths via `Test Coverage:`.
+- Mark tasks needing mutation testing explicitly; leave it out of infra/trivial tasks.
 
-## Stopping Conditions
+### 4. Validate
 
-- Requirements ambiguous after Step 1 → STOP, ask.
-- Behavior can't be pinned down to testable cases → requirement unclear, STOP.
-- Open architectural questions → surface before writing tasks.
+Run `uv run pb-spec validate --plan <spec-dir>` and fix all errors.
+
+## Decision protocol
+
+Modern models resolve most ambiguity themselves. Default: pick the best option, state it as an
+assumption in `design.md` (Architecture Decisions), and proceed. **Ask the user only when all of
+these hold — and stop and wait for the answer:**
+
+1. The choice is irreversible or expensive to undo, or changes user-visible behavior;
+2. Two or more options have genuinely incomparable trade-offs — there is no best answer from the
+   code, conventions, or requirement;
+3. The requirement or codebase cannot resolve it.
+
+Never ask about style details, naming, or anything with a clear convention-based default.
+
+**Non-interactive fallback:** if the harness cannot ask (headless run, question tool
+disabled), do not silently proceed either. Flag the decision in the final message as an
+unresolved, load-bearing assumption, and guard the irreversible step inside the spec itself —
+a task that emits a Build Blocked packet, or a benchmark/schema-freeze gate — so the choice
+can still be overturned before it becomes permanent.
+
+## Stopping conditions
+
+- Requirement ambiguous after step 1 → ask the user (per decision protocol), wait.
+- Behavior cannot be pinned to testable cases → requirement unclear, ask.
+- Open architectural question matching the decision protocol → surface, ask, wait.
 
 ## Constraints
 
-- Only write under `specs/<spec-dir>/`. Do not modify source code.
-- `AGENTS.md` is read-only.
-- Run `uv run pb-spec validate --plan <spec-dir>` before finishing.
-
----
-
-name: pb-plan
-
-## description: Generate design.md and tasks.md from a natural-language requirement. TDD-First with a strict mutation-testing strategy. Drives /pb-build
+- Only write under `specs/<spec-dir>/`. Never modify source code. `AGENTS.md` is read-only.

@@ -543,14 +543,21 @@ class TestValidateTask:
 class TestValidateCommand:
     """Tests for validate command integration."""
 
-    def test_task_mode_passes_on_clean_code(self, runner: CliRunner) -> None:
+    def test_task_mode_passes_on_clean_code(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
         """Test that --task mode passes on clean codebase."""
-        with runner.isolated_filesystem():
-            with open("clean.py", "w") as f:
-                f.write("def foo():\n    return 42\n")
+        (tmp_path / "clean.py").write_text("def foo():\n    return 42\n")
+        previous_cwd = Path.cwd()
+        import os
+
+        os.chdir(tmp_path)
+        try:
             result = runner.invoke(main, ["validate", "--task"])
-            assert result.exit_code == 0
-            assert "passed" in result.output.lower() or "✅" in result.output
+        finally:
+            os.chdir(previous_cwd)
+        assert result.exit_code == 0
+        assert "passed" in result.output.lower() or "✅" in result.output
 
 
 CONSOLIDATED_VALID_DESIGN = (

@@ -1,0 +1,30 @@
+id: build-tdd-executes-spec
+title: pb-build executes all spec tasks TDD-first with a green suite
+description: >
+  E2E: failing tests exist for both spec tasks. pb-build must implement power and mean
+  following Red → Green → Refactor, update task statuses in tasks.md, keep the spec's
+  scope (no extras), and finish with a fully passing suite.
+
+input:
+  prompt: |
+    Use the pb-build skill to execute the spec at specs/2026-10-21-01-calculator-power.
+
+    All tasks are 🔴 TODO and their tests already exist and fail. Follow the spec's
+    TDD & Mutation Testing Strategy. Do not commit or push. When finished, the full
+    test suite must pass.
+
+    Note: mutation testing is out of scope for this run — do not run mutmut; the
+    suite being green is the acceptance bar.
+
+context:
+  repo_fixture: evals/fixtures/repos/calculator-spec-todo
+  git:
+    init: true
+
+expect:
+  exit_code: 0
+
+judge:
+  type: script
+  script_path: evals/fixtures/scripts/verify-build.sh
+  timeout_seconds: 300

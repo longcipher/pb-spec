@@ -1,0 +1,28 @@
+schema_version: v1alpha1
+
+environment:
+  type: none
+
+engine:
+  name: opencode
+  model:
+    provider: agentrouter
+    name: deepseek-v4-flash
+
+cases:
+  files:
+    - evals/cases/goal-completes-to-evidence.yaml
+    - evals/cases/goal-blocked-reports-blocker.yaml
+  defaults:
+    timeout_seconds: 900
+    max_turns: 30
+    expect:
+      exit_code: 0
+
+  retry_policy:
+    max_retries: 1
+    retry_on: [timeout, error]
+
+report:
+  formats: [json, html]
+  artifacts: [transcript]

@@ -1,0 +1,28 @@
+id: goal-completes-to-evidence
+title: Goal runs to verifiable completion and persists state
+description: >
+  pb-goal must create .pb-goal.md with acceptance criteria, keep working without asking
+  permission to continue, and mark COMPLETE only with fresh evidence (suite green).
+
+input:
+  prompt: |
+    Use the pb-goal skill.
+
+    Objective: make the test suite pass by implementing what is missing in
+    src/calculator, following the existing style. Work until the goal is verifiably
+    complete — do not stop to ask permission to continue.
+
+context:
+  repo_fixture: evals/fixtures/repos/broken-calculator
+  git:
+    init: true
+
+expect:
+  exit_code: 0
+  files_exist:
+    - .pb-goal.md
+
+judge:
+  type: script
+  script_path: evals/fixtures/scripts/verify-goal.sh
+  timeout_seconds: 300

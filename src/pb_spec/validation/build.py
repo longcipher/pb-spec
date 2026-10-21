@@ -194,7 +194,7 @@ def validate_build(spec_dir: Path) -> ValidationResult:
 
 
 def validate_task(root_dir: Path | str = ".") -> ValidationResult:
-    """Subagent self-check before signaling READY_FOR_EVAL.
+    """Per-task code-quality self-check before marking a task done.
 
     Returns a pure ValidationResult without side effects.
     """

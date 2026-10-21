@@ -1,0 +1,44 @@
+schema_version: v1alpha1
+
+# Cross-engine variant: same cases as eval.yaml, driven through Command Code (`cmd`)
+# via skill-up's custom local transport. Run: skill-up run skills/pb-plan/evals/eval-cmd.yaml
+
+environment:
+  type: none
+
+engine:
+  name: cmd
+  model:
+    provider: commandcode
+    name: deepseek/deepseek-v4-flash
+  custom:
+    transport: local
+    response_format: session_result
+    conversation_mode: batch
+    timeout_seconds: 900
+    local:
+      command: python3
+      args:
+        # NOTE: local transport resolves relative paths against a temp dir, not the
+        # skill root — the bridge script must be referenced by absolute path.
+        - /Volumes/akext/src/github.com/longcipher/pb-spec/skills/pb-plan/evals/fixtures/scripts/cmd-bridge.sh
+        - ${input_file}
+        - ${output_file}
+
+cases:
+  files:
+    - evals/cases/plan-clear-requirement.yaml
+    - evals/cases/plan-ambiguous-asks.yaml
+  defaults:
+    timeout_seconds: 900
+    max_turns: 20
+    expect:
+      exit_code: 0
+
+  retry_policy:
+    max_retries: 1
+    retry_on: [timeout, error]
+
+report:
+  formats: [json, html]
+  artifacts: [transcript]

@@ -1,0 +1,33 @@
+id: plan-clear-requirement
+title: Clear requirement produces a complete spec without asking
+description: >
+  pb-plan turns a precise, testable requirement into design.md + tasks.md autonomously.
+  It must NOT stop to ask the user questions when the requirement is unambiguous
+  (decision protocol: only ask when no best option exists).
+
+input:
+  prompt: |
+    Use the pb-plan skill for the following requirement.
+
+    Requirement: Add a `power(base, exponent)` function to the `calculator` package.
+    - Accepts an int base and a non-negative int exponent, returns an int.
+    - `power(0, 0)` returns 1.
+    - Raises ValueError when the exponent is negative.
+    - Follow the existing style in src/calculator/__init__.py and tests/test_calculator.py.
+    - Tests use pytest in the existing test file style.
+
+    The requirement above is complete and final — there is nothing to choose.
+    Do not modify source code; produce the spec only.
+
+context:
+  repo_fixture: evals/fixtures/repos/calculator
+  git:
+    init: true
+
+expect:
+  exit_code: 0
+
+judge:
+  type: script
+  script_path: evals/fixtures/scripts/verify-plan.sh
+  timeout_seconds: 60

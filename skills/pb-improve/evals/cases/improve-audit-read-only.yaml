@@ -1,0 +1,28 @@
+id: improve-audit-read-only
+title: Audit produces specs without modifying source
+description: >
+  pb-improve must audit the codebase, write pb-plan-compatible specs under specs/ with
+  evidence, and strictly never modify source code or make commits. The fixture contains
+  a seeded correctness bug (divide-by-zero) and test-coverage gaps.
+
+input:
+  prompt: |
+    Use the pb-improve skill to audit this codebase (quick effort) and produce
+    improvement specs for another agent to build.
+
+    Do not implement anything yourself; do not commit.
+
+context:
+  repo_fixture: evals/fixtures/repos/buggy-calculator
+  git:
+    init: true
+
+expect:
+  exit_code: 0
+  files_exist:
+    - specs/context.md
+
+judge:
+  type: script
+  script_path: evals/fixtures/scripts/verify-improve.sh
+  timeout_seconds: 120

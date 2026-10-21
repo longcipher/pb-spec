@@ -1,0 +1,29 @@
+id: refine-float-exponent
+title: Feedback updates spec incrementally and preserves completed work
+description: >
+  pb-refine applies behavior-changing feedback: updates the TDD & Mutation Testing Strategy
+  first, adds a Revision History entry, resets invalidated tasks, and never touches the
+  completed task.
+
+input:
+  prompt: |
+    Use the pb-refine skill on the existing spec in specs/2026-10-21-01-calculator-power.
+
+    Feedback: the `power` function must also support float exponents — when the exponent is
+    a float, return a float computed via math.pow; the int path stays unchanged. Update the
+    spec accordingly.
+
+    Do not modify source code; spec files only.
+
+context:
+  repo_fixture: evals/fixtures/repos/calculator-spec
+  git:
+    init: true
+
+expect:
+  exit_code: 0
+
+judge:
+  type: script
+  script_path: evals/fixtures/scripts/verify-refine.sh
+  timeout_seconds: 60

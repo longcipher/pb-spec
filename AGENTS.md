@@ -16,7 +16,8 @@ just format && just lint && just type-check && just verify
 - `ruff check` + `ruff format` — zero errors.
 - `ty check` — zero errors.
 - `pytest` — all pass (parallel via `just test-fast`; coverage gate via `just coverage`).
-- Incremental mutation testing (`just mutation`) — mutation score ≥ 85% on changed code; surviving mutants on new logic are test failures.
+- Incremental mutation testing (`just mutation`) — mutation score ≥ 85% on changed code; surviving mutants on new logic are test failures. Mutation testing is slow: run it selectively (core logic only, changed files only) — never whole-repo.
+- Testing principle: cover all business scenarios, all code branches, and boundary/exception paths via a layered suite — unit, property (hypothesis), fuzz, integration, and E2E tests.
 - Hypothesis property tests run in the normal suite (`tests/test_parser_property.py`).
 - Type annotations required on all public functions. Use `from __future__ import annotations`, `X | None` syntax.
 
@@ -31,7 +32,9 @@ just format && just lint && just type-check && just verify
 
 ## Workflow
 
-- Strict TDD: type contracts in `design.md` → **Red** (failing pytest, incl. hypothesis property tests) → **Green** (minimum implementation) → **Refactor** → **Mutate** (incremental mutation testing on changed files).
+- Strict TDD: type contracts in `design.md` → **Red** (failing pytest, incl. hypothesis property tests) → **Green** (minimum implementation) → **Refactor** → **Mutate** (selective, scope-bounded mutation testing on changed files).
+- Workflow skills: `pb-plan` → `pb-build` (`pb-refine` for spec iteration), plus `pb-improve` (audit → specs) and `pb-goal` (goal-driven, runs to completion).
+- Decision protocol: agents pick the best option and record it; ask the user — and wait — only for genuinely incomparable, expensive-to-undo choices.
 - Tests under `tests/` mirroring source structure.
 - Fix root cause, never suppress warnings or patch symptoms.
 

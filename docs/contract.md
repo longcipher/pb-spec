@@ -38,8 +38,10 @@ DESIGN_OPTIONAL: list[str] = [
 ```
 
 `TDD & Mutation Testing Strategy` must state: type contracts (input/output shapes),
-invariants, boundary conditions, the test matrix (unit + hypothesis property tests),
-and the mutation score target (default ≥ 85%).
+invariants, boundary conditions, the test matrix (unit + property + fuzz + integration +
+E2E — all scenarios, branches, boundary/exception paths), and a selective, scope-bounded
+mutation strategy (which core-logic files/functions get mutated, score target default ≥ 85%,
+tooling). Infra/trivial/UI code is mutation-exempt; never plan whole-repo mutation runs.
 
 ### Task Block
 

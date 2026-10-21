@@ -75,6 +75,14 @@ ci:
 # Full verification gate: strict TDD tests + coverage + incremental mutation
 verify: coverage mutation
 
+# Run skill-up evals for a skill (opencode engine). e.g. `just skill-eval pb-plan`
+skill-eval skill:
+    skill-up run skills/{{skill}}/evals/eval.yaml
+
+# Validate all skill eval configs
+skill-eval-validate:
+    for s in skills/*/evals/eval.yaml skills/*/evals/eval-cmd.yaml; do skill-up validate "$s"; done
+
 # Build and publish to PyPI
 publish:
     uv build
