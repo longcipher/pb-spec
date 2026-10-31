@@ -16,7 +16,11 @@ Apply feedback to an existing spec. This closes the gap between one-shot plannin
 
 ### 2. Apply feedback to design.md
 
-- If behavior changes, update the `TDD & Mutation Testing Strategy` section first (type contracts, invariants, test matrix, mutation scope).
+- If behavior changes, update the `TDD & Mutation Testing Strategy` section first (type contracts,
+  invariants, test matrix, mutation scope).
+- Mutation stays OFF by default. Update a task's `Mutation:` targets only when the revision
+  changes core logic covered by an existing mutation tool; remove the field when it no longer
+  applies. Never add it just to "be safe".
 - Precise edits only — never rewrite whole files, preserve unaffected sections verbatim.
 - Update `Status` → `Revised`, add a `## Revision History` table entry (`| Date | Change | Reason |`).
 
@@ -24,7 +28,8 @@ Apply feedback to an existing spec. This closes the gap between one-shot plannin
 
 - Reset invalidated tasks: `🔄 DCR` → `🔴 TODO`, checkboxes back to `- [ ]`.
 - Add new tasks with the next free Task ID; obsolete tasks → `⛔ OBSOLETE`.
-- Update `Context`, `Verification`, `Test Coverage` where affected.
+- Update `Context`, `Verification`, `Test Coverage` where affected; keep `Mutation:` consistent
+  with the revised core-logic scope or drop it.
 - Never modify completed tasks (`🟢 DONE`) unless explicitly requested; if a change invalidates them, flag as a warning instead.
 
 ### 4. Validate and report

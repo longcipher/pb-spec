@@ -480,7 +480,7 @@ sequenceDiagram
 
 | Check ID | Scope | Command | Success Criteria |
 | :--- | :--- | :--- | :--- |
-| **MT-01** | Changed source files | `uv run mutmut run` + `uv run mutmut results --all` | Mutation score ≥ 85% on changed code |
+| **MT-01** | Spec-marked changed source files only | `uv run pb-spec mutate` | score ≥ 85%; exit 2 skips when no task declares `Mutation:`; exit 3 fails the budget |
 | **MT-02** | Property-based tests | `uv run pytest -m property` | All hypothesis tests pass |
 
 ### 9.3 Critical Path Verification

@@ -1,4 +1,4 @@
-"""Verify command: strict TDD suite then the incremental mutation gate."""
+"""Verify command: strict TDD suite then the spec-marked mutation gate."""
 
 from __future__ import annotations
 
@@ -36,14 +36,14 @@ def verify_cmd(
     threshold: int | None,
     coverage: bool,
 ) -> None:
-    """One-command gate: TDD tests (with coverage) + incremental mutation check."""
+    """One-command gate: TDD tests (with coverage) + spec-marked mutation check."""
     print_info("Step 1/2: Running strict TDD test suite")
     test_rc = subprocess.call(build_pytest_command(parallel=True, coverage=coverage))
     if test_rc != 0:
         print_error(f"TDD test suite failed (exit {test_rc}). Fix tests before mutating.")
         ctx.exit(test_rc)
 
-    print_info("Step 2/2: Running incremental mutation gate")
+    print_info("Step 2/2: Running spec-marked mutation gate")
     script = mutation_script_path()
     if script is None:
         print_error(
@@ -53,9 +53,15 @@ def verify_cmd(
 
     mut_rc = subprocess.call(build_mutate_command(script, against, threshold))
     if mut_rc == 2:
-        print_warning("No changed files to mutate — nothing to verify.")
+        print_warning("Mutation gate skipped: no spec-marked targets or eligible changes.")
         print_success("Verify passed: TDD suite green.")
         ctx.exit(0)
+    if mut_rc == 3:
+        print_error(
+            "Mutation scope exceeded the hard budget. "
+            "Narrow the spec's Mutation: targets or split the task; full-repo runs are forbidden."
+        )
+        ctx.exit(3)
     if mut_rc == 0:
         print_success("Verify passed: TDD suite green + all changed-code mutants killed.")
     else:

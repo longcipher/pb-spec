@@ -27,6 +27,7 @@ lint:
   uv run ruff check .
   uvx rumdl check .
   uv run ty check src tests
+  bash -n scripts/run-mutation-diff.sh
 
 # Type check the package and the test suite
 typecheck:
@@ -57,33 +58,28 @@ test-coverage:
 # Alias kept for compatibility with the old coverage recipe
 coverage: test-coverage
 
-# Run incremental mutation testing on files changed against main/master
+# Run spec-marked mutation testing on files changed against main/master
 mutation:
-  ./scripts/run-mutation-diff.sh
+  @bash -c './scripts/run-mutation-diff.sh; rc=$?; [ "$rc" -eq 2 ] && exit 0; exit "$rc"'
 
-# Run incremental mutation testing against HEAD (staged + unstaged changes)
+# Run spec-marked mutation testing against HEAD (staged + unstaged changes)
 mutation-head:
-  ./scripts/run-mutation-diff.sh --against HEAD
+  @bash -c './scripts/run-mutation-diff.sh --against HEAD; rc=$?; [ "$rc" -eq 2 ] && exit 0; exit "$rc"'
 
-# Run a clean, full mutation pass (wipes the mutmut cache)
-mutation-full:
-  rm -rf mutants .mutmut-cache
-  ./scripts/run-mutation-diff.sh --against HEAD
-
-# Run the coverage gate and the incremental mutation gate
+# Run the coverage gate and the spec-marked mutation gate
 verify: test-coverage mutation
 
 # Run every check plus the coverage report
 all: check coverage
 
-# Run the CI gate: format check, lint, coverage, and the incremental mutation gate
+# Run the CI gate: format check, lint, coverage, and tests (mutation is local/spec-marked only)
 ci:
   uv run ruff format --check .
   uv run ruff check .
   uvx rumdl check .
   uv run ty check src tests
+  bash -n scripts/run-mutation-diff.sh
   uv run pytest --cov=pb_spec --cov-report=term-missing
-  @bash -c './scripts/run-mutation-diff.sh || [ $? -eq 2 ]'
 
 # Build the sdist and wheel
 build:
@@ -93,7 +89,7 @@ build:
 check-cn:
   @ if rg --line-number --column "\p{Han}" .; then echo "Chinese characters found"; exit 1; fi
 
-# Remove build artifacts and tool caches (keeps the mutmut cache; use just mutation-full to reset it)
+# Remove build artifacts and tool caches (keeps the mutmut cache; use `rm -rf mutants` to reset it)
 clean:
   rm -rf dist/ .pytest_cache/ .ruff_cache/ .rumdl_cache/ .hypothesis/ htmlcov/ .coverage
   find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

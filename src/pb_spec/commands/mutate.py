@@ -1,4 +1,4 @@
-"""Mutate command: incremental mutation testing on changed files."""
+"""Mutate command: spec-marked mutation testing on changed files."""
 
 from __future__ import annotations
 
@@ -54,11 +54,12 @@ def mutate_cmd(
     against: str | None,
     threshold: int | None,
 ) -> None:
-    """Run incremental mutation testing on changed files.
+    """Run spec-marked mutation testing on changed files.
 
-    Mutates only files changed since the base ref, keeping the AI loop fast.
-    Surviving mutants mean the TDD test suite is not strict enough — strengthen
-    assertions until every mutant on changed code is killed.
+    Mutation runs only when the latest specs/*/tasks.md declares ``Mutation:``
+    targets and the changed files match them. Otherwise the gate skips. The
+    script also enforces hard file, mutant, and time budgets — whole-repo runs
+    are never attempted.
     """
     script = mutation_script_path()
     if script is None:
@@ -69,8 +70,14 @@ def mutate_cmd(
 
     exit_code = subprocess.call(build_mutate_command(script, against, threshold))
     if exit_code == 2:
-        print_warning("No changed files to mutate — nothing to verify.")
+        print_warning("Mutation gate skipped: no spec-marked targets or eligible changes.")
         ctx.exit(0)
+    if exit_code == 3:
+        print_error(
+            "Mutation scope exceeded the hard budget. "
+            "Narrow the spec's Mutation: targets or split the task; full-repo runs are forbidden."
+        )
+        ctx.exit(3)
     if exit_code == 0:
         print_success("Mutation gate passed: all changed-code mutants killed (score >= threshold).")
     else:

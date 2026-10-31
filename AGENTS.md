@@ -13,8 +13,8 @@
 - `pb-spec` ships the Agent Skills workflow packages (`pb-plan`, `pb-build`, `pb-refine`, `pb-improve`, `pb-goal`) and the `pb-spec` CLI that validates their artifacts and gates the TDD loop.
 - `src/pb_spec/` is the package: `cli.py`, `commands/` (`validate`, `test`, `mutate`, `verify`, `report`, `discovery`), `validation/` (markdown parser, plan/scanner/build checks, rumdl bridge, `contract_sections.toml`), `config.py`, `exceptions.py`, `output.py`, `git_utils.py`.
 - `skills/<skill>/` holds each `SKILL.md` plus its `evals/` (`eval.yaml`, `eval-cmd.yaml`, `cases/*.yaml`, `fixtures/`); `skills/*-workspace/` is generated eval output and is gitignored. The chain is `/pb-plan` -> `/pb-build`, with `/pb-refine` for spec iteration, `/pb-improve` for read-only audits, and `/pb-goal` for goal-driven runs.
-- `scripts/run-mutation-diff.sh` is the mutation gate; `docs/contract.md` plus `src/pb_spec/validation/contract_sections.toml` are the executable type contract.
-- The artifact contract is fixed: `design.md` must carry the five required sections (Summary, Approach, Architecture Decisions, TDD & Mutation Testing Strategy, Verification) and each `tasks.md` block must carry Context, Verification, Status, and Test Coverage.
+- `scripts/run-mutation-diff.sh` is an optional reference implementation for this repo; the authoritative mutation policy for skill users lives in `skills/pb-build/SKILL.md` and uses native Rust/Python/Node commands. `docs/contract.md` plus `src/pb_spec/validation/contract_sections.toml` are the executable type contract.
+- The artifact contract is fixed: `design.md` must carry the five required sections (Summary, Approach, Architecture Decisions, TDD & Mutation Testing Strategy, Verification) and each `tasks.md` block must carry Context, Verification, Status, and Test Coverage. An optional `Mutation: <src-glob>[, <src-glob>]` field marks the only tasks that participate in mutation testing; absent means mutation-exempt.
 - English only in code, comments, docs, and commit messages.
 
 ## Execution
@@ -22,7 +22,7 @@
 - Parallelize aggressively: dispatch subagents for independent research, exploration, and implementation. Independent spec tasks may fan out; two tasks that touch the same file never share a wave.
 - NEVER use `git worktree`. Edit the current branch in place.
 - Never commit or push unless explicitly asked, and never force push to `main`/`master`.
-- Strict TDD for behavior changes: failing `pytest` test first (example and Hypothesis property tests), smallest change to pass, then a scope-bounded mutation pass on the changed files.
+- Strict TDD for behavior changes: failing `pytest` test first (example and Hypothesis property tests), smallest change to pass, then a scope-bounded mutation pass only when the spec task declares `Mutation:` targets.
 - Decision protocol: pick the best option and record it as an assumption; ask the user — and wait — only for genuinely incomparable, expensive-to-undo choices.
 
 ## Verification loop
@@ -33,10 +33,10 @@ After each feature or bug fix, in order; any failure means the task is not done:
 just format
 just lint
 just test
-just mutation
+just mutation   # spec-marked; exits 0 without running when no task declares Mutation:
 ```
 
-`just lint` runs `ruff check`, `uvx rumdl check` and `ty check src tests`; `just ci` adds the `ruff format --check` gate. `just mutation` is incremental: it mutates only files changed against `main`/`master`, scores the kill rate against an 85% threshold, and exits 2 when there is nothing to mutate (a skip, not a failure). Never run it whole-repo; skip it for infra, config, docs, and trivial accessors.
+`just lint` runs `ruff check`, `uvx rumdl check` and `ty check src tests`; `just ci` adds the `ruff format --check` gate and runs no mutation. `just mutation` runs only when the latest `specs/*/tasks.md` declares `Mutation: <src-glob>` targets and the changed files match them; it scores the kill rate against an 85% threshold. It hard-fails (exit 3) when the scope exceeds 3 files, 60 mutants, or 300 seconds. Never run whole-repo mutation, never invoke bare `mutmut run` / `cargo mutants`, and never add a `mutation-full` recipe.
 
 ## uv rules
 

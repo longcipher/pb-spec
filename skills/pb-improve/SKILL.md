@@ -32,8 +32,11 @@ Subagents over-report: open the cited code yourself and confirm each finding bef
 
 Consolidate the selected findings into one spec directory per the pb-plan template:
 
-- `design.md` — required sections incl. `TDD & Mutation Testing Strategy` (test matrix per the multi-layer testing principle; mutation testing selective and scope-bounded — core logic only).
-- `tasks.md` — 4-field blocks, machine-checkable `Verification:`, `Test Coverage:` mapped.
+- `design.md` — required sections incl. `TDD & Mutation Testing Strategy` (test matrix per the
+  multi-layer testing principle; mutation is OFF by default and only core logic already covered
+  by a configured tool may be marked).
+- `tasks.md` — 4 required fields plus optional `Mutation:` targets only for those core tasks;
+  machine-checkable `Verification:`, `Test Coverage:` mapped.
 - Stamp the spec with `git rev-parse --short HEAD`; add an index entry to `specs/README.md`.
 - Run `uv run pb-spec validate --plan <spec-dir>` and fix errors.
 

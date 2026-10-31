@@ -1,6 +1,6 @@
 ---
 name: pb-plan
-description: Generate design.md and tasks.md from a natural-language requirement. TDD-first, multi-layer test matrix, selective mutation strategy. Drives /pb-build.
+description: Generate design.md and tasks.md from a natural-language requirement. TDD-first, multi-layer test matrix, off-by-default spec-marked mutation strategy. Drives /pb-build.
 ---
 
 # pb-plan
@@ -32,17 +32,23 @@ constraints use RFC 2119 keywords. Prefer the ladder: YAGNI → stdlib → exist
   - Fuzz tests where input is untrusted or complex (malformed input, adversarial payloads).
   - Integration tests for cross-module behavior (real filesystem/db/IPC as appropriate).
   - E2E tests for user-visible flows through the public entry point.
-- **Mutation strategy — selective and scope-bounded.** Mutation testing is slow: declare WHICH
-  files/functions get mutated (core logic with subtle correctness risk only), the score target
-  (default ≥ 85%), and the tool (`mutmut` / `cargo-mutants` / `stryker`). Explicitly mark
-  infra/trivial/UI code as mutation-exempt. Never plan whole-repo mutation runs.
+- **Mutation strategy — OFF by default, spec-marked.** Mutation testing is the slowest gate.
+  Plan it only for core logic with subtle correctness risk (parser, state machine,
+  boundary/money/crypto math, concurrency) **and** when the project already has a mutation tool
+  configured (`mutmut`, `cargo-mutants`, `stryker`). Only those tasks carry
+  `Mutation: <changed-source-glob>`; every other task is exempt. Do not add or install a mutation
+  tool as part of a task. The build gate intersects the globs with changed files and stops when
+  the scope exceeds 3 files / 60 mutants / 300 s. Never plan whole-repo or CI mutation.
 
 ### 3. Tasks — write tasks.md
 
-- 4 fields per task: `Context:`, `Verification:`, `Status:`, `Test Coverage:` (schema in `docs/contract.md`).
+- 4 required fields per task: `Context:`, `Verification:`, `Status:`, `Test Coverage:` (schema in `docs/contract.md`).
+- Optional 5th field: `Mutation: <changed-source-glob>[, <changed-source-glob>]` only for core-logic
+  tasks in a project that already has a mutation tool. Examples:
+  `Mutation: src/pkg/parser.py` (Python), `Mutation: crates/common/src/parser.rs` (Rust),
+  `Mutation: src/parser.ts` (Node/TS). Omit it everywhere else — absence means mutation-exempt.
 - Order tasks by dependency (DAG); each `Verification:` MUST be a machine-checkable command.
 - Map every task to its test paths via `Test Coverage:`.
-- Mark tasks needing mutation testing explicitly; leave it out of infra/trivial tasks.
 
 ### 4. Validate
 

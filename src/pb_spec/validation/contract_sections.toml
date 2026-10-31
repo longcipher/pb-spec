@@ -8,6 +8,7 @@ optional_sections = ["Requirements & Goals", "Architecture Overview", "Data Mode
 
 [tasks]
 required_fields = ["Context:", "Verification:", "Status:", "Test Coverage:"]
+optional_fields = ["Mutation:"]
 
 [build_blocked]
 required_fields = ["Reason", "Requested Change", "Impact"]

@@ -28,6 +28,7 @@ _HEADING_RE = re.compile(r"^##\s+(.+)$", re.MULTILINE)
 _DESIGN_REQUIRED_SECTIONS: list[str] = []
 _DESIGN_OPTIONAL_SECTIONS: list[str] = []
 _TASK_REQUIRED_FIELDS: list[str] = []
+_TASK_OPTIONAL_FIELDS: list[str] = []
 _BUILD_BLOCKED_REQUIRED_FIELDS: frozenset[str] = frozenset()
 _DCR_REQUIRED_FIELDS: frozenset[str] = frozenset()
 
@@ -35,7 +36,7 @@ _DCR_REQUIRED_FIELDS: frozenset[str] = frozenset()
 def _load_config(config_path: Path | None = None) -> None:
     """Load contract configuration from TOML file into module globals."""
     global _DESIGN_REQUIRED_SECTIONS, _DESIGN_OPTIONAL_SECTIONS
-    global _TASK_REQUIRED_FIELDS
+    global _TASK_REQUIRED_FIELDS, _TASK_OPTIONAL_FIELDS
     global _BUILD_BLOCKED_REQUIRED_FIELDS, _DCR_REQUIRED_FIELDS
 
     path = config_path or _DEFAULT_CONTRACT_CONFIG_PATH
@@ -45,6 +46,7 @@ def _load_config(config_path: Path | None = None) -> None:
     _DESIGN_REQUIRED_SECTIONS = list(config["design"]["required_sections"])
     _DESIGN_OPTIONAL_SECTIONS = list(config["design"]["optional_sections"])
     _TASK_REQUIRED_FIELDS = list(config["tasks"]["required_fields"])
+    _TASK_OPTIONAL_FIELDS = list(config["tasks"].get("optional_fields", []))
     _BUILD_BLOCKED_REQUIRED_FIELDS = frozenset(config["build_blocked"]["required_fields"])
     _DCR_REQUIRED_FIELDS = frozenset(config["dcr"]["required_fields"])
 
@@ -189,6 +191,19 @@ def validate_tasks_structure(spec_dir: Path) -> ValidationResult:
                         message=f"Task '{display_name}' has empty required field: '{required_field}'",
                         file_path="tasks.md",
                         field_name=required_field,
+                    )
+                )
+
+        for optional_field in _TASK_OPTIONAL_FIELDS:
+            if (
+                optional_field in task_block.fields
+                and not task_block.fields[optional_field].strip()
+            ):
+                errors.append(
+                    ValidationError(
+                        message=f"Task '{display_name}' has empty optional field: '{optional_field}'",
+                        file_path="tasks.md",
+                        field_name=optional_field,
                     )
                 )
 

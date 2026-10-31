@@ -59,6 +59,21 @@ class TestParseTaskBlocks:
         assert blocks[0].fields["Context:"] == "start"
         assert "Other:" not in blocks[0].fields
 
+    def test_mutation_field_is_parsed(self) -> None:
+        """A 'Mutation:' line starts its own field and does not leak into Test Coverage."""
+        content = (
+            "### Task 1.1: T\n"
+            "Context: start\n"
+            "Verification: v\n"
+            "Test Coverage: tests/test_core.py\n"
+            "Mutation: src/pkg/core.py, src/pkg/parser.py\n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1\n"
+        )
+        blocks = parse_task_blocks(content)
+        assert blocks[0].fields["Mutation:"] == "src/pkg/core.py, src/pkg/parser.py"
+        assert blocks[0].fields["Test Coverage:"] == "tests/test_core.py"
+
     def test_known_field_with_empty_value(self) -> None:
         """A known field with an empty value parses to an empty string."""
         content = "### Task 1.1: T\nContext: \nStatus: 🔴 TODO\n- [ ] Step 1\n"

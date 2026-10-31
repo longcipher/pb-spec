@@ -258,6 +258,16 @@ class TestMutateCommand:
         result = runner.invoke(main, ["mutate"])
         assert result.exit_code == 0
 
+    def test_budget_overflow_exits_three(
+        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Exit code 3 (scope over budget) fails without falling back to a full run."""
+        self._patch_script(monkeypatch)
+        monkeypatch.setattr("pb_spec.commands.mutate.subprocess.call", lambda _cmd: 3)
+        result = runner.invoke(main, ["mutate"])
+        assert result.exit_code == 3
+        assert "hard budget" in result.output
+
     def test_survivors_exit_nonzero(
         self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -332,6 +342,19 @@ class TestVerifyCommand:
         )
         result = runner.invoke(main, ["verify"])
         assert result.exit_code == 0
+
+    def test_budget_overflow_fails(
+        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Mutation exit 3 (scope over budget) fails verify."""
+        self._patch_script(monkeypatch)
+        monkeypatch.setattr(
+            "pb_spec.commands.verify.subprocess.call",
+            lambda cmd: 0 if "-m" in cmd[1:3] else 3,
+        )
+        result = runner.invoke(main, ["verify"])
+        assert result.exit_code == 3
+        assert "hard budget" in result.output
 
     def test_script_missing_fails(self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch) -> None:
         """A missing mutation script fails verify after green tests."""

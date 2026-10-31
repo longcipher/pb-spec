@@ -8,7 +8,7 @@
 
 ![pb-spec](https://socialify.git.ci/longcipher/pb-spec/image?font=Source+Code+Pro&language=1&name=1&owner=1&pattern=Circuit+Board&theme=Auto)
 
-pb-spec is a set of [Agent Skills Specification](https://agentskills.io) compliant AI Coding assistant workflow skill packages. It turns natural-language requirements into well-architected, strictly tested code via **strict TDD + selective, scope-bounded mutation testing**.
+pb-spec is a set of [Agent Skills Specification](https://agentskills.io) compliant AI Coding assistant workflow skill packages. It turns natural-language requirements into well-architected, strictly tested code via **strict TDD + off-by-default, spec-marked mutation testing**.
 
 ## Design Philosophy
 
@@ -19,7 +19,7 @@ Five skills, no ceremony. Modern models are strong: pb-spec adds the few things 
 | **Spec Is Source of Truth** | `design.md` + `tasks.md` carry type contracts, invariants, and the test matrix. Builders don't improvise — ambiguity routes back via DCR. |
 | **TDD-First** | No production code without a failing test first. |
 | **Multi-Layer Testing** | Unit + property (hypothesis/proptest) + fuzz + integration + E2E — covering all business scenarios, all branches, boundary and exception paths. |
-| **Selective Mutation-Gating** | Mutation testing only where subtle correctness risk lives (parsers, state machines, boundary math), only on changed files. Surviving mutants are test failures. |
+| **Off-by-Default Mutation-Gating** | Mutation testing stays off unless a spec task marks it; then only for subtle correctness risk (parsers, state machines, boundary math), only on changed files, under a hard budget. Surviving mutants are test failures. |
 | **Autonomy with an Escape Hatch** | Agents pick the best option themselves. They ask the user — and wait — only for genuinely incomparable, expensive-to-undo choices. |
 | **Goal-Driven Mode** | `/pb-goal` locks one objective, persists state to disk, and keeps working until evidence proves completion. No token budget. |
 
@@ -77,8 +77,8 @@ Key capabilities:
 
 - **Type-First**: `design.md` carries a `TDD & Mutation Testing Strategy` section with type contracts, invariants, boundary conditions, and the test matrix.
 - **Multi-layer test matrix**: unit + property (hypothesis) + fuzz + integration + E2E tests covering all scenarios, branches, and boundary/exception paths.
-- **Selective mutation strategy**: the spec declares which files/functions get mutated (core logic only), the score target (default ≥ 85%), and the tool. Infra/trivial code is mutation-exempt.
-- **4-field task schema**: `Context:`, `Verification:`, `Status:`, `Test Coverage:` with `TaskID`/`DependsOn` DAG metadata.
+- **Selective mutation strategy**: core-logic tasks declare `Mutation: <src-glob>` targets; the gate mutates only those changed files, with a hard file/mutant/time budget. Infra/trivial code is mutation-exempt.
+- **Task schema**: 4 required fields — `Context:`, `Verification:`, `Status:`, `Test Coverage:` — plus optional `Mutation:` targets, with `TaskID`/`DependsOn` DAG metadata.
 - **Decision protocol**: picks the best option and records it as an assumption; asks the user — and waits — only when options are genuinely incomparable and the choice is expensive to undo.
 
 ### 2. `/pb-refine <feature-name>` — Design Iteration (Optional)
@@ -130,10 +130,12 @@ specs/design.md (Type Contracts + Test Matrix) → tasks.md → /pb-build (RED �
 
 **Multi-layer testing** — all business scenarios, all branches, boundary and exception paths, via unit tests, property tests (hypothesis/proptest), fuzz tests for untrusted input, integration tests for cross-module behavior, and E2E tests for user-visible flows.
 
-**Mutation testing is selective and scope-bounded** — it is very slow:
+**Mutation testing is OFF by default and spec-marked** — it is very slow:
 
-- Run it only for core logic with subtle correctness risk (parsers, state machines, crypto/boundary math, concurrency), or when the spec marks it required.
-- Mutate only files changed by the current task — `pb-spec mutate --against <base>` or the diff-based script. Never whole-repo runs.
+- Run it only when a spec task declares `Mutation: <src-glob>` (core logic with subtle correctness risk, and the project already has a mutation tool). Absence means mutation-exempt.
+- Mutate only changed files that match those globs. Never whole-repo or CI runs.
+- The skills use native commands: `cargo mutants --in-diff <diff-file>`, `mutmut '<module>.*'`, `stryker run --mutate ... --since ...`. `pb-spec mutate` is an optional convenience when the CLI is installed.
+- The gate skips when nothing matches and hard-fails when the scope exceeds 3 files, 60 mutants, or 300 seconds.
 - Skip it for infra, config, docs, trivial accessors, and UI code.
 - Surviving mutants on changed code = test failure: strengthen assertions until killed, or record a justified exemption.
 
@@ -143,7 +145,7 @@ pb-spec verify
 
 # Or individually
 pb-spec test           # pytest, parallel (-n auto), optional --coverage
-pb-spec mutate         # incremental mutation on git-changed files only
+pb-spec mutate         # spec-marked mutation on changed files only (skips otherwise)
 ```
 
 ### CLI Commands
@@ -152,10 +154,10 @@ pb-spec mutate         # incremental mutation on git-changed files only
 |---|---|
 | `pb-spec validate --plan/--build/--task` | Validate workflow artifacts and code quality |
 | `pb-spec test` | Run the strict TDD suite (pytest-xdist parallel; `--coverage` for the coverage gate) |
-| `pb-spec mutate` | Run incremental mutation testing on changed files (mutmut / cargo-mutants / stryker) |
-| `pb-spec verify` | One-command gate: tests + coverage + mutation kill-rate check |
+| `pb-spec mutate` | Optional convenience: run spec-marked mutation testing on changed files (mutmut / cargo-mutants / stryker); exits 0 when skipped |
+| `pb-spec verify` | One-command gate: tests + coverage + spec-marked mutation kill-rate check |
 
-### 4-Field Task Schema
+### Task Schema
 
 ```markdown
 ### Task 2.1: "Successful login" — User authenticates
@@ -165,6 +167,7 @@ pb-spec mutate         # incremental mutation on git-changed files only
 - **Verification:** `pytest tests/auth/test_jwt.py -q` exits 0; `pb-spec mutate --against HEAD` score ≥ 85%.
 - **Status:** 🔴 TODO
 - **Test Coverage:** tests/auth/test_jwt.py::test_valid_token, tests/auth/test_jwt.py::test_expired_token
+- **Mutation:** src/auth/jwt.py
 ```
 
 | Field | Required | Description |
@@ -173,6 +176,7 @@ pb-spec mutate         # incremental mutation on git-changed files only
 | `Verification:` | Yes | Exact command(s) + expected output proving task is done |
 | `Status:` | Yes | 🔴 TODO / 🟡 IN_PROGRESS / 🟢 DONE / 🔄 DCR / ⛔ OBSOLETE |
 | `Test Coverage:` | Yes | pytest test paths proving the task, or `N/A` for infrastructure-only tasks |
+| `Mutation:` | No | Source globs requiring mutation testing. Absent means mutation-exempt |
 
 ### Build Blocked / DCR Packets
 

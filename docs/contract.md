@@ -40,8 +40,9 @@ DESIGN_OPTIONAL: list[str] = [
 `TDD & Mutation Testing Strategy` must state: type contracts (input/output shapes),
 invariants, boundary conditions, the test matrix (unit + property + fuzz + integration +
 E2E — all scenarios, branches, boundary/exception paths), and a selective, scope-bounded
-mutation strategy (which core-logic files/functions get mutated, score target default ≥ 85%,
-tooling). Infra/trivial/UI code is mutation-exempt; never plan whole-repo mutation runs.
+mutation strategy (which changed source files get mutated via task `Mutation:` markers,
+score target default ≥ 85%, tooling). Infra/trivial/UI code is mutation-exempt; never plan
+whole-repo mutation runs.
 
 ### Task Block
 
@@ -72,6 +73,12 @@ ALLOWED_STATUSES: frozenset[str] = {
 Legacy `TODO` (without emoji) and `IN PROGRESS` (with space) are accepted on input,
 normalized before execution. `Test Coverage:` lists the pytest test paths that prove
 the task, or literal `N/A` for infrastructure-only tasks.
+
+Optional `Mutation:` lists the source globs whose mutants this task requires, for example
+`Mutation: src/pkg/core.py, src/pkg/parser.py`. Absence means the task is mutation-exempt.
+`pb-spec mutate` reads only the latest `specs/*/tasks.md`, intersects the declared globs
+with the files changed against the base ref, and hard-fails when the scope exceeds the
+file/mutant/time budget. It never falls back to a whole-repo run.
 
 ### Block Packets
 
@@ -226,7 +233,7 @@ CLI commands:
 |---|---|---|
 | `pb-spec validate --plan` | validate spec structure | all checks pass |
 | `pb-spec test [--parallel/--serial] [--coverage]` | run pytest (xdist) | suite green (+ coverage ≥ 80 with `--coverage`) |
-| `pb-spec mutate [--against REF] [--threshold N]` | incremental mutation on changed files | score ≥ threshold (default 85) |
+| `pb-spec mutate [--against REF] [--threshold N]` | spec-marked mutation on changed files; exits 0 when no task declares `Mutation:` | score ≥ threshold (default 85) |
 | `pb-spec verify [--against REF]` | tests + coverage + mutation gate | all three pass |
 
 ## Environment Variables

@@ -74,4 +74,6 @@ repeating it; record the pivot in the evidence log.
 
 - Same rules as the rest of the workflow: strict TDD when implementing, match `AGENTS.md`,
   never commit/push unless explicitly asked.
+- Mutation testing is OFF unless a task declares `Mutation:` and the pb-build gate conditions
+  hold; never run it as a generic completion check.
 - Never edit `.pb-goal.md` history destructively — append evidence, update statuses.

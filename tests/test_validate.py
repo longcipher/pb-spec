@@ -328,6 +328,41 @@ class TestValidatePlan:
         assert result.is_valid is False
         assert any("missing required field: 'Test Coverage:'" in e.message for e in result.errors)
 
+    def test_valid_mutation_field_passes(self, tmp_path: Path) -> None:
+        """A non-empty optional Mutation: field is accepted."""
+        spec_dir = tmp_path / "specs" / "test"
+        tasks_content = (
+            "# Tasks\n\n"
+            "### Task 1.1: Task\n"
+            "Context: Build.\n"
+            "Verification: Run tests.\n"
+            "Test Coverage: N/A\n"
+            "Mutation: src/pkg/core.py\n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1: Write test\n"
+        )
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
+        result = validate_tasks_structure(spec_dir)
+        assert result.is_valid is True
+
+    def test_empty_mutation_field_fails(self, tmp_path: Path) -> None:
+        """An empty optional Mutation: field is rejected instead of silently ignored."""
+        spec_dir = tmp_path / "specs" / "test"
+        tasks_content = (
+            "# Tasks\n\n"
+            "### Task 1.1: Task\n"
+            "Context: Build.\n"
+            "Verification: Run tests.\n"
+            "Test Coverage: N/A\n"
+            "Mutation: \n"
+            "Status: 🔴 TODO\n"
+            "- [ ] Step 1: Write test\n"
+        )
+        _create_spec_files(spec_dir, tasks_content=tasks_content)
+        result = validate_tasks_structure(spec_dir)
+        assert result.is_valid is False
+        assert any("empty optional field: 'Mutation:'" in e.message for e in result.errors)
+
     def test_invalid_task_status_fails(self, tmp_path: Path) -> None:
         """Test that task with invalid Status (no emoji marker) fails."""
         spec_dir = tmp_path / "specs" / "test"
@@ -543,9 +578,7 @@ class TestValidateTask:
 class TestValidateCommand:
     """Tests for validate command integration."""
 
-    def test_task_mode_passes_on_clean_code(
-        self, runner: CliRunner, tmp_path: Path
-    ) -> None:
+    def test_task_mode_passes_on_clean_code(self, runner: CliRunner, tmp_path: Path) -> None:
         """Test that --task mode passes on clean codebase."""
         (tmp_path / "clean.py").write_text("def foo():\n    return 42\n")
         previous_cwd = Path.cwd()
